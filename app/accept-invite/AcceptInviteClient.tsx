@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, Eye, EyeOff } from 'lucide-react'
+import { Loader2, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 import { AppLogo } from '@/components/shared/AppLogo'
 import { useT } from '@/app/context/LanguageContext'
 
@@ -28,6 +28,41 @@ export function AcceptInviteClient({ token, invitation }: Props) {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  // null = checking, true = authenticated via email link, false = needs sign-up
+  const [alreadyAuthenticated, setAlreadyAuthenticated] = useState<boolean | null>(null)
+
+  // Detect if the user arrived via email invite link (already authenticated)
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user?.email?.toLowerCase() === invitation.email.toLowerCase()) {
+        setAlreadyAuthenticated(true)
+      } else {
+        setAlreadyAuthenticated(false)
+      }
+    })
+  }, [invitation.email])
+
+  async function linkAccount() {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/staff/accept-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      })
+      if (!res.ok) {
+        const { error } = await res.json()
+        throw new Error(error ?? t('acceptInvite.linkError'))
+      }
+      toast.success(t('acceptInvite.welcome').replace('{name}', invitation.name))
+      router.push('/dashboard')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('common.error'))
+    } finally {
+      setLoading(false)
+    }
+  }
 
   async function handleAccept() {
     if (password.length < 8) {
@@ -39,17 +74,14 @@ export function AcceptInviteClient({ token, invitation }: Props) {
     try {
       const supabase = createClient()
 
-      // 1. Create the Supabase auth account
+      // Create the Supabase auth account
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: invitation.email,
         password,
-        options: {
-          data: { full_name: invitation.name },
-        },
+        options: { data: { full_name: invitation.name } },
       })
 
       if (signUpError) {
-        // If user already exists, try signing in
         if (signUpError.message.includes('already registered')) {
           const { error: signInError } = await supabase.auth.signInWithPassword({
             email: invitation.email,
@@ -61,29 +93,24 @@ export function AcceptInviteClient({ token, invitation }: Props) {
         }
       }
 
-      const userId = authData?.user?.id
-      if (!userId && !authData?.session) {
-        // Account created but needs email confirmation
+      if (!authData?.user?.id && !authData?.session) {
+        // Account created but requires email confirmation before linking
         toast.success(t('acceptInvite.checkEmail'))
         return
       }
 
-      // 2. Mark invitation as accepted + link user_id to staff record via API
-      const res = await fetch('/api/staff/accept-invite', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }),
-      })
-
-      if (!res.ok) throw new Error(t('acceptInvite.linkError'))
-
-      toast.success(t('acceptInvite.welcome').replace('{name}', invitation.name))
-      router.push('/')
+      await linkAccount()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('common.error'))
     } finally {
       setLoading(false)
     }
+  }
+
+  const roleLabel: Record<string, string> = {
+    manager: 'Manager',
+    receptionist: 'Réceptionniste',
+    housekeeping: 'Ménage',
   }
 
   return (
@@ -110,7 +137,7 @@ export function AcceptInviteClient({ token, invitation }: Props) {
             <strong className="text-foreground">{invitation.propertyName}</strong>{' '}
             {t('acceptInvite.joinSuffix')}{' '}
             <span className="px-1.5 py-0.5 bg-[#0F6E56]/10 text-[#0F6E56] rounded-full text-[12px] font-medium">
-              {t(`role.${invitation.role}`)}
+              {roleLabel[invitation.role] ?? invitation.role}
             </span>
           </p>
         </div>
@@ -127,53 +154,83 @@ export function AcceptInviteClient({ token, invitation }: Props) {
           </div>
           <div className="flex justify-between text-[13px]">
             <span className="text-muted-foreground">{t('staff.role')}</span>
-            <span className="font-medium">{t(`role.${invitation.role}`)}</span>
+            <span className="font-medium">{roleLabel[invitation.role] ?? invitation.role}</span>
           </div>
         </div>
 
-        {/* Password */}
-        <div className="space-y-1.5 mb-5">
-          <Label className="text-[13px]">{t('acceptInvite.choosePassword')}</Label>
-          <div className="relative">
-            <Input
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder={t('acceptInvite.passwordPlaceholder')}
-              className="pr-10"
-              onKeyDown={(e) => e.key === 'Enter' && handleAccept()}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+        {/* Loading state while checking session */}
+        {alreadyAuthenticated === null && (
+          <div className="flex justify-center py-4">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        )}
+
+        {/* Already authenticated via email link — simplified confirm button */}
+        {alreadyAuthenticated === true && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 rounded-[12px] px-3.5 py-2.5 bg-[#0F6E56]/8 border border-[#0F6E56]/15">
+              <CheckCircle2 className="w-4 h-4 text-[#0F6E56] flex-shrink-0" />
+              <p className="text-[12px] text-[#0F6E56]">
+                Identité vérifiée. Cliquez pour rejoindre l&apos;équipe.
+              </p>
+            </div>
+            <Button
+              className="w-full h-11 text-[14px]"
+              style={{ background: 'linear-gradient(135deg, #0F6E56 0%, #16a37d 100%)' }}
+              onClick={linkAccount}
+              disabled={loading}
             >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
+              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Rejoindre {invitation.propertyName}
+            </Button>
           </div>
-        </div>
+        )}
 
-        <Button
-          className="w-full h-11 text-[14px]"
-          style={{ background: 'linear-gradient(135deg, #0F6E56 0%, #16a37d 100%)' }}
-          onClick={handleAccept}
-          disabled={loading || password.length < 8}
-        >
-          {loading ? (
-            <Loader2 className="w-4 h-4 animate-spin mr-2" />
-          ) : null}
-          {t('acceptInvite.createAndJoin')}
-        </Button>
+        {/* Not authenticated — password sign-up form */}
+        {alreadyAuthenticated === false && (
+          <>
+            <div className="space-y-1.5 mb-5">
+              <Label className="text-[13px]">{t('acceptInvite.choosePassword')}</Label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={t('acceptInvite.passwordPlaceholder')}
+                  className="pr-10"
+                  onKeyDown={(e) => e.key === 'Enter' && handleAccept()}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
 
-        <p className="text-center text-[11px] text-muted-foreground mt-4">
-          {t('acceptInvite.alreadyHaveAccount')}{' '}
-          <button
-            onClick={() => router.push(`/login?redirect=/accept-invite?token=${token}`)}
-            className="text-[#0F6E56] underline"
-          >
-            {t('login.submit')}
-          </button>
-        </p>
+            <Button
+              className="w-full h-11 text-[14px]"
+              style={{ background: 'linear-gradient(135deg, #0F6E56 0%, #16a37d 100%)' }}
+              onClick={handleAccept}
+              disabled={loading || password.length < 8}
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              {t('acceptInvite.createAndJoin')}
+            </Button>
+
+            <p className="text-center text-[11px] text-muted-foreground mt-4">
+              {t('acceptInvite.alreadyHaveAccount')}{' '}
+              <button
+                onClick={() => router.push(`/login?redirect=/accept-invite?token=${token}`)}
+                className="text-[#0F6E56] underline"
+              >
+                {t('login.submit')}
+              </button>
+            </p>
+          </>
+        )}
       </div>
     </div>
   )

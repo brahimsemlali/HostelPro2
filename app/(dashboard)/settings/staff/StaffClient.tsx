@@ -42,7 +42,7 @@ export function StaffClient({ propertyId, staff, pendingInvitations }: Props) {
   const [revoking, setRevoking] = useState<string | null>(null)
   const [togglingRevenue, setTogglingRevenue] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
-  const [inviteResult, setInviteResult] = useState<{ url: string; name: string } | null>(null)
+  const [inviteResult, setInviteResult] = useState<{ url: string; name: string; emailSent: boolean } | null>(null)
   const [form, setForm] = useState({ name: '', email: '', role: 'receptionist' as StaffRole })
 
   const activeStaff = staff.filter(s => s.is_active && s.user_id)
@@ -63,7 +63,7 @@ export function StaffClient({ propertyId, staff, pendingInvitations }: Props) {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? t('common.error'))
       if (data.reused) toast.info(t('staff.invitePending'))
-      setInviteResult({ url: data.inviteUrl, name: form.name.trim() })
+      setInviteResult({ url: data.inviteUrl, name: form.name.trim(), emailSent: data.emailSent ?? false })
       setForm({ name: '', email: '', role: 'receptionist' })
       router.refresh()
     } catch (err) {
@@ -261,12 +261,23 @@ export function StaffClient({ propertyId, staff, pendingInvitations }: Props) {
           {inviteResult ? (
             /* Success state — show invite URL */
             <div className="px-6 pb-6 pt-4 space-y-4">
+              {inviteResult.emailSent && (
+                <div className="flex items-center gap-2 rounded-[12px] px-3.5 py-2.5 bg-[#0F6E56]/8 border border-[#0F6E56]/15">
+                  <Mail className="w-3.5 h-3.5 text-[#0F6E56] flex-shrink-0" />
+                  <p className="text-[12px] text-[#0F6E56]">
+                    Un email d&apos;invitation a été envoyé à <strong>{inviteResult.name}</strong>.
+                  </p>
+                </div>
+              )}
               <div
                 className="rounded-[14px] p-4"
                 style={{ background: 'oklch(0.972 0 0)' }}
               >
                 <p className="text-[12px] text-muted-foreground mb-2">
-                  {t('staff.shareInviteWith')} <strong className="text-foreground">{inviteResult.name}</strong>
+                  {inviteResult.emailSent
+                    ? "Lien de secours si l'email n'arrive pas :"
+                    : <>{t('staff.shareInviteWith')} <strong className="text-foreground">{inviteResult.name}</strong></>
+                  }
                 </p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 text-[11px] bg-white border border-black/08 rounded-[8px] px-2.5 py-1.5 truncate font-mono text-[oklch(0.4_0_0)]">

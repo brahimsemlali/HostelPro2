@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { createClient, getUserId } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
+import { getUserId } from '@/lib/supabase/server'
 
 export async function POST(req: Request) {
   try {
@@ -9,10 +10,10 @@ export async function POST(req: Request) {
     const { token } = await req.json()
     if (!token) return NextResponse.json({ error: 'Token manquant' }, { status: 400 })
 
-    const supabase = await createClient()
+    const admin = createAdminClient()
 
-    // Fetch and validate the invitation
-    const { data: invitation, error: invError } = await supabase
+    // Fetch and validate the invitation (admin client bypasses RLS)
+    const { data: invitation, error: invError } = await admin
       .from('staff_invitations')
       .select('*')
       .eq('token', token)
@@ -24,9 +25,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invitation invalide ou expirée' }, { status: 400 })
     }
 
-    // Link the new user to a staff record for this property
-    // Find the pending (is_active=false, user_id=null) staff record created at invite time
-    const { data: existingStaff } = await supabase
+    // Find the pre-created inactive staff record linked to this invite
+    const { data: existingStaff } = await admin
       .from('staff')
       .select('id')
       .eq('property_id', invitation.property_id)
@@ -34,17 +34,15 @@ export async function POST(req: Request) {
       .eq('role', invitation.role)
       .is('user_id', null)
       .eq('is_active', false)
-      .single()
+      .maybeSingle()
 
     if (existingStaff) {
-      // Activate the pre-created staff record
-      await supabase
+      await admin
         .from('staff')
         .update({ user_id: userId, is_active: true })
         .eq('id', existingStaff.id)
     } else {
-      // Create a fresh staff record
-      await supabase.from('staff').insert({
+      await admin.from('staff').insert({
         property_id: invitation.property_id,
         user_id: userId,
         name: invitation.name,
@@ -54,7 +52,7 @@ export async function POST(req: Request) {
     }
 
     // Mark invitation as accepted
-    await supabase
+    await admin
       .from('staff_invitations')
       .update({ accepted_at: new Date().toISOString() })
       .eq('id', invitation.id)

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUserSession } from '@/lib/supabase/server'
+import { getRouteHandlerSession } from '@/lib/supabase/server'
 
 interface IcalEvent {
   uid: string
@@ -73,7 +73,7 @@ function extractBookingRef(description: string, uid: string): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getUserSession()
+    const session = await getRouteHandlerSession()
     if (!session) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
 
     const { icalUrl } = await req.json() as { icalUrl: string }

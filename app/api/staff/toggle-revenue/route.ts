@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient, getUserSession } from '@/lib/supabase/server'
+import { getRouteHandlerSession, createAdminClient } from '@/lib/supabase/server'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 
 export async function POST(req: Request) {
@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     const { allowed } = rateLimit({ key: `toggle-revenue:${ip}`, limit: 30, windowSeconds: 3600 })
     if (!allowed) return NextResponse.json({ error: 'Trop de requêtes' }, { status: 429 })
 
-    const session = await getUserSession()
+    const session = await getRouteHandlerSession()
     if (!session?.isOwner) {
       return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
     }
@@ -18,13 +18,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Paramètres invalides' }, { status: 400 })
     }
 
-    const supabase = await createClient()
+    const admin = createAdminClient()
 
-    const { error } = await supabase
+    const { error } = await admin
       .from('staff')
       .update({ hide_revenue: hideRevenue })
       .eq('id', staffId)
-      .eq('property_id', session.propertyId) // RLS double-check
+      .eq('property_id', session.propertyId)
 
     if (error) throw error
 

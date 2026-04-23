@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient, getUserSession } from '@/lib/supabase/server'
+import { getRouteHandlerSession, createAdminClient } from '@/lib/supabase/server'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 
 export async function POST(req: NextRequest) {
@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const session = await getUserSession()
+    const session = await getRouteHandlerSession()
     if (!session?.isOwner) {
       return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
     }
@@ -25,21 +25,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Rôle invalide' }, { status: 400 })
     }
 
-    const supabase = await createClient()
+    const admin = createAdminClient()
     const normalizedEmail = email.toLowerCase().trim()
 
-    // Reject if this email already has an active staff account for this property
-    const { data: existingStaff } = await supabase
-      .from('staff')
-      .select('id')
-      .eq('property_id', session.propertyId)
-      .eq('is_active', true)
-      .not('user_id', 'is', null)
-      // staff table has no email column — check via auth.users join is not possible from client
-      // so we check staff_invitations for accepted invites with this email instead
-      .limit(1)
-
-    const { data: acceptedInvite } = await supabase
+    const { data: acceptedInvite } = await admin
       .from('staff_invitations')
       .select('id')
       .eq('property_id', session.propertyId)
@@ -56,7 +45,7 @@ export async function POST(req: NextRequest) {
     }
 
     // If a pending (non-expired) invitation already exists, return its URL instead of creating a duplicate
-    const { data: pendingInvite } = await supabase
+    const { data: pendingInvite } = await admin
       .from('staff_invitations')
       .select('token')
       .eq('property_id', session.propertyId)
@@ -72,7 +61,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Create the invitation record
-    const { data: invitation, error: invError } = await supabase
+    const { data: invitation, error: invError } = await admin
       .from('staff_invitations')
       .insert({
         property_id: session.propertyId,
@@ -87,17 +76,34 @@ export async function POST(req: NextRequest) {
     if (invError) throw invError
 
     // Pre-create the staff record (inactive until accepted)
-    await supabase.from('staff').insert({
+    await admin.from('staff').insert({
       property_id: session.propertyId,
       name: name.trim(),
       role,
       is_active: false,
-      // user_id will be set when the invitation is accepted
     })
 
-    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/accept-invite?token=${invitation.token}`
+    const acceptInvitePath = `/accept-invite?token=${invitation.token}`
+    // PKCE callback route exchanges the auth code, then redirects to acceptInvitePath
+    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback?next=${encodeURIComponent(acceptInvitePath)}`
+    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}${acceptInvitePath}`
 
-    return NextResponse.json({ inviteUrl, token: invitation.token })
+    // Send the invite email via Supabase Auth.
+    // inviteUserByEmail creates the user (or re-invites if they exist) and sends an email
+    // with a magic link that authenticates them and redirects to callbackUrl → acceptInvitePath.
+    let emailSent = false
+    try {
+      const { error: emailError } = await admin.auth.admin.inviteUserByEmail(normalizedEmail, {
+        redirectTo: callbackUrl,
+        data: { full_name: name.trim(), staff_role: role },
+      })
+      if (!emailError) emailSent = true
+      else console.warn('[invite] inviteUserByEmail failed:', emailError.message)
+    } catch (e) {
+      console.warn('[invite] inviteUserByEmail threw:', e)
+    }
+
+    return NextResponse.json({ inviteUrl, token: invitation.token, emailSent })
   } catch (err) {
     console.error('[invite]', err)
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
