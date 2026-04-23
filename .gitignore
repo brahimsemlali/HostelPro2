@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Playwright MCP artifacts
+.playwright-mcp/
+
+# Debug/temp files
+*.png
+mobile-login*.png
+mobile-login-after.png
+mobile-login-fixed.png
+build_output.txt
+task2.md
