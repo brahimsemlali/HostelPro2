@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "debugging-code": {
+      "source": "AlmogBaku/debug-skill",
+      "sourceType": "github",
+      "computedHash": "51be78e0378b7aef08815808649f7d46e55e0ac51a5cd460065b26f3a0154954"
+    }
+  }
+}

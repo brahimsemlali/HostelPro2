@@ -1,0 +1,106 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - img "HostelPro" [ref=e5]
+        - generic [ref=e6]:
+          - text: HostelPro
+          - paragraph [ref=e7]: Gestion d'auberge
+      - navigation [ref=e9]:
+        - generic [ref=e10]:
+          - generic [ref=e11]:
+            - paragraph [ref=e12]: Principal
+            - generic [ref=e13]:
+              - link "Tableau de bord" [ref=e14] [cursor=pointer]:
+                - /url: /dashboard
+                - img [ref=e15]
+                - generic [ref=e20]: Tableau de bord
+              - link "Plan des lits" [ref=e21] [cursor=pointer]:
+                - /url: /beds
+                - img [ref=e22]
+                - generic [ref=e24]: Plan des lits
+              - link "Calendrier" [ref=e25] [cursor=pointer]:
+                - /url: /calendar
+                - img [ref=e26]
+                - generic [ref=e28]: Calendrier
+          - generic [ref=e29]:
+            - paragraph [ref=e30]: Opérations
+            - generic [ref=e31]:
+              - link "Clients" [ref=e32] [cursor=pointer]:
+                - /url: /guests
+                - img [ref=e33]
+                - generic [ref=e38]: Clients
+              - link "Réservations" [ref=e39] [cursor=pointer]:
+                - /url: /bookings
+                - img [ref=e40]
+                - generic [ref=e43]: Réservations
+              - link "Paiements" [ref=e44] [cursor=pointer]:
+                - /url: /payments
+                - img [ref=e45]
+                - generic [ref=e47]: Paiements
+              - link "Ménage" [ref=e48] [cursor=pointer]:
+                - /url: /housekeeping
+                - img [ref=e49]
+                - generic [ref=e53]: Ménage
+              - link "Activités" [ref=e54] [cursor=pointer]:
+                - /url: /activities
+                - img [ref=e55]
+                - generic [ref=e61]: Activités
+              - link "Dépenses" [ref=e62] [cursor=pointer]:
+                - /url: /expenses
+                - img [ref=e63]
+                - generic [ref=e66]: Dépenses
+          - generic [ref=e67]:
+            - paragraph [ref=e68]: Analyse
+            - generic [ref=e69]:
+              - link "Rapports" [ref=e70] [cursor=pointer]:
+                - /url: /reports
+                - img [ref=e71]
+                - generic [ref=e73]: Rapports
+              - link "WhatsApp" [ref=e74] [cursor=pointer]:
+                - /url: /whatsapp
+                - img [ref=e75]
+                - generic [ref=e77]: WhatsApp
+              - link "Maintenance" [ref=e78] [cursor=pointer]:
+                - /url: /maintenance
+                - img [ref=e80]
+                - generic [ref=e82]: Maintenance
+              - link "Audit de nuit" [ref=e83] [cursor=pointer]:
+                - /url: /night-audit
+                - img [ref=e84]
+                - generic [ref=e86]: Audit de nuit
+      - generic [ref=e87]:
+        - link "Paramètres" [ref=e88] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e89]
+          - generic [ref=e92]: Paramètres
+        - button "Déconnexion" [ref=e93]:
+          - img [ref=e94]
+          - generic [ref=e97]: Déconnexion
+    - generic [ref=e98]:
+      - banner [ref=e99]:
+        - heading "Maintenance" [level=1] [ref=e100]
+        - generic [ref=e101]:
+          - generic "Reconnexion..." [ref=e102]:
+            - generic [ref=e105]: Reconnexion…
+          - button "Notifications" [ref=e107]:
+            - img
+          - generic [ref=e108]:
+            - generic [ref=e109]:
+              - generic [ref=e110]: Propriétaire
+              - generic [ref=e111]: Propriétaire
+            - generic "Propriétaire, Propriétaire" [ref=e112]: P
+      - main [ref=e113]:
+        - generic [ref=e114]:
+          - button "Nouveau signalement" [ref=e116]:
+            - img
+            - text: Nouveau signalement
+          - generic [ref=e118]:
+            - img [ref=e120]
+            - heading "Tout va bien" [level=3] [ref=e123]
+            - paragraph [ref=e124]: Aucun problème signalé. Votre établissement est en parfait état de marche.
+            - button "Signaler un problème" [ref=e126]
+  - region "Notifications alt+T"
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e132] [cursor=pointer]:
+    - img [ref=e133]

@@ -1,0 +1,23 @@
+
+> hostelpro@0.1.0 build
+> next build
+
+▲ Next.js 16.2.2 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 5.2s
+  Running TypeScript ...
+Failed to type check.
+
+./app/(dashboard)/bookings/[id]/BookingDetailClient.tsx:269:102
+Type error: Cannot find name 'balance'.
+
+  [90m267 |[0m ...[33mS[0m.welcome.fr(guest, property, booking)
+  [90m268 |[0m ...[33mATSAPP_TEMPLATES[0m.checkout_reminder.fr(guest, property)
+[31m[1m>[0m [90m269 |[0m ...[33mTSAPP_TEMPLATES[0m.payment_reminder.fr(guest, balance)
+  [90m    |[0m                                               [31m[1m^[0m
+  [90m270 |[0m ...
+  [90m271 |[0m ...
+  [90m272 |[0m ...
+Next.js build worker exited with code: 1 and signal: null

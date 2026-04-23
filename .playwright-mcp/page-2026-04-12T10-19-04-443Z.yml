@@ -1,0 +1,395 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - navigation [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - img "HostelPro" [ref=e6]
+          - generic [ref=e7]: HostelPro
+        - generic [ref=e8]:
+          - link "Fonctionnalités" [ref=e9] [cursor=pointer]:
+            - /url: "#fonctionnalités"
+          - link "Comment ça marche" [ref=e10] [cursor=pointer]:
+            - /url: "#comment"
+          - link "Tarifs" [ref=e11] [cursor=pointer]:
+            - /url: "#tarifs"
+        - generic [ref=e12]:
+          - link "Connexion" [ref=e13] [cursor=pointer]:
+            - /url: /login
+          - link "Essai gratuit" [ref=e14] [cursor=pointer]:
+            - /url: /register
+    - generic [ref=e17]:
+      - generic [ref=e18]:
+        - generic [ref=e19]: Conçu pour le Maroc · 2025
+        - heading "Gérez votre auberge sans effort" [level=1] [ref=e21]:
+          - text: Gérez votre
+          - text: auberge sans effort
+        - paragraph [ref=e22]: Check-ins en 60 secondes, fiches de police automatiques, paiements cash suivis en temps réel.
+        - generic [ref=e23]:
+          - link "Commencer gratuitement" [ref=e24] [cursor=pointer]:
+            - /url: /register
+            - text: Commencer gratuitement
+            - img [ref=e25]
+          - link "Voir la démo →" [ref=e27] [cursor=pointer]:
+            - /url: "#demo"
+        - generic [ref=e28]:
+          - generic [ref=e29]:
+            - paragraph [ref=e30]: 60s
+            - paragraph [ref=e31]: Check-in moyen
+          - generic [ref=e32]:
+            - paragraph [ref=e33]: 100%
+            - paragraph [ref=e34]: Légal & conforme
+          - generic [ref=e35]:
+            - paragraph [ref=e36]: 0 MAD
+            - paragraph [ref=e37]: Pour commencer
+      - generic [ref=e39]:
+        - generic [ref=e46]: hostelpro.ma/dashboard
+        - generic [ref=e47]:
+          - generic [ref=e48]:
+            - generic [ref=e50] [cursor=pointer]: 🏠
+            - generic [ref=e51] [cursor=pointer]: 🛏
+            - generic [ref=e52] [cursor=pointer]: 👤
+            - generic [ref=e53] [cursor=pointer]: 💰
+            - generic [ref=e54] [cursor=pointer]: 📊
+          - generic [ref=e55]:
+            - generic [ref=e56]:
+              - paragraph [ref=e57]: Tableau de bord
+              - generic [ref=e58]: Temps réel ●
+            - generic [ref=e59]:
+              - generic [ref=e60]:
+                - paragraph [ref=e61]: Lits occupés
+                - paragraph [ref=e62]: 17/24
+                - paragraph [ref=e63]: 70%
+              - generic [ref=e64]:
+                - paragraph [ref=e65]: Revenus du jour
+                - paragraph [ref=e66]: 4 320 MAD
+                - paragraph [ref=e67]: +12%
+            - paragraph [ref=e69]: Plan des lits
+            - generic [ref=e83]:
+              - paragraph [ref=e84]: Arrivées aujourd'hui
+              - generic [ref=e85]:
+                - generic [ref=e86]:
+                  - generic [ref=e87]: 🇲🇦
+                  - generic [ref=e88]: Karim Benali
+                - generic [ref=e89]:
+                  - generic [ref=e90]: A2
+                  - generic [ref=e91]: Check-in
+              - generic [ref=e92]:
+                - generic [ref=e93]:
+                  - generic [ref=e94]: 🇫🇷
+                  - generic [ref=e95]: Sophie Martin
+                - generic [ref=e96]:
+                  - generic [ref=e97]: B3
+                  - generic [ref=e98]: Check-in
+    - generic [ref=e99]:
+      - paragraph [ref=e101]: Adopté par des auberges à travers le Maroc
+      - generic [ref=e103]:
+        - generic [ref=e105]: Auberge Atlas · Agadir
+        - generic [ref=e108]: Riad Bab Doukkala · Marrakech
+        - generic [ref=e111]: Hostel Médina · Fès
+        - generic [ref=e114]: Casa Blanca Surf Hostel
+        - generic [ref=e117]: Dar Nomad · Essaouira
+        - generic [ref=e120]: Atlas Backpackers · Marrakech
+        - generic [ref=e123]: Surf Paradise · Taghazout
+        - generic [ref=e126]: Kasbah Youth Hostel · Ouarzazate
+        - generic [ref=e129]: Auberge Atlas · Agadir
+        - generic [ref=e132]: Riad Bab Doukkala · Marrakech
+        - generic [ref=e135]: Hostel Médina · Fès
+        - generic [ref=e138]: Casa Blanca Surf Hostel
+        - generic [ref=e141]: Dar Nomad · Essaouira
+        - generic [ref=e144]: Atlas Backpackers · Marrakech
+        - generic [ref=e147]: Surf Paradise · Taghazout
+        - generic [ref=e150]: Kasbah Youth Hostel · Ouarzazate
+    - generic [ref=e153]:
+      - generic [ref=e154]:
+        - generic [ref=e155]:
+          - img [ref=e156]
+          - text: Tout-en-un
+        - heading "Tout ce dont vous avez besoin" [level=2] [ref=e158]
+        - paragraph [ref=e159]: Une seule application pour gérer votre hébergement du check-in au rapport de police.
+      - generic [ref=e160]:
+        - generic [ref=e161]:
+          - generic [ref=e162]:
+            - img [ref=e164]
+            - generic [ref=e167]: "01"
+          - heading "Plan des lits en temps réel" [level=3] [ref=e168]
+          - paragraph [ref=e169]: Visualisez l'état de chaque lit d'un coup d'œil. Occupé, libre, ménage, maintenance.
+        - generic [ref=e170]:
+          - generic [ref=e171]:
+            - img [ref=e173]
+            - generic [ref=e177]: "02"
+          - heading "Check-in en 60 secondes" [level=3] [ref=e178]
+          - paragraph [ref=e179]: Formulaire guidé en 5 étapes. Toutes les informations légales collectées automatiquement.
+        - generic [ref=e180]:
+          - generic [ref=e181]:
+            - img [ref=e183]
+            - generic [ref=e185]: "03"
+          - heading "Paiements cash & virement" [level=3] [ref=e186]
+          - paragraph [ref=e187]: Enregistrez chaque paiement, réconciliez la caisse en fin de journée. Zéro écart.
+        - generic [ref=e188]:
+          - generic [ref=e189]:
+            - img [ref=e191]
+            - generic [ref=e193]: "04"
+          - heading "Rapports & analytique" [level=3] [ref=e194]
+          - paragraph [ref=e195]: RevPAR, taux d'occupation, revenus par canal. Prenez les bonnes décisions.
+        - generic [ref=e196]:
+          - generic [ref=e197]:
+            - img [ref=e199]
+            - generic [ref=e201]: "05"
+          - heading "WhatsApp intégré" [level=3] [ref=e202]
+          - paragraph [ref=e203]: Messages de bienvenue, rappels de paiement, demandes d'avis — en un clic.
+        - generic [ref=e204]:
+          - generic [ref=e205]:
+            - img [ref=e207]
+            - generic [ref=e210]: "06"
+          - heading "Fiche de police automatique" [level=3] [ref=e211]
+          - paragraph [ref=e212]: Générez le PDF légal pour chaque client étranger en quelques secondes.
+    - generic [ref=e214]:
+      - generic [ref=e215]:
+        - generic [ref=e216]: Démonstration
+        - heading "Découvrez l'interface" [level=2] [ref=e217]
+        - paragraph [ref=e218]: Simple. Rapide. Conçu pour être utilisé depuis un téléphone en pleine nuit.
+      - generic [ref=e219]:
+        - generic [ref=e220]:
+          - button "Tableau de bord" [ref=e221]
+          - button "Plan des lits" [ref=e222]
+          - button "Rapports" [ref=e223]
+        - generic [ref=e224]:
+          - generic [ref=e231]: hostelpro.ma/dashboard
+          - generic [ref=e232]:
+            - generic [ref=e233]:
+              - generic [ref=e234] [cursor=pointer]: 🏠
+              - generic [ref=e235] [cursor=pointer]: 🛏
+              - generic [ref=e236] [cursor=pointer]: 👤
+              - generic [ref=e237] [cursor=pointer]: 💰
+              - generic [ref=e238] [cursor=pointer]: 📊
+            - generic [ref=e240]:
+              - generic [ref=e241]:
+                - generic [ref=e242]:
+                  - paragraph [ref=e243]: Lits occupés
+                  - paragraph [ref=e244]: 17/24
+                  - paragraph [ref=e245]: 70% ce soir
+                - generic [ref=e246]:
+                  - paragraph [ref=e247]: Revenus du jour
+                  - paragraph [ref=e248]: 4 320 MAD
+                  - paragraph [ref=e249]: +12% vs hier
+                - generic [ref=e250]:
+                  - paragraph [ref=e251]: Check-ins
+                  - paragraph [ref=e252]: "3"
+                  - paragraph [ref=e253]: aujourd'hui
+              - generic [ref=e254]:
+                - paragraph [ref=e256]: Activité récente
+                - generic [ref=e257]:
+                  - generic [ref=e258]: ✅
+                  - paragraph [ref=e259]: Check-in · Karim B.
+                  - paragraph [ref=e260]: 14:32
+                - generic [ref=e261]:
+                  - generic [ref=e262]: 💰
+                  - paragraph [ref=e263]: Paiement · 650 MAD cash
+                  - paragraph [ref=e264]: 14:10
+                - generic [ref=e265]:
+                  - generic [ref=e266]: 🛏
+                  - paragraph [ref=e267]: Lit A3 marqué propre
+                  - paragraph [ref=e268]: 13:55
+                - generic [ref=e269]:
+                  - generic [ref=e270]: 📋
+                  - paragraph [ref=e271]: Sophie M. — check-out
+                  - paragraph [ref=e272]: 11:02
+    - generic [ref=e274]:
+      - generic [ref=e275]:
+        - generic [ref=e276]: Simple comme bonjour
+        - heading "Opérationnel en moins de 5 minutes" [level=2] [ref=e277]
+      - generic [ref=e278]:
+        - generic [ref=e279]:
+          - generic [ref=e280]: "01"
+          - generic [ref=e281]: "1"
+          - heading "Créez votre compte" [level=3] [ref=e282]
+          - paragraph [ref=e283]: Inscrivez-vous en 2 minutes. Aucune carte bancaire requise.
+        - generic [ref=e284]:
+          - generic [ref=e285]: "02"
+          - generic [ref=e286]: "2"
+          - heading "Configurez votre auberge" [level=3] [ref=e287]
+          - paragraph [ref=e288]: Ajoutez vos chambres et lits via l'assistant guidé.
+        - generic [ref=e289]:
+          - generic [ref=e290]: "03"
+          - generic [ref=e291]: "3"
+          - heading "Gérez tout en un endroit" [level=3] [ref=e292]
+          - paragraph [ref=e293]: Check-ins, paiements, rapports, WhatsApp — une seule interface.
+    - generic [ref=e295]:
+      - generic [ref=e296]:
+        - heading "Ils nous font confiance" [level=2] [ref=e297]
+        - paragraph [ref=e298]: Des gérants d'auberges à travers tout le Maroc.
+      - generic [ref=e299]:
+        - generic [ref=e300]:
+          - generic [ref=e301]:
+            - img [ref=e302]
+            - img [ref=e304]
+            - img [ref=e306]
+            - img [ref=e308]
+            - img [ref=e310]
+          - paragraph [ref=e312]: "\"Avant HostelPro, je passais 2 heures chaque soir à tout noter dans Excel. Maintenant c'est 10 minutes, tout est dans l'application.\""
+          - generic [ref=e313]:
+            - generic [ref=e314]: "Y"
+            - generic [ref=e315]:
+              - paragraph [ref=e316]: Youssef El Amrani
+              - paragraph [ref=e317]: Auberge Medina · Marrakech
+        - generic [ref=e318]:
+          - generic [ref=e319]:
+            - img [ref=e320]
+            - img [ref=e322]
+            - img [ref=e324]
+            - img [ref=e326]
+            - img [ref=e328]
+          - paragraph [ref=e330]: "\"La fiche de police automatique a changé ma vie. Je clique un bouton et le PDF est prêt. Plus de stress avec les formulaires à la main.\""
+          - generic [ref=e331]:
+            - generic [ref=e332]: F
+            - generic [ref=e333]:
+              - paragraph [ref=e334]: Fatima Zahra Ouali
+              - paragraph [ref=e335]: Riad Nomad · Fès
+        - generic [ref=e336]:
+          - generic [ref=e337]:
+            - img [ref=e338]
+            - img [ref=e340]
+            - img [ref=e342]
+            - img [ref=e344]
+            - img [ref=e346]
+          - paragraph [ref=e348]: "\"Mes clients reçoivent un WhatsApp de bienvenue avec le code WiFi dès leur arrivée. Ils adorent ça. Et moi j'adore ne plus avoir à l'écrire à la main.\""
+          - generic [ref=e349]:
+            - generic [ref=e350]: O
+            - generic [ref=e351]:
+              - paragraph [ref=e352]: Omar Bensouda
+              - paragraph [ref=e353]: Surf & Stay · Agadir
+    - generic [ref=e355]:
+      - generic [ref=e356]:
+        - generic [ref=e357]: Tarification
+        - heading "Tarifs simples, zéro surprise" [level=2] [ref=e358]
+        - paragraph [ref=e359]: Changez ou annulez à tout moment.
+      - generic [ref=e360]:
+        - generic [ref=e361]:
+          - paragraph [ref=e362]: Starter
+          - generic [ref=e363]:
+            - generic [ref=e364]: Gratuit
+            - generic [ref=e365]: pour toujours
+          - list [ref=e366]:
+            - listitem [ref=e367]:
+              - img [ref=e369]
+              - generic [ref=e371]: Jusqu'à 10 lits
+            - listitem [ref=e372]:
+              - img [ref=e374]
+              - generic [ref=e376]: Check-ins illimités
+            - listitem [ref=e377]:
+              - img [ref=e379]
+              - generic [ref=e381]: Fiche de police PDF
+            - listitem [ref=e382]:
+              - img [ref=e384]
+              - generic [ref=e386]: Plan des lits en temps réel
+            - listitem [ref=e387]:
+              - img [ref=e389]
+              - generic [ref=e391]: 1 utilisateur
+          - link "Commencer" [ref=e392] [cursor=pointer]:
+            - /url: /register
+        - generic [ref=e393]:
+          - generic [ref=e394]: Le plus populaire ✦
+          - generic [ref=e395]:
+            - paragraph [ref=e396]: Pro
+            - generic [ref=e397]:
+              - generic [ref=e398]: 299 MAD
+              - generic [ref=e399]: par mois
+            - list [ref=e400]:
+              - listitem [ref=e401]:
+                - img [ref=e403]
+                - generic [ref=e405]: Lits illimités
+              - listitem [ref=e406]:
+                - img [ref=e408]
+                - generic [ref=e410]: Équipe illimitée
+              - listitem [ref=e411]:
+                - img [ref=e413]
+                - generic [ref=e415]: WhatsApp intégré
+              - listitem [ref=e416]:
+                - img [ref=e418]
+                - generic [ref=e420]: Rapports & analytique avancés
+              - listitem [ref=e421]:
+                - img [ref=e423]
+                - generic [ref=e425]: Audit de nuit
+              - listitem [ref=e426]:
+                - img [ref=e428]
+                - generic [ref=e430]: Réconciliation de caisse
+              - listitem [ref=e431]:
+                - img [ref=e433]
+                - generic [ref=e435]: Support prioritaire
+            - link "Essai gratuit 14 jours" [ref=e436] [cursor=pointer]:
+              - /url: /register
+              - text: Essai gratuit 14 jours
+              - img [ref=e437]
+    - generic [ref=e440]:
+      - generic [ref=e441]: Rejoignez HostelPro
+      - heading "Prêt à digitaliser votre auberge ?" [level=2] [ref=e443]:
+        - text: Prêt à digitaliser
+        - text: votre auberge ?
+      - paragraph [ref=e444]: Rejoignez les auberges marocaines qui ont dit adieu au papier et à Excel. Démarrez gratuitement en 2 minutes.
+      - generic [ref=e445]:
+        - link "Commencer gratuitement" [ref=e446] [cursor=pointer]:
+          - /url: /register
+          - text: Commencer gratuitement
+          - img [ref=e447]
+        - link "Déjà client ? Connexion" [ref=e449] [cursor=pointer]:
+          - /url: /login
+    - contentinfo [ref=e450]:
+      - generic [ref=e451]:
+        - generic [ref=e452]:
+          - generic [ref=e453]:
+            - generic [ref=e454]:
+              - img "HostelPro" [ref=e455]
+              - generic [ref=e456]: HostelPro
+            - paragraph [ref=e457]: L'outil tout-en-un pour les auberges et hôtels du Maroc.
+            - generic [ref=e458]: 🇲🇦 Fait pour le Maroc
+          - generic [ref=e459]:
+            - heading "Produit" [level=4] [ref=e460]
+            - list [ref=e461]:
+              - listitem [ref=e462]:
+                - link "Fonctionnalités" [ref=e463] [cursor=pointer]:
+                  - /url: "#fonctionnalités"
+              - listitem [ref=e464]:
+                - link "Tarifs" [ref=e465] [cursor=pointer]:
+                  - /url: "#tarifs"
+              - listitem [ref=e466]:
+                - link "Comment ça marche" [ref=e467] [cursor=pointer]:
+                  - /url: "#comment"
+              - listitem [ref=e468]:
+                - link "Démo" [ref=e469] [cursor=pointer]:
+                  - /url: "#demo"
+          - generic [ref=e470]:
+            - heading "Ressources" [level=4] [ref=e471]
+            - list [ref=e472]:
+              - listitem [ref=e473]:
+                - link "Documentation" [ref=e474] [cursor=pointer]:
+                  - /url: "#"
+              - listitem [ref=e475]:
+                - link "Guide de démarrage" [ref=e476] [cursor=pointer]:
+                  - /url: "#"
+              - listitem [ref=e477]:
+                - link "FAQ" [ref=e478] [cursor=pointer]:
+                  - /url: "#"
+              - listitem [ref=e479]:
+                - link "Statut du service" [ref=e480] [cursor=pointer]:
+                  - /url: "#"
+          - generic [ref=e481]:
+            - heading "Entreprise" [level=4] [ref=e482]
+            - list [ref=e483]:
+              - listitem [ref=e484]:
+                - link "À propos" [ref=e485] [cursor=pointer]:
+                  - /url: "#"
+              - listitem [ref=e486]:
+                - link "Contact" [ref=e487] [cursor=pointer]:
+                  - /url: "#"
+              - listitem [ref=e488]:
+                - link "Politique de confidentialité" [ref=e489] [cursor=pointer]:
+                  - /url: "#"
+              - listitem [ref=e490]:
+                - link "Conditions d'utilisation" [ref=e491] [cursor=pointer]:
+                  - /url: "#"
+        - generic [ref=e492]:
+          - paragraph [ref=e493]: © 2026 HostelPro. Tous droits réservés.
+          - paragraph [ref=e494]: Français · العربية · English
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e500] [cursor=pointer]:
+    - img [ref=e501]

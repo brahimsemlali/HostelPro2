@@ -1,0 +1,32 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - img "HostelPro" [ref=e5]
+    - generic [ref=e6]:
+      - generic [ref=e8]: "1"
+      - generic [ref=e11]: "2"
+      - generic [ref=e14]: "3"
+    - generic [ref=e16]:
+      - generic [ref=e17]:
+        - heading "Bienvenue sur HostelPro!" [level=2] [ref=e18]
+        - paragraph [ref=e19]: Configurez votre établissement en 3 étapes.
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - generic [ref=e22]: Nom de votre auberge *
+          - 'textbox "Ex: Auberge Atlas" [ref=e23]'
+        - generic [ref=e24]:
+          - generic [ref=e25]:
+            - generic [ref=e26]: Ville
+            - textbox [ref=e27]: Agadir
+          - generic [ref=e28]:
+            - generic [ref=e29]: Téléphone
+            - textbox "+212..." [ref=e30]
+        - generic [ref=e31]:
+          - generic [ref=e32]: Mot de passe WiFi
+          - textbox [ref=e33]
+      - button "Suivant" [disabled]:
+        - text: Suivant
+        - img
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e39] [cursor=pointer]:
+    - img [ref=e40]
+  - alert [ref=e43]

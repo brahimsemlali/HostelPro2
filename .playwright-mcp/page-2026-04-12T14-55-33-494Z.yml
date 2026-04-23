@@ -1,0 +1,125 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - img "HostelPro" [ref=e5]
+        - generic [ref=e6]:
+          - text: HostelPro
+          - paragraph [ref=e7]: Gestion d'auberge
+      - navigation [ref=e9]:
+        - generic [ref=e10]:
+          - generic [ref=e11]:
+            - paragraph [ref=e12]: Principal
+            - generic [ref=e13]:
+              - link "Tableau de bord" [ref=e14] [cursor=pointer]:
+                - /url: /dashboard
+                - img [ref=e15]
+                - generic [ref=e20]: Tableau de bord
+              - link "Plan des lits" [ref=e21] [cursor=pointer]:
+                - /url: /beds
+                - img [ref=e22]
+                - generic [ref=e24]: Plan des lits
+              - link "Calendrier" [ref=e25] [cursor=pointer]:
+                - /url: /calendar
+                - img [ref=e26]
+                - generic [ref=e28]: Calendrier
+          - generic [ref=e29]:
+            - paragraph [ref=e30]: Opérations
+            - generic [ref=e31]:
+              - link "Clients" [ref=e32] [cursor=pointer]:
+                - /url: /guests
+                - img [ref=e33]
+                - generic [ref=e38]: Clients
+              - link "Réservations" [ref=e39] [cursor=pointer]:
+                - /url: /bookings
+                - img [ref=e40]
+                - generic [ref=e43]: Réservations
+              - link "Paiements" [ref=e44] [cursor=pointer]:
+                - /url: /payments
+                - img [ref=e46]
+                - generic [ref=e48]: Paiements
+              - link "Ménage" [ref=e49] [cursor=pointer]:
+                - /url: /housekeeping
+                - img [ref=e50]
+                - generic [ref=e54]: Ménage
+              - link "Activités" [ref=e55] [cursor=pointer]:
+                - /url: /activities
+                - img [ref=e56]
+                - generic [ref=e62]: Activités
+              - link "Dépenses" [ref=e63] [cursor=pointer]:
+                - /url: /expenses
+                - img [ref=e64]
+                - generic [ref=e67]: Dépenses
+          - generic [ref=e68]:
+            - paragraph [ref=e69]: Analyse
+            - generic [ref=e70]:
+              - link "Rapports" [ref=e71] [cursor=pointer]:
+                - /url: /reports
+                - img [ref=e72]
+                - generic [ref=e74]: Rapports
+              - link "WhatsApp" [ref=e75] [cursor=pointer]:
+                - /url: /whatsapp
+                - img [ref=e76]
+                - generic [ref=e78]: WhatsApp
+              - link "Maintenance" [ref=e79] [cursor=pointer]:
+                - /url: /maintenance
+                - img [ref=e80]
+                - generic [ref=e82]: Maintenance
+              - link "Audit de nuit" [ref=e83] [cursor=pointer]:
+                - /url: /night-audit
+                - img [ref=e84]
+                - generic [ref=e86]: Audit de nuit
+      - generic [ref=e87]:
+        - link "Paramètres" [ref=e88] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e89]
+          - generic [ref=e92]: Paramètres
+        - button "Déconnexion" [ref=e93]:
+          - img [ref=e94]
+          - generic [ref=e97]: Déconnexion
+    - generic [ref=e98]:
+      - banner [ref=e99]:
+        - heading "Paiements" [level=1] [ref=e100]
+        - generic [ref=e101]:
+          - generic "Reconnexion..." [ref=e102]:
+            - generic [ref=e105]: Reconnexion…
+          - button "Notifications" [ref=e107]:
+            - img
+          - generic [ref=e108]:
+            - generic [ref=e109]:
+              - generic [ref=e110]: Propriétaire
+              - generic [ref=e111]: Propriétaire
+            - generic "Propriétaire, Propriétaire" [ref=e112]: P
+      - main [ref=e113]:
+        - generic [ref=e114]:
+          - generic [ref=e115]:
+            - generic [ref=e117]:
+              - paragraph [ref=e118]: Total aujourd'hui
+              - paragraph [ref=e119]: 0 MAD
+            - generic [ref=e121]:
+              - paragraph [ref=e122]: Espèces
+              - paragraph [ref=e123]: 0 MAD
+            - generic [ref=e125]:
+              - paragraph [ref=e126]: Virement
+              - paragraph [ref=e127]: 0 MAD
+            - generic [ref=e129]:
+              - paragraph [ref=e130]: CMI
+              - paragraph [ref=e131]: 0 MAD
+          - button "Ajouter paiement" [ref=e133]:
+            - img
+            - text: Ajouter paiement
+          - generic [ref=e134]:
+            - tablist [ref=e135]:
+              - tab "Aujourd'hui (0)" [selected] [ref=e136]
+              - tab "En attente (0)" [ref=e137]
+              - tab "Rapprochement" [ref=e138]
+            - tabpanel [ref=e139]:
+              - generic [ref=e141]:
+                - img [ref=e143]
+                - heading "Aucun paiement enregistré aujourd'hui" [level=3] [ref=e146]
+                - paragraph [ref=e147]: Les paiements d'aujourd'hui apparaîtront ici dès qu'ils seront enregistrés.
+                - button "Enregistrer un paiement" [ref=e149]
+  - region "Notifications alt+T"
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e155] [cursor=pointer]:
+    - img [ref=e156]
