@@ -5,6 +5,7 @@ import { MaintenanceClient } from './MaintenanceClient'
 export default async function MaintenancePage() {
   const session = await getUserSession()
   if (!session) redirect('/login')
+  if (session.role === 'housekeeping' || session.role === 'receptionist') redirect('/dashboard')
 
   const supabase = await createClient()
 

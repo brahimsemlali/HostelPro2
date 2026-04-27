@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -12,65 +12,125 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import type { Staff, StaffInvitation, StaffRole } from '@/types'
-
-type StaffRow = Pick<Staff, 'id' | 'name' | 'role' | 'phone' | 'is_active' | 'hide_revenue' | 'user_id' | 'created_at'>
-type InvitationRow = Pick<StaffInvitation, 'id' | 'email' | 'name' | 'role' | 'token' | 'expires_at' | 'created_at'>
+import type { Staff, StaffRole } from '@/types'
 import {
-  Plus, Copy, Check, MessageCircle, UserX, Clock,
-  UserCheck, Shield, Mail, Loader2, Users, Eye, EyeOff,
+  Plus, Copy, Check, MessageCircle, UserX, RefreshCw,
+  UserCheck, Shield, Loader2, Users, Eye, EyeOff,
+  KeyRound, AlertTriangle,
 } from 'lucide-react'
 import { useT } from '@/app/context/LanguageContext'
+import { buildWhatsAppLink } from '@/lib/whatsapp/templates'
+
+type StaffRow = Pick<Staff, 'id' | 'name' | 'role' | 'phone' | 'is_active' | 'hide_revenue' | 'user_id' | 'created_at'>
 
 const roleConfig: Record<string, { color: string; icon: string }> = {
-  manager: { color: 'bg-blue-50 text-blue-700 border-blue-100', icon: '🏢' },
-  receptionist: { color: 'bg-[#0F6E56]/8 text-[#0F6E56] border-[#0F6E56]/15', icon: '🛎' },
-  housekeeping: { color: 'bg-amber-50 text-amber-700 border-amber-100', icon: '🧹' },
+  manager:      { color: 'bg-blue-50 text-blue-700 border-blue-100',              icon: '🏢' },
+  receptionist: { color: 'bg-[#0F6E56]/8 text-[#0F6E56] border-[#0F6E56]/15',   icon: '🛎' },
+  housekeeping: { color: 'bg-amber-50 text-amber-700 border-amber-100',           icon: '🧹' },
+}
+
+const CHARS = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789!@#$'
+function generatePassword(): string {
+  return Array.from({ length: 12 }, () => CHARS[Math.floor(Math.random() * CHARS.length)]).join('')
 }
 
 interface Props {
   propertyId: string
   staff: StaffRow[]
-  pendingInvitations: InvitationRow[]
+  pendingInvitations: unknown[]  // kept for page.tsx compat — no longer displayed
 }
 
-export function StaffClient({ propertyId, staff, pendingInvitations }: Props) {
+type CreatedCredentials = { name: string; email: string; password: string; phone: string }
+
+export function StaffClient({ staff }: Props) {
   const router = useRouter()
   const t = useT()
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [revoking, setRevoking] = useState<string | null>(null)
-  const [togglingRevenue, setTogglingRevenue] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
-  const [inviteResult, setInviteResult] = useState<{ url: string; name: string; emailSent: boolean } | null>(null)
-  const [form, setForm] = useState({ name: '', email: '', role: 'receptionist' as StaffRole })
 
-  const activeStaff = staff.filter(s => s.is_active && s.user_id)
+  const [dialogOpen, setDialogOpen]     = useState(false)
+  const [loading, setLoading]           = useState(false)
+  const [revoking, setRevoking]         = useState<string | null>(null)
+  const [togglingRevenue, setTogglingRevenue] = useState<string | null>(null)
+  const [showPassword, setShowPassword] = useState(false)
+  const [copiedField, setCopiedField]   = useState<'email' | 'password' | 'all' | null>(null)
+  const [credentials, setCredentials]   = useState<CreatedCredentials | null>(null)
+  const [confirmed, setConfirmed]       = useState(false)
+
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    role: 'receptionist' as StaffRole,
+    password: generatePassword(),
+  })
+
+  const activeStaff   = staff.filter(s => s.is_active && s.user_id)
   const inactiveStaff = staff.filter(s => !s.is_active || !s.user_id)
 
-  async function handleInvite() {
-    if (!form.name.trim() || !form.email.trim()) {
-      toast.error(t('staff.nameEmailRequired'))
+  const refreshPassword = useCallback(() => {
+    setForm(p => ({ ...p, password: generatePassword() }))
+  }, [])
+
+  async function handleCreate() {
+    if (!form.name.trim() || !form.email.trim() || !form.password) {
+      toast.error('Nom, email et mot de passe sont requis')
       return
     }
     setLoading(true)
     try {
-      const res = await fetch('/api/staff/invite', {
+      const res = await fetch('/api/staff/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          name: form.name.trim(),
+          email: form.email.trim(),
+          password: form.password,
+          role: form.role,
+          phone: form.phone.trim(),
+        }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? t('common.error'))
-      if (data.reused) toast.info(t('staff.invitePending'))
-      setInviteResult({ url: data.inviteUrl, name: form.name.trim(), emailSent: data.emailSent ?? false })
-      setForm({ name: '', email: '', role: 'receptionist' })
+      if (!res.ok) throw new Error(data.error ?? 'Erreur serveur')
+      setCredentials({
+        name: form.name.trim(),
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
+        phone: form.phone.trim(),
+      })
+      setConfirmed(false)
       router.refresh()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('common.error'))
+      toast.error(err instanceof Error ? err.message : 'Erreur serveur')
     } finally {
       setLoading(false)
     }
+  }
+
+  async function copyField(text: string, field: 'email' | 'password' | 'all') {
+    await navigator.clipboard.writeText(text)
+    setCopiedField(field)
+    toast.success('Copié !')
+    setTimeout(() => setCopiedField(null), 2000)
+  }
+
+  function shareViaWhatsApp() {
+    if (!credentials) return
+    const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/login`
+    const message =
+      `Bonjour ${credentials.name} 👋\n\nVoici vos identifiants pour HostelPro :\n\n` +
+      `📧 Email : ${credentials.email}\n` +
+      `🔑 Mot de passe : ${credentials.password}\n\n` +
+      `🔗 Se connecter : ${loginUrl}\n\n` +
+      `Gardez ces informations en sécurité. Vous pouvez changer votre mot de passe dans les paramètres.`
+    const phone = credentials.phone.replace(/\D/g, '')
+    window.open(buildWhatsAppLink(phone || '', message), '_blank')
+  }
+
+  function closeDialog() {
+    setDialogOpen(false)
+    setCredentials(null)
+    setConfirmed(false)
+    setShowPassword(false)
+    setForm({ name: '', email: '', phone: '', role: 'receptionist', password: generatePassword() })
   }
 
   async function handleRevoke(staffId: string) {
@@ -81,7 +141,7 @@ export function StaffClient({ propertyId, staff, pendingInvitations }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ staffId }),
       })
-      if (!res.ok) throw new Error(t('common.error'))
+      if (!res.ok) throw new Error()
       toast.success(t('staff.accessRevoked'))
       router.refresh()
     } catch {
@@ -99,7 +159,7 @@ export function StaffClient({ propertyId, staff, pendingInvitations }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ staffId, hideRevenue: !currentHideRevenue }),
       })
-      if (!res.ok) throw new Error(t('common.error'))
+      if (!res.ok) throw new Error()
       toast.success(!currentHideRevenue ? t('staff.revenueHidden') : t('staff.revenueVisible'))
       router.refresh()
     } catch {
@@ -109,27 +169,6 @@ export function StaffClient({ propertyId, staff, pendingInvitations }: Props) {
     }
   }
 
-  async function copyInviteUrl(url: string) {
-    await navigator.clipboard.writeText(url)
-    setCopied(true)
-    toast.success(t('staff.linkCopied'))
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  function shareViaWhatsApp(url: string, name: string) {
-    const message = `Bonjour ${name} 👋\n\nVous êtes invité(e) à rejoindre notre équipe sur HostelPro.\n\nCliquez sur ce lien pour créer votre compte :\n${url}\n\nCe lien est valable 7 jours.`
-    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank')
-  }
-
-  function closeDialog() {
-    setDialogOpen(false)
-    setInviteResult(null)
-    setForm({ name: '', email: '', role: 'receptionist' })
-  }
-
-  const totalActive = activeStaff.length
-  const totalPending = pendingInvitations.length
-
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6">
       {/* Header */}
@@ -137,7 +176,7 @@ export function StaffClient({ propertyId, staff, pendingInvitations }: Props) {
         <div>
           <h2 className="text-[15px] font-semibold tracking-tight">{t('staff.team')}</h2>
           <p className="text-[12px] text-muted-foreground mt-0.5">
-            {totalActive} {t('staff.active')} · {totalPending} {t('staff.pendingInvites')}
+            {activeStaff.length} {t('staff.active')}
           </p>
         </div>
         <Button
@@ -151,49 +190,6 @@ export function StaffClient({ propertyId, staff, pendingInvitations }: Props) {
         </Button>
       </div>
 
-      {/* Pending invitations */}
-      {pendingInvitations.length > 0 && (
-        <section className="space-y-2">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-[oklch(0.65_0_0)] px-1">
-            {t('staff.pendingInvitations')}
-          </p>
-          {pendingInvitations.map((inv) => (
-            <div
-              key={inv.id}
-              className="flex items-center justify-between px-4 py-3 rounded-[14px] bg-amber-50 border border-amber-100"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
-                  <Clock className="w-3.5 h-3.5 text-amber-600" />
-                </div>
-                <div>
-                  <p className="text-[13px] font-medium">{inv.name}</p>
-                  <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-                    <Mail className="w-3 h-3" />
-                    {inv.email}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`text-[11px] px-2 py-0.5 rounded-full border font-medium ${roleConfig[inv.role]?.color}`}>
-                  {t(`role.${inv.role}`) ?? inv.role}
-                </span>
-                <button
-                  onClick={() => shareViaWhatsApp(
-                    `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/accept-invite?token=${inv.token}`,
-                    inv.name
-                  )}
-                  className="p-1.5 rounded-lg text-[oklch(0.55_0_0)] hover:bg-green-50 hover:text-green-600 transition-colors"
-                  title={t('whatsapp.send')}
-                >
-                  <MessageCircle className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </section>
-      )}
-
       {/* Active staff */}
       <section className="space-y-2">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-[oklch(0.65_0_0)] px-1">
@@ -206,13 +202,11 @@ export function StaffClient({ propertyId, staff, pendingInvitations }: Props) {
           >
             <Users className="w-8 h-8 text-[oklch(0.75_0_0)] mb-2" />
             <p className="text-[13px] text-muted-foreground">{t('staff.noActiveMembers')}</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              {t('staff.inviteToStart')}
-            </p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{t('staff.inviteToStart')}</p>
           </div>
         ) : (
           activeStaff.map((s) => (
-            <StaffRow
+            <StaffMemberRow
               key={s.id}
               staff={s}
               revoking={revoking}
@@ -225,14 +219,14 @@ export function StaffClient({ propertyId, staff, pendingInvitations }: Props) {
         )}
       </section>
 
-      {/* Inactive / not-yet-accepted staff */}
+      {/* Revoked staff */}
       {inactiveStaff.length > 0 && (
         <section className="space-y-2">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-[oklch(0.65_0_0)] px-1">
             {t('staff.revokedAccess')}
           </p>
           {inactiveStaff.map((s) => (
-            <StaffRow
+            <StaffMemberRow
               key={s.id}
               staff={s}
               revoking={revoking}
@@ -244,81 +238,122 @@ export function StaffClient({ propertyId, staff, pendingInvitations }: Props) {
         </section>
       )}
 
-      {/* Invite dialog */}
-      <Dialog open={dialogOpen} onOpenChange={closeDialog}>
+      {/* Create staff dialog */}
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog() }}>
         <DialogContent
           className="max-w-sm rounded-[20px] p-0 overflow-hidden"
-          style={{
-            boxShadow: '0 8px 40px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)',
-          }}
+          style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)' }}
         >
           <DialogHeader className="px-6 pt-6 pb-0">
             <DialogTitle className="text-[16px] font-semibold tracking-tight">
-              {inviteResult ? t('staff.inviteCreated') : t('staff.inviteEmployee')}
+              {credentials ? 'Identifiants créés' : 'Créer un compte employé'}
             </DialogTitle>
           </DialogHeader>
 
-          {inviteResult ? (
-            /* Success state — show invite URL */
+          {credentials ? (
+            /* ── Credentials display ── */
             <div className="px-6 pb-6 pt-4 space-y-4">
-              {inviteResult.emailSent && (
-                <div className="flex items-center gap-2 rounded-[12px] px-3.5 py-2.5 bg-[#0F6E56]/8 border border-[#0F6E56]/15">
-                  <Mail className="w-3.5 h-3.5 text-[#0F6E56] flex-shrink-0" />
-                  <p className="text-[12px] text-[#0F6E56]">
-                    Un email d&apos;invitation a été envoyé à <strong>{inviteResult.name}</strong>.
-                  </p>
-                </div>
-              )}
-              <div
-                className="rounded-[14px] p-4"
-                style={{ background: 'oklch(0.972 0 0)' }}
-              >
-                <p className="text-[12px] text-muted-foreground mb-2">
-                  {inviteResult.emailSent
-                    ? "Lien de secours si l'email n'arrive pas :"
-                    : <>{t('staff.shareInviteWith')} <strong className="text-foreground">{inviteResult.name}</strong></>
-                  }
+              {/* Warning banner */}
+              <div className="flex items-start gap-2.5 rounded-[12px] px-3.5 py-3 bg-amber-50 border border-amber-200">
+                <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                <p className="text-[12px] text-amber-800 leading-relaxed">
+                  <strong>Ce mot de passe ne sera plus affiché.</strong> Copiez-le ou partagez-le maintenant.
                 </p>
+              </div>
+
+              {/* Email */}
+              <div className="space-y-1">
+                <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Email</p>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 text-[11px] bg-white border border-black/08 rounded-[8px] px-2.5 py-1.5 truncate font-mono text-[oklch(0.4_0_0)]">
-                    {inviteResult.url}
+                  <code className="flex-1 text-[12px] bg-white border border-black/08 rounded-[8px] px-3 py-2 font-mono text-[oklch(0.3_0_0)]">
+                    {credentials.email}
                   </code>
                   <button
-                    onClick={() => copyInviteUrl(inviteResult.url)}
+                    onClick={() => copyField(credentials.email, 'email')}
                     className="p-2 rounded-[8px] bg-white border border-black/08 hover:bg-[#0F6E56]/5 transition-colors flex-shrink-0"
                   >
-                    {copied
+                    {copiedField === 'email'
                       ? <Check className="w-3.5 h-3.5 text-[#0F6E56]" />
-                      : <Copy className="w-3.5 h-3.5 text-[oklch(0.55_0_0)]" />
-                    }
+                      : <Copy className="w-3.5 h-3.5 text-[oklch(0.55_0_0)]" />}
                   </button>
                 </div>
               </div>
 
-              <p className="text-[11px] text-muted-foreground text-center">
-                {t('staff.inviteValidity')}
-              </p>
+              {/* Password */}
+              <div className="space-y-1">
+                <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Mot de passe</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-[13px] bg-white border border-black/08 rounded-[8px] px-3 py-2 font-mono font-semibold text-[oklch(0.2_0_0)] tracking-wider">
+                    {showPassword ? credentials.password : '•'.repeat(credentials.password.length)}
+                  </code>
+                  <button
+                    onClick={() => setShowPassword(v => !v)}
+                    className="p-2 rounded-[8px] bg-white border border-black/08 hover:bg-gray-50 transition-colors flex-shrink-0"
+                  >
+                    {showPassword
+                      ? <EyeOff className="w-3.5 h-3.5 text-[oklch(0.55_0_0)]" />
+                      : <Eye className="w-3.5 h-3.5 text-[oklch(0.55_0_0)]" />}
+                  </button>
+                  <button
+                    onClick={() => copyField(credentials.password, 'password')}
+                    className="p-2 rounded-[8px] bg-white border border-black/08 hover:bg-[#0F6E56]/5 transition-colors flex-shrink-0"
+                  >
+                    {copiedField === 'password'
+                      ? <Check className="w-3.5 h-3.5 text-[#0F6E56]" />
+                      : <Copy className="w-3.5 h-3.5 text-[oklch(0.55_0_0)]" />}
+                  </button>
+                </div>
+              </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              {/* Action buttons */}
+              <div className="grid grid-cols-2 gap-2 pt-1">
                 <Button
                   variant="outline"
                   className="h-10 text-[13px] gap-1.5"
-                  onClick={() => shareViaWhatsApp(inviteResult.url, inviteResult.name)}
+                  onClick={() => copyField(
+                    `Email: ${credentials.email}\nMot de passe: ${credentials.password}\nConnexion: ${process.env.NEXT_PUBLIC_APP_URL ?? ''}/login`,
+                    'all'
+                  )}
+                >
+                  {copiedField === 'all'
+                    ? <Check className="w-3.5 h-3.5 text-[#0F6E56]" />
+                    : <Copy className="w-3.5 h-3.5" />}
+                  Tout copier
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-10 text-[13px] gap-1.5"
+                  onClick={shareViaWhatsApp}
                 >
                   <MessageCircle className="w-3.5 h-3.5 text-green-600" />
                   WhatsApp
                 </Button>
-                <Button
-                  className="h-10 text-[13px]"
-                  style={{ background: 'linear-gradient(135deg, #0F6E56 0%, #16a37d 100%)' }}
-                  onClick={closeDialog}
-                >
-                  {t('staff.done')}
-                </Button>
               </div>
+
+              {/* Confirmation checkbox */}
+              <label className="flex items-start gap-2.5 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={confirmed}
+                  onChange={(e) => setConfirmed(e.target.checked)}
+                  className="mt-0.5 accent-[#0F6E56]"
+                />
+                <span className="text-[12px] text-muted-foreground group-hover:text-foreground transition-colors">
+                  J&apos;ai sauvegardé ou partagé les identifiants avec <strong className="text-foreground">{credentials.name}</strong>.
+                </span>
+              </label>
+
+              <Button
+                className="w-full h-10 text-[13px]"
+                style={{ background: 'linear-gradient(135deg, #0F6E56 0%, #16a37d 100%)' }}
+                disabled={!confirmed}
+                onClick={closeDialog}
+              >
+                Fermer
+              </Button>
             </div>
           ) : (
-            /* Form state */
+            /* ── Create form ── */
             <div className="px-6 pb-6 pt-4 space-y-4">
               <div className="space-y-1.5">
                 <Label className="text-[12px]">{t('staff.fullName')} *</Label>
@@ -329,6 +364,7 @@ export function StaffClient({ propertyId, staff, pendingInvitations }: Props) {
                   className="h-10 text-[13px]"
                 />
               </div>
+
               <div className="space-y-1.5">
                 <Label className="text-[12px]">{t('common.email')} *</Label>
                 <Input
@@ -337,9 +373,53 @@ export function StaffClient({ propertyId, staff, pendingInvitations }: Props) {
                   value={form.email}
                   onChange={(e) => setForm(p => ({ ...p, email: e.target.value }))}
                   className="h-10 text-[13px]"
-                  onKeyDown={(e) => e.key === 'Enter' && handleInvite()}
                 />
               </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-[12px]">Téléphone (WhatsApp)</Label>
+                <Input
+                  type="tel"
+                  placeholder="+212 6XX XXX XXX"
+                  value={form.phone}
+                  onChange={(e) => setForm(p => ({ ...p, phone: e.target.value }))}
+                  className="h-10 text-[13px]"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-[12px]">Mot de passe *</Label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      value={form.password}
+                      onChange={(e) => setForm(p => ({ ...p, password: e.target.value }))}
+                      className="h-10 text-[13px] font-mono pr-9"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(v => !v)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[oklch(0.6_0_0)] hover:text-foreground transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={refreshPassword}
+                    title="Générer un nouveau mot de passe"
+                    className="h-10 w-10 rounded-[8px] border border-black/10 flex items-center justify-center text-[oklch(0.55_0_0)] hover:bg-[#0F6E56]/5 hover:text-[#0F6E56] transition-colors flex-shrink-0"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                  <KeyRound className="w-3 h-3" />
+                  Généré automatiquement — vous pourrez le partager à l&apos;étape suivante.
+                </p>
+              </div>
+
               <div className="space-y-1.5">
                 <Label className="text-[12px]">{t('staff.role')}</Label>
                 <Select
@@ -362,19 +442,20 @@ export function StaffClient({ propertyId, staff, pendingInvitations }: Props) {
                   </SelectContent>
                 </Select>
                 <p className="text-[11px] text-muted-foreground">
-                  {form.role === 'manager' && t('staff.roleDesc.manager')}
+                  {form.role === 'manager'      && t('staff.roleDesc.manager')}
                   {form.role === 'receptionist' && t('staff.roleDesc.receptionist')}
                   {form.role === 'housekeeping' && t('staff.roleDesc.housekeeping')}
                 </p>
               </div>
+
               <Button
                 className="w-full h-10 text-[13px] mt-2"
                 style={{ background: 'linear-gradient(135deg, #0F6E56 0%, #16a37d 100%)' }}
-                onClick={handleInvite}
-                disabled={loading || !form.name.trim() || !form.email.trim()}
+                onClick={handleCreate}
+                disabled={loading || !form.name.trim() || !form.email.trim() || !form.password}
               >
-                {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : null}
-                {t('staff.sendInvitation')}
+                {loading && <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" />}
+                Créer le compte
               </Button>
             </div>
           )}
@@ -384,7 +465,7 @@ export function StaffClient({ propertyId, staff, pendingInvitations }: Props) {
   )
 }
 
-function StaffRow({
+function StaffMemberRow({
   staff: s,
   revoking,
   onRevoke,
@@ -439,7 +520,7 @@ function StaffRow({
               </span>
             ) : (
               <span className="flex items-center gap-0.5 text-[10px] text-amber-600">
-                <Clock className="w-2.5 h-2.5" /> {t('staff.pending')}
+                Compte non lié
               </span>
             )}
           </div>

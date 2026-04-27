@@ -5,8 +5,7 @@ import { WhatsAppClient } from './WhatsAppClient'
 export default async function WhatsAppPage() {
   const session = await getUserSession()
   if (!session) redirect('/login')
-  // WhatsApp requires receptionist or above — housekeeping cannot access
-  if (session.role === 'housekeeping') redirect('/dashboard')
+  if (session.role === 'housekeeping' || session.role === 'receptionist') redirect('/dashboard')
 
   const supabase = await createClient()
 

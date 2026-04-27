@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { createClient, getUserId } from '@/lib/supabase/server'
+import { createClient, getUserSession } from '@/lib/supabase/server'
 import { CalendarClient } from './CalendarClient'
 
 export default async function CalendarPage({
@@ -8,13 +8,14 @@ export default async function CalendarPage({
   searchParams: Promise<{ from?: string; days?: string }>
 }) {
   const { from, days } = await searchParams
-  const userId = await getUserId()
-  if (!userId) redirect('/login')
+  const session = await getUserSession()
+  if (!session) redirect('/login')
+  if (session.role === 'housekeeping') redirect('/beds')
 
   const supabase = await createClient()
 
   const { data: property } = await supabase
-    .from('properties').select('id').eq('owner_id', userId).single()
+    .from('properties').select('id').eq('id', session.propertyId).single()
   if (!property) redirect('/onboarding')
 
   // Default: today, show 14 days. Validate `from` is a real ISO date to prevent bad input.

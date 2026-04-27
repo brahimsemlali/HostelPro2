@@ -153,7 +153,7 @@ export function Sidebar() {
 
       {/* ── Bottom ── */}
       <div className="px-3 pt-3 pb-5 border-t border-[#E8ECF0] space-y-px">
-        {rank >= roleRank['manager'] && (
+        {rank >= roleRank['owner'] && (
           <Link
             href="/settings"
             className={cn(

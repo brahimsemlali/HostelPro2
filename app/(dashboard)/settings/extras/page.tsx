@@ -5,6 +5,7 @@ import { ExtraCatalogClient } from './ExtraCatalogClient'
 export default async function ExtraCatalogPage() {
   const session = await getUserSession()
   if (!session) redirect('/login')
+  if (!session.isOwner) redirect('/dashboard')
 
   const supabase = await createClient()
 

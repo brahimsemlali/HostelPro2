@@ -5,6 +5,7 @@ import { ActivitiesClient } from './ActivitiesClient'
 export default async function ActivitiesPage() {
   const session = await getUserSession()
   if (!session) redirect('/login')
+  if (session.role === 'housekeeping') redirect('/beds')
 
   const supabase = await createClient()
 

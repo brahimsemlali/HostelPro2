@@ -1,17 +1,18 @@
 import { redirect } from 'next/navigation'
-import { createClient, getUserId } from '@/lib/supabase/server'
+import { createClient, getUserSession } from '@/lib/supabase/server'
 import { ExpensesClient } from './ExpensesClient'
 
 export default async function ExpensesPage() {
-  const userId = await getUserId()
-  if (!userId) redirect('/login')
+  const session = await getUserSession()
+  if (!session) redirect('/login')
+  if (session.role === 'housekeeping') redirect('/beds')
 
   const supabase = await createClient()
 
   const { data: property } = await supabase
     .from('properties')
     .select('id, name')
-    .eq('owner_id', userId)
+    .eq('id', session.propertyId)
     .single()
 
   if (!property) redirect('/onboarding')
