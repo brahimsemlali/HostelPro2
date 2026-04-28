@@ -71,8 +71,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ ok: true, name: name.trim(), email: normalizedEmail })
-  } catch (err) {
-    console.error('[staff/create]', err)
+  } catch {
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
   }
 }

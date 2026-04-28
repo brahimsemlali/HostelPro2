@@ -50,7 +50,8 @@ export default async function PaymentsPage() {
       .eq('property_id', session.propertyId)
       .eq('status', 'completed')
       .in('type', ['payment', 'deposit', 'refund'])
-      .gte('payment_date', ninetyDaysAgo),
+      .gte('payment_date', ninetyDaysAgo)
+      .limit(2000),
 
     supabase
       .from('guests')

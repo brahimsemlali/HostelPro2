@@ -1,13 +1,20 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import { useAppStore } from '@/stores/app.store'
 import { MetricCard } from '@/components/dashboard/MetricCard'
-import { OccupancyChart } from '@/components/dashboard/OccupancyChart'
+const OccupancyChart = dynamic(
+  () => import('@/components/dashboard/OccupancyChart').then((m) => ({ default: m.OccupancyChart })),
+  { ssr: false },
+)
 import { ArrivalsPanel } from '@/components/dashboard/ArrivalsPanel'
-import { AddArrivalModal } from '@/components/dashboard/AddArrivalModal'
 import type { ArrivalBooking } from '@/components/dashboard/ArrivalsPanel'
+const AddArrivalModal = dynamic(
+  () => import('@/components/dashboard/AddArrivalModal').then((m) => ({ default: m.AddArrivalModal })),
+  { ssr: false },
+)
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -237,6 +244,9 @@ export function DashboardCommandCenter({ property, initialData }: Props) {
   const setRealtimeConnected = useAppStore((s) => s.setRealtimeConnected)
   const setDirtyBedsCount = useAppStore((s) => s.setDirtyBedsCount)
 
+  // Stable ref so refreshForecast doesn't recreate on every bed update (prevents re-subscription loop)
+  const bedsLengthRef = useRef(initialData.beds.length)
+
   // ── State seeded from SSR ──
   const [beds, setBeds] = useState<BedSummary[]>(initialData.beds)
   const [dirtyBedsWithArrivalsCount, setDirtyBedsWithArrivalsCount] = useState(
@@ -450,6 +460,7 @@ export function DashboardCommandCenter({ property, initialData }: Props) {
     ])
     if (bedsRes.data) {
       setBeds(bedsRes.data)
+      bedsLengthRef.current = bedsRes.data.length
       const dirtyCount = bedsRes.data.filter((b) => b.status === 'dirty').length
       setDirtyBedsCount(dirtyCount)
       const dirtyIds = new Set(bedsRes.data.filter((b) => b.status === 'dirty').map((b) => b.id))
@@ -577,7 +588,7 @@ export function DashboardCommandCenter({ property, initialData }: Props) {
       .lte('check_in_date', sevenDaysLater.toISOString().split('T')[0])
       .gt('check_out_date', today)
     if (data) {
-      const total = beds.length
+      const total = bedsLengthRef.current
       const days = Array.from({ length: 7 }, (_, i) => {
         const d = new Date()
         d.setDate(d.getDate() + i)
@@ -594,7 +605,7 @@ export function DashboardCommandCenter({ property, initialData }: Props) {
       })
       setForecastDays(days)
     }
-  }, [property.id, beds.length, supabase])
+  }, [property.id, supabase])
 
   // ── Realtime subscriptions ──
 
@@ -608,7 +619,6 @@ export function DashboardCommandCenter({ property, initialData }: Props) {
           refreshOccupancy()
           refreshArrivals()
           refreshDepartures()
-          refreshActivity()
           refreshForecast()
         },
       )
@@ -618,7 +628,6 @@ export function DashboardCommandCenter({ property, initialData }: Props) {
         () => {
           refreshRevenue()
           refreshChart()
-          refreshActivity()
         },
       )
       .on(
@@ -641,7 +650,6 @@ export function DashboardCommandCenter({ property, initialData }: Props) {
     refreshOccupancy,
     refreshArrivals,
     refreshDepartures,
-    refreshActivity,
     refreshRevenue,
     refreshChart,
     refreshForecast,
@@ -918,7 +926,9 @@ export function DashboardCommandCenter({ property, initialData }: Props) {
                  <div className="space-y-1 relative">
                     <div className="absolute left-[23px] top-6 bottom-6 w-0.5 bg-muted/20" />
                     
-                    {recentActivity.slice(0, 10).map((log) => {
+                    {recentActivity.filter((log) =>
+                      canViewRevenue ? true : !['payment', 'booking_created'].includes(log.action_type)
+                    ).slice(0, 10).map((log) => {
                       const { Icon, bg, color } = ACTIVITY_CONFIG[log.action_type] || ACTIVITY_CONFIG.default
                       return (
                         <div key={log.id} className="group relative flex gap-4 py-3 border-b border-[#F0F4F7] last:border-0 transition-all hover:bg-[#F8FAFC] px-2 rounded-[10px]">

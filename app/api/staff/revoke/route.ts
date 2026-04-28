@@ -27,8 +27,7 @@ export async function POST(req: Request) {
     if (error) throw error
 
     return NextResponse.json({ ok: true })
-  } catch (err) {
-    console.error('[revoke]', err)
+  } catch {
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
   }
 }

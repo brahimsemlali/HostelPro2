@@ -1,11 +1,15 @@
 'use client'
 
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { Plus, Calendar, Clock, MapPin, Trash2, MessageCircle, PhoneForwarded } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { CreateActivityModal } from './CreateActivityModal'
+const CreateActivityModal = dynamic(
+  () => import('./CreateActivityModal').then((m) => ({ default: m.CreateActivityModal })),
+  { ssr: false },
+)
 import { deleteActivityAction, notifyGuestsAction } from '@/app/actions/activities'
 import { buildWhatsAppLink } from '@/lib/whatsapp/templates'
 import { cn } from '@/lib/utils'

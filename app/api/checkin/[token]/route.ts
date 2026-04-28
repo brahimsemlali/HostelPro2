@@ -117,8 +117,7 @@ export async function POST(
     if (updateError) throw updateError
 
     return NextResponse.json({ success: true })
-  } catch (err) {
-    console.error('[pre-checkin API]', err)
+  } catch {
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
   }
 }

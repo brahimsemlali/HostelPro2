@@ -282,13 +282,13 @@ export function CalendarClient({ propertyId, rooms, beds: initialBeds, bookings:
   useEffect(() => {
     const supabase = createClient()
     const channel = supabase
-      .channel(`calendar-live-${propertyId}-${startDate}`)
+      .channel(`calendar-live-${propertyId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings', filter: `property_id=eq.${propertyId}` }, () => refreshBookings())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'beds', filter: `property_id=eq.${propertyId}` }, () => refreshBeds())
       .subscribe((status) => setRealtimeConnected(status === 'SUBSCRIBED'))
 
     return () => { supabase.removeChannel(channel); setRealtimeConnected(false) }
-  }, [propertyId, startDate, refreshBookings, refreshBeds, setRealtimeConnected])
+  }, [propertyId, refreshBookings, refreshBeds, setRealtimeConnected])
 
   const currentDays = daysBetween(startDate, endDate) + 1
   function navigate(direction: 'prev' | 'next') {

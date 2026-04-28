@@ -19,8 +19,13 @@ import type { Bed, Room, Booking, Guest } from '@/types'
 import { Plus, BedDouble, ArrowLeftRight, X, Wind, Wrench, Ban, Bed as BedIcon, Check } from 'lucide-react'
 import Link from 'next/link'
 import { EmptyState } from '@/components/shared/EmptyState'
-import { BookingDetailSheet } from '@/components/shared/BookingDetailSheet'
+import dynamic from 'next/dynamic'
+const BookingDetailSheet = dynamic(
+  () => import('@/components/shared/BookingDetailSheet').then((m) => ({ default: m.BookingDetailSheet })),
+  { ssr: false },
+)
 import { useT } from '@/app/context/LanguageContext'
+import { useCanDo } from '@/app/context/SessionContext'
 
 interface BedWithBooking extends Bed {
   room?: Room
@@ -36,6 +41,7 @@ interface Props {
 
 export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initialBookings, propertyId }: Props) {
   const t = useT()
+  const canCheckIn = useCanDo('check_in_guests')
   const setRealtimeConnected = useAppStore((s) => s.setRealtimeConnected)
 
   const STATUS_OPTIONS = [
@@ -286,12 +292,14 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
             </Button>
           ))}
         </div>
-        <Link href="/guests/new">
-          <Button size="sm" className="bg-[#0F6E56] hover:bg-[#0c5a46]">
-            <Plus className="w-4 h-4 mr-1" />
-            Check-in
-          </Button>
-        </Link>
+        {canCheckIn && (
+          <Link href="/guests/new">
+            <Button size="sm" className="bg-[#0F6E56] hover:bg-[#0c5a46]">
+              <Plus className="w-4 h-4 mr-1" />
+              Check-in
+            </Button>
+          </Link>
+        )}
       </div>
 
       {/* ── Empty state: no beds configured ── */}
@@ -304,7 +312,7 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
             title={t('beds.noBeds')}
             description={t('beds.configureFirst')}
             action={{ label: t('beds.configureRooms'), href: '/settings/rooms' }}
-            secondaryAction={{ label: `+ ${t('beds.checkinNoBed')}`, href: '/guests/new', variant: 'outline' }}
+            secondaryAction={canCheckIn ? { label: `+ ${t('beds.checkinNoBed')}`, href: '/guests/new', variant: 'outline' } : undefined}
           />
         </div>
       )}
@@ -459,7 +467,7 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
               </div>
             </div>
 
-            {selectedBed.status === 'available' && (
+            {selectedBed.status === 'available' && canCheckIn && (
               <Link href={`/guests/new?bed=${selectedBed.id}`} className="block">
                 <Button className="w-full bg-[#0F6E56] hover:bg-[#0c5a46]">
                   <Plus className="w-4 h-4 mr-2" />

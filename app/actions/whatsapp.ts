@@ -72,7 +72,6 @@ export async function sendWhatsAppBroadcast(phones: string[], messageText: strin
       results.push({ phone, success: response.ok, data })
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
-      console.error(`Error sending to ${phone}:`, err)
       results.push({ phone, success: false, error: msg })
     }
   }

@@ -5,6 +5,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { LanguageProvider } from "@/app/context/LanguageContext";
 import type { Lang } from "@/lib/i18n";
+import { NavigationLoader } from "@/components/shared/NavigationLoader";
 
 const dmSans = DM_Sans({
   variable: "--font-sans",
@@ -55,6 +56,7 @@ export default async function RootLayout({
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
       </head>
       <body className="min-h-full flex flex-col">
+        <NavigationLoader />
         <LanguageProvider initialLang={lang}>
           {children}
         </LanguageProvider>

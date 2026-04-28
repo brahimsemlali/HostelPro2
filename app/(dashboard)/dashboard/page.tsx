@@ -7,6 +7,9 @@ export default async function DashboardPage() {
   const session = await getUserSession()
   if (!session) redirect('/login')
 
+  // Housekeeping staff should not see the dashboard — send them to the bed map
+  if (session.role === 'housekeeping') redirect('/beds')
+
   const supabase = await createClient()
 
   const { data: property } = await supabase
@@ -30,13 +33,16 @@ export default async function DashboardPage() {
   const arrivalSelect =
     'id, bed_id, status, source, check_in_date, check_out_date, pre_checkin_completed, pre_checkin_token, arrival_notes, expected_arrival_time, guest:guest_id(first_name, last_name, nationality, phone, whatsapp), bed:bed_id(name, room:room_id(name))'
 
-  // Fetch all initial data in parallel
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6)
+
+  // All data fetched in a single parallel round-trip.
+  // Arrivals: one query covering today → weekEnd, split in JS below (saves 2 round-trips).
+  // Checked-in bookings: payments embedded via nested select (eliminates sequential N+1 fetch).
   const [
     bedsRes,
     todayPaymentsRes,
-    arrivalsRes,
-    arrivalsTomorrowRes,
-    arrivalsWeekRes,
+    allArrivalsRes,
     departuresRes,
     recentBookingsRes,
     recentPaymentsRes,
@@ -45,6 +51,7 @@ export default async function DashboardPage() {
     activityRes,
     roomsRes,
     allBedsRes,
+    allCheckedInRes,
   ] = await Promise.all([
     supabase.from('beds').select('id, status').eq('property_id', property.id),
 
@@ -56,25 +63,7 @@ export default async function DashboardPage() {
       .gte('payment_date', `${today}T00:00:00`)
       .lt('payment_date', `${today}T23:59:59`),
 
-    // Today's arrivals
-    supabase
-      .from('bookings')
-      .select(arrivalSelect)
-      .eq('property_id', property.id)
-      .eq('check_in_date', today)
-      .in('status', ['confirmed', 'checked_in'])
-      .order('created_at'),
-
-    // Tomorrow's arrivals
-    supabase
-      .from('bookings')
-      .select(arrivalSelect)
-      .eq('property_id', property.id)
-      .eq('check_in_date', tomorrowStr)
-      .in('status', ['confirmed', 'checked_in'])
-      .order('created_at'),
-
-    // Next 7 days arrivals (all, including today and tomorrow)
+    // Single arrivals query — today through end of week — split by date in JS
     supabase
       .from('bookings')
       .select(arrivalSelect)
@@ -111,16 +100,9 @@ export default async function DashboardPage() {
       .select('amount, method, type, payment_date')
       .eq('property_id', property.id)
       .eq('status', 'completed')
-      .gte(
-        'payment_date',
-        (() => {
-          const d = new Date()
-          d.setDate(d.getDate() - 6)
-          return d.toISOString()
-        })(),
-      ),
+      .gte('payment_date', sevenDaysAgo.toISOString()),
 
-    // Forecast: all active bookings that overlap the next 7 days
+    // Forecast: all active bookings overlapping the next 7 days
     supabase
       .from('bookings')
       .select('check_in_date, check_out_date')
@@ -129,7 +111,6 @@ export default async function DashboardPage() {
       .lte('check_in_date', (() => { const d = new Date(); d.setDate(d.getDate() + 6); return d.toISOString().split('T')[0] })())
       .gt('check_out_date', today),
 
-    // Recent activity log
     supabase
       .from('activity_log')
       .select('id, action_type, description, staff_name, created_at, meta')
@@ -150,22 +131,28 @@ export default async function DashboardPage() {
       .select('id, name, room_id, base_price, status, room:room_id(name)')
       .eq('property_id', property.id)
       .order('name'),
+
+    // Checked-in bookings with payments embedded — eliminates the sequential N+1 fetch
+    supabase
+      .from('bookings')
+      .select('id, total_price, check_out_date, guest:guest_id(first_name, last_name), extras:booking_extras(quantity, unit_price), booking_payments:payments(booking_id, amount, type, status)')
+      .eq('property_id', property.id)
+      .eq('status', 'checked_in'),
   ])
 
-  // Fetch balances for checked-in bookings (pending payments + departure block)
-  const allCheckedInRes = await supabase
-    .from('bookings')
-    .select('id, total_price, check_out_date, guest:guest_id(first_name, last_name), extras:booking_extras(quantity, unit_price)')
-    .eq('property_id', property.id)
-    .eq('status', 'checked_in')
+  // Split consolidated arrivals by date
+  const allArrivals = allArrivalsRes.data ?? []
+  const arrivalsRes = { data: allArrivals.filter((b) => b.check_in_date === today) }
+  const arrivalsTomorrowRes = { data: allArrivals.filter((b) => b.check_in_date === tomorrowStr) }
+  const arrivalsWeekRes = { data: allArrivals }
 
-  const allCheckedInIds = (allCheckedInRes.data ?? []).map((b) => b.id)
-  const bookingPaymentsRes = allCheckedInIds.length > 0
-    ? await supabase.from('payments').select('booking_id, amount').in('booking_id', allCheckedInIds).eq('status', 'completed')
-    : { data: [] }
-
-  const totalPaidByBooking = (bookingPaymentsRes.data ?? []).reduce<Record<string, number>>((acc, p) => {
-    acc[p.booking_id] = (acc[p.booking_id] ?? 0) + p.amount
+  // Compute paid totals from embedded payments (no second query needed)
+  type EmbeddedPayment = { booking_id: string; amount: number; type: string; status: string }
+  const totalPaidByBooking = (allCheckedInRes.data ?? []).reduce<Record<string, number>>((acc, b) => {
+    const paid = (b.booking_payments as EmbeddedPayment[] | null)
+      ?.filter((p) => p.status === 'completed')
+      .reduce((s, p) => (p.type === 'refund' ? s - p.amount : s + p.amount), 0) ?? 0
+    acc[b.id] = paid
     return acc
   }, {})
 

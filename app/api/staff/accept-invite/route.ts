@@ -58,8 +58,7 @@ export async function POST(req: Request) {
       .eq('id', invitation.id)
 
     return NextResponse.json({ ok: true })
-  } catch (err) {
-    console.error('[accept-invite]', err)
+  } catch {
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
   }
 }

@@ -118,7 +118,6 @@ export default function OnboardingPage() {
         role: 'owner',
         is_active: true
       })
-      if (staffErr) console.error('Error adding owner as staff:', staffErr)
 
       toast.success(t('onboarding.success'))
       window.location.href = '/dashboard'

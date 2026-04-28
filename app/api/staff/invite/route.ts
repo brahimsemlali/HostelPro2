@@ -98,14 +98,12 @@ export async function POST(req: NextRequest) {
         data: { full_name: name.trim(), staff_role: role },
       })
       if (!emailError) emailSent = true
-      else console.warn('[invite] inviteUserByEmail failed:', emailError.message)
-    } catch (e) {
-      console.warn('[invite] inviteUserByEmail threw:', e)
+    } catch {
+      // email delivery failure is non-fatal — invite URL still returned
     }
 
     return NextResponse.json({ inviteUrl, token: invitation.token, emailSent })
-  } catch (err) {
-    console.error('[invite]', err)
+  } catch {
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
   }
 }

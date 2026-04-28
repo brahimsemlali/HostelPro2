@@ -76,9 +76,7 @@ export async function createActivityAction(formData: FormData) {
       .lte('check_in_date', activity_date)
       .gt('check_out_date', activity_date)
 
-    if (bookingsError) {
-      console.error('Error fetching bookings for broadcast:', bookingsError)
-    } else if (bookings && bookings.length > 0) {
+    if (!bookingsError && bookings && bookings.length > 0) {
       const phones: string[] = []
       
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

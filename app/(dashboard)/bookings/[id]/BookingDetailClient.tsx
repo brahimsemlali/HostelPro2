@@ -68,13 +68,55 @@ export function BookingDetailClient({ booking, payments, extras, property, total
   const [notes, setNotes] = useState(booking.internal_notes ?? '')
   const [payForm, setPayForm] = useState({ amount: '', method: 'cash', reference: '', notes: '' })
 
+  // Extras local state — allows add/delete without page reload
+  const [localExtras, setLocalExtras] = useState<BookingExtra[]>(extras)
+  const [addingExtra, setAddingExtra] = useState(false)
+  const [savingExtra, setSavingExtra] = useState(false)
+  const [extraForm, setExtraForm] = useState({ name: '', quantity: '1', unit_price: '' })
+  const localExtrasTotal = localExtras.reduce((s, e) => s + e.quantity * e.unit_price, 0)
+
   // Ledger — includes extras in the balance
-  const grandTotal = booking.total_price + extrasTotal
+  const grandTotal = booking.total_price + localExtrasTotal
   const dynamicBalance = grandTotal - totalPaid
   
   function openPaymentDialog() {
     setPayForm({ amount: dynamicBalance !== 0 ? String(Math.abs(dynamicBalance)) : '', method: 'cash', reference: '', notes: '' })
     setPaymentDialog(true)
+  }
+
+  async function handleAddExtra(e: React.FormEvent) {
+    e.preventDefault()
+    const qty = parseInt(extraForm.quantity, 10)
+    const price = parseFloat(extraForm.unit_price)
+    if (!extraForm.name.trim() || isNaN(qty) || qty < 1 || isNaN(price) || price < 0) return
+    setSavingExtra(true)
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('booking_extras')
+        .insert({ booking_id: booking.id, property_id: booking.property_id, name: extraForm.name.trim(), quantity: qty, unit_price: price })
+        .select('id, name, quantity, unit_price, created_at, booking_id, property_id')
+        .single()
+      if (error || !data) throw error
+      setLocalExtras((prev) => [...prev, data as BookingExtra])
+      setExtraForm({ name: '', quantity: '1', unit_price: '' })
+      setAddingExtra(false)
+      toast.success('Supplément ajouté')
+    } catch {
+      toast.error('Erreur lors de l\'ajout')
+    } finally {
+      setSavingExtra(false)
+    }
+  }
+
+  async function handleDeleteExtra(id: string) {
+    setLocalExtras((prev) => prev.filter((e) => e.id !== id))
+    const supabase = createClient()
+    const { error } = await supabase.from('booking_extras').delete().eq('id', id)
+    if (error) {
+      toast.error('Erreur lors de la suppression')
+      setLocalExtras((prev) => [...prev, extras.find((e) => e.id === id)!].filter(Boolean))
+    }
   }
 
   // Pre-arrival form
@@ -367,18 +409,70 @@ export function BookingDetailClient({ booking, payments, extras, property, total
               <span>{t('bookings.roomNights')} ({booking.nights} {booking.nights === 1 ? t('common.night') : t('common.nights')})</span>
               <span>{formatCurrency(booking.total_price)}</span>
             </div>
-            {extrasTotal > 0 && (
-              <div className="flex justify-between text-[#475569]">
-                <span>Suppléments ({extras.length})</span>
-                <span>{formatCurrency(extrasTotal)}</span>
-              </div>
-            )}
-            {extrasTotal > 0 && extras.map((e) => (
-              <div key={e.id} className="flex justify-between text-xs text-[#94A3B8] pl-2">
-                <span>· {e.name} ×{e.quantity}</span>
+
+            {/* Extras list with delete + add */}
+            {localExtras.map((e) => (
+              <div key={e.id} className="flex justify-between items-center text-xs text-[#475569] pl-2 group">
+                <span className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => handleDeleteExtra(e.id)}
+                    className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity"
+                    title="Supprimer"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                  {e.name} ×{e.quantity}
+                </span>
                 <span>{formatCurrency(e.quantity * e.unit_price)}</span>
               </div>
             ))}
+
+            {/* Inline add extra form */}
+            {addingExtra ? (
+              <form onSubmit={handleAddExtra} className="pl-2 space-y-2 pt-1">
+                <div className="grid grid-cols-5 gap-1.5">
+                  <Input
+                    className="col-span-2 h-7 text-xs"
+                    placeholder="Nom (petit-déj…)"
+                    value={extraForm.name}
+                    onChange={(e) => setExtraForm((p) => ({ ...p, name: e.target.value }))}
+                    autoFocus
+                  />
+                  <Input
+                    className="h-7 text-xs"
+                    type="number"
+                    min={1}
+                    placeholder="Qté"
+                    value={extraForm.quantity}
+                    onChange={(e) => setExtraForm((p) => ({ ...p, quantity: e.target.value }))}
+                  />
+                  <Input
+                    className="h-7 text-xs"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    placeholder="Prix"
+                    value={extraForm.unit_price}
+                    onChange={(e) => setExtraForm((p) => ({ ...p, unit_price: e.target.value }))}
+                  />
+                  <div className="flex gap-1">
+                    <button type="submit" disabled={savingExtra} className="flex-1 flex items-center justify-center rounded-[6px] bg-[#0F6E56] text-white hover:bg-[#0c5a46] transition-colors">
+                      {savingExtra ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                    </button>
+                    <button type="button" onClick={() => setAddingExtra(false)} className="flex-1 flex items-center justify-center rounded-[6px] border hover:bg-gray-50 transition-colors">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              </form>
+            ) : (
+              <button
+                onClick={() => setAddingExtra(true)}
+                className="flex items-center gap-1 text-xs text-[#0F6E56] hover:text-[#0c5a46] pl-2 transition-colors"
+              >
+                <Plus className="w-3 h-3" /> Ajouter un supplément
+              </button>
+            )}
             <div className="flex justify-between font-bold text-[#0A1F1C] pt-1 border-t border-[#F0F4F7]">
               <span>{t('bookings.grandTotal')}</span>
               <span>{formatCurrency(grandTotal)}</span>
