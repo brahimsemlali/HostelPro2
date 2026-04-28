@@ -1,11 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient, getUserSession } from '@/lib/supabase/server'
-import dynamic from 'next/dynamic'
-
-const ReportsClient = dynamic(
-  () => import('./ReportsClient').then((m) => ({ default: m.ReportsClient })),
-  { ssr: false },
-)
+import { ReportsClient } from './ReportsClient'
 
 export default async function ReportsPage() {
   const session = await getUserSession()
