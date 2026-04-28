@@ -11,6 +11,7 @@ Stack: Next.js App Router · Supabase (Postgres + RLS + Auth) · **@base-ui/reac
 
 Working directory: `/Users/strapexmaroc/Stayy/hostelpro`
 Dev server: `npm run dev` (port 3000)
+GitHub: `https://github.com/brahimsemlali/HostelPro2`
 
 ---
 
@@ -44,6 +45,7 @@ The entire UI was overhauled to an **Apple-style** aesthetic. Key rules:
 - **Frosted glass** sidebar/topbar: `backdrop-filter: blur(20px) saturate(180%); background: rgba(255,255,255,0.88)`
 - **Shadows**: CSS variables `--shadow-xs` through `--shadow-xl` defined in `globals.css`
 - **Animations**: `hp-fade-up` (keyframe), `hp-stagger` (nth-child delays 55ms), `hp-page-in` class on page root divs
+- **Navigation loader**: `hp-nav-spin` + `hp-nav-pulse` keyframes in `globals.css`, used by `NavigationLoader`
 - **Color space**: `oklch()` used for muted text (`oklch(0.42 0 0)`, `oklch(0.55 0 0)`, `oklch(0.65 0 0)`)
 - **Border radius global**: `0.75rem`
 - **Typography**: system font stack, font-weight 500 for headings (never 700). Black weight (`font-black`) used for metric values and emphasis.
@@ -105,6 +107,11 @@ const PERMISSIONS = {
 }
 ```
 
+### Role-based login redirects
+- **housekeeping** → redirected to `/beds` on login (not `/dashboard`)
+- All other roles → `/dashboard`
+This redirect is applied in `app/(dashboard)/dashboard/page.tsx` after `getUserSession()`.
+
 ---
 
 ## DATABASE — WHAT EXISTS
@@ -121,9 +128,10 @@ const PERMISSIONS = {
 | `006_staff_rls_and_indexes.sql` | Improved RLS policies + indexes |
 | `007_fix_rls_recursion.sql` | Adds `get_my_property_id()` helper function; fixes infinite recursion in RLS |
 | `008_housekeeping_tasks.sql` | `housekeeping_tasks` table for assigned cleaning tasks |
-| `009_performance_indexes.sql` | Performance indexes — **run in Supabase SQL Editor if not yet applied** |
+| `009_performance_indexes.sql` | Performance indexes |
 | `010_activities_and_automation.sql` | `activities` table (hostel events with WhatsApp broadcast) |
 | `011_owner_whatsapp_api.sql` | Adds `whatsapp_phone_number_id`, `whatsapp_access_token` to `properties` |
+| `016_payments_performance_index.sql` | Composite index on `payments(property_id, status, type, payment_date DESC)` — **run in Supabase SQL Editor if not yet applied** |
 
 ### Key extra columns added by migrations
 - `guests.is_flagged` (BOOLEAN), `guests.flag_reason` (TEXT)
@@ -199,6 +207,50 @@ Shows a staff identity badge (role + name) for non-owner users.
 
 ---
 
+## NAVIGATION LOADER
+
+`components/shared/NavigationLoader.tsx` — replaces the old `NextTopLoader`.
+
+- Client component registered in `app/layout.tsx`
+- Listens for clicks on internal `<a>` tags
+- Shows a frosted-glass overlay with a spinning Globe icon + pulse ring while the new page loads
+- Hides as soon as `usePathname()` changes (new page rendered)
+- Keyframes `hp-nav-spin` and `hp-nav-pulse` are defined in `app/globals.css`
+
+Do NOT re-add `NextTopLoader` or any other page progress bar — `NavigationLoader` handles this.
+
+---
+
+## PERFORMANCE PATTERNS — ESTABLISHED
+
+### Dynamic imports (use for heavy components)
+All large components use `next/dynamic` with `ssr: false`:
+```typescript
+const OccupancyChart = dynamic(() => import('@/components/dashboard/OccupancyChart'), { ssr: false })
+const ReportsClient = dynamic(() => import('./ReportsClient'), { ssr: false })
+// Modals and sheets: always lazy-load
+const CreateActivityModal = dynamic(() => import('./CreateActivityModal').then(m => ({ default: m.CreateActivityModal })), { ssr: false })
+```
+
+### Supabase query rules
+- **Never use `select('*')`** — always list explicit columns. This keeps bundles smaller and avoids over-fetching.
+- **Embed related data** instead of sequential fetches: use Supabase nested select syntax (`booking_payments:payments(booking_id, amount, type, status)`).
+- **Unbounded queries** must have `.limit()` — e.g. payments page uses `.limit(2000)`.
+- Supabase joins return **arrays** even for single-record relations. Use `as unknown as ExpectedType` at the JSX call site, not in the data-fetching layer.
+
+### Realtime subscription stability
+- Never put derived state (e.g. `beds.length`) in `useCallback` deps that feed a Realtime `useEffect`.
+  Instead, use `useRef` updated in the same setter call: `bedsLengthRef.current = newBeds.length`.
+- Realtime channel names must be stable — do NOT include date or page-state in channel names
+  (e.g. `calendar-live-${propertyId}` not `calendar-live-${propertyId}-${startDate}`).
+
+### Dashboard data fetching
+- All arrivals (today / tomorrow / this week) fetched in one query, split in JS afterwards.
+- `allCheckedInRes` runs inside the main `Promise.all`, not sequentially after it.
+- Payments per booking computed from embedded data — no second round-trip.
+
+---
+
 ## WHAT'S BUILT (ALL WORKING)
 
 | Feature | Status | Location |
@@ -211,6 +263,7 @@ Shows a staff identity badge (role + name) for non-owner users.
 | Guest list + detail | ✅ | `app/(dashboard)/guests/` |
 | Check-in wizard (5 steps) | ✅ | `app/(dashboard)/guests/new/` |
 | Bookings inbox + detail | ✅ | `app/(dashboard)/bookings/` |
+| **Booking extras add/delete** | ✅ | `app/(dashboard)/bookings/[id]/BookingDetailClient.tsx` |
 | Payments + reconciliation | ✅ | `app/(dashboard)/payments/` |
 | Reports / analytics | ✅ | `app/(dashboard)/reports/` |
 | WhatsApp hub | ✅ | `app/(dashboard)/whatsapp/` |
@@ -232,6 +285,8 @@ Shows a staff identity badge (role + name) for non-owner users.
 | Mobile bottom nav | ✅ | `components/layout/MobileNav.tsx` |
 | Real-time dashboard | ✅ | Supabase Realtime subscriptions |
 | Activity log feed (dashboard) | ✅ | `activity_log` table + `lib/activity.ts` |
+| **Activity feed role filtering** | ✅ | `components/dashboard/DashboardClient.tsx` |
+| **Navigation loader (globe)** | ✅ | `components/shared/NavigationLoader.tsx` |
 | Security middleware | ✅ | `proxy.ts` |
 | Security headers | ✅ | `next.config.ts` |
 | Rate limiting | ✅ | `lib/rate-limit.ts` |
@@ -246,16 +301,14 @@ Shows a staff identity badge (role + name) for non-owner users.
 1. **Pre-arrival digital check-in flow** — Schema is ready (`bookings.pre_checkin_token`, `bookings.pre_checkin_completed`). Need a public page at `/checkin/[token]` where guests fill in their own data before arriving.
 
 ### MEDIUM PRIORITY
-2. **Activity feed role filtering** — Staff shouldn't see revenue figures; housekeeping shouldn't see payment events.
-3. **Inventory low-stock alerts** — `inventory_items.reorder_level` exists but no alert UI yet.
-4. **Booking extras UI** — `booking_extras` table exists; no UI to add breakfast/extras to a booking.
-5. **Guest blacklist enforcement** — `guests.is_flagged` exists; warning shown during check-in step 1 (`flagWarningGuest` state), but the UI for confirming and overriding the block needs review.
-6. **Push notifications** — Supabase Realtime to notify receptionist when new booking comes in.
+2. **Inventory low-stock alerts** — `inventory_items.reorder_level` exists but no alert UI yet.
+3. **Guest blacklist enforcement** — `guests.is_flagged` exists; warning shown during check-in step 1 (`flagWarningGuest` state), but the UI for confirming and overriding the block needs review.
+4. **Push notifications** — Supabase Realtime to notify receptionist when new booking comes in.
 
 ### NICE TO HAVE
-7. **Dark mode** — CSS variables are set up, just needs a toggle + `dark:` Tailwind classes.
-8. **Arabic RTL support** — Foundation exists (locale constant), just not wired up.
-9. **Multi-property** — Schema supports it (`property_id` on everything), UI doesn't yet.
+5. **Dark mode** — CSS variables are set up, just needs a toggle + `dark:` Tailwind classes.
+6. **Arabic RTL support** — Foundation exists (locale constant), just not wired up.
+7. **Multi-property** — Schema supports it (`property_id` on everything), UI doesn't yet.
 
 ---
 
@@ -277,15 +330,16 @@ lib/supabase/client.ts               → createClient() for browser (singleton)
 app/context/SessionContext.tsx        → useSession(), useHasRole(), useCanDo()
 lib/activity.ts                       → logActivity() — call after every important action
 types/index.ts                        → All shared types (Staff, StaffRole, UserSession, Activity, etc.)
-app/globals.css                       → Design system (shadows, animations, colors)
+app/globals.css                       → Design system (shadows, animations, colors, nav-loader keyframes)
 stores/app.store.ts                   → Zustand: realtimeConnected (null|bool), dirtyBedsCount, property
 components/layout/Sidebar.tsx         → Role-based nav
 components/layout/TopBar.tsx          → Frosted glass header + live indicator
 components/layout/MobileNav.tsx       → Bottom navigation bar
+components/shared/NavigationLoader.tsx → Globe page-transition overlay (registered in app/layout.tsx)
 components/dashboard/DashboardClient.tsx → Main dashboard component
 app/actions/activities.ts             → Server actions: createActivityAction, deleteActivityAction, notifyGuestsAction
 lib/whatsapp/templates.ts             → buildWhatsAppLink(), WHATSAPP_TEMPLATES
-supabase/migrations/                  → All DB migrations (001–011)
+supabase/migrations/                  → All DB migrations (001–016)
 ```
 
 ---
@@ -310,6 +364,10 @@ logActivity({
 ```
 
 The dashboard feed reads from `activity_log` table via Supabase Realtime.
+
+### Activity feed role filtering
+`payment` and `booking_created` action types are filtered out for staff without `view_revenue`.
+This is applied in `DashboardClient.tsx` using `canViewRevenue` from `useCanDo('view_revenue')`.
 
 ---
 
@@ -338,6 +396,8 @@ WHATSAPP_BUSINESS_ACCOUNT_ID=
 - Do NOT add features beyond what's asked — no speculative code
 - Do NOT use `any` as a shortcut — fix the type properly
 - Do NOT use `asChild` — this project uses @base-ui/react which doesn't support it
+- Do NOT use `select('*')` in Supabase queries — always list explicit columns
+- Do NOT add `console.error` / `console.warn` — handle errors silently via toast or return values
 - Use `(e.target as Element).setPointerCapture(...)` not `e.target.setPointerCapture(...)` for pointer events
 - JSX text containing apostrophes must use `&apos;`, quotes use `&ldquo;`/`&rdquo;` — raw `'` and `"` in JSX text are lint errors
 - `Date.now()` in async server components is fine but ESLint flags it as `react-hooks/purity` — suppress with `// eslint-disable-next-line react-hooks/purity` on that line
@@ -359,3 +419,18 @@ Bed names are auto-generated as `{prefix}{n}`. The prefix is the trailing single
 
 ### CalendarClient — refreshBookings order
 `refreshBeds` and `refreshBookings` useCallbacks **must** be declared before the drag `useEffect` that calls `refreshBookings()` on rollback. Moving them after the effect causes a "used before declared" lint error and stale-closure bugs.
+
+### Supabase join type mismatch
+Supabase JS returns embedded relations (e.g. `guest:guest_id(...)`, `bed:bed_id(...)`) as arrays even for single-record joins. At the JSX call site, use:
+```typescript
+booking={booking as unknown as Parameters<typeof BookingDetailClient>[0]['booking']}
+```
+Do not try to normalise these in the query layer — the `as unknown as` assertion at the prop boundary is the accepted pattern.
+
+### Realtime re-subscription loop
+Never put derived-from-state values (e.g. `beds.length`, `startDate`) inside `useCallback` deps that feed a Realtime `useEffect`. Use `useRef` instead:
+```typescript
+const bedsLengthRef = useRef(initialData.beds.length)
+setBeds((prev) => { bedsLengthRef.current = next.length; return next })
+// refreshForecast uses bedsLengthRef.current — not in deps → no loop
+```
