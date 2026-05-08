@@ -13,8 +13,8 @@ export function NavigationLoader() {
     setLoading(false)
   }, [pathname])
 
-  // Show on internal link clicks
   useEffect(() => {
+    // 1. <a> / <Link> clicks
     const handleClick = (e: MouseEvent) => {
       const anchor = (e.target as Element).closest('a')
       if (!anchor) return
@@ -33,8 +33,24 @@ export function NavigationLoader() {
       setLoading(true)
     }
 
+    // 2. router.push() / router.replace() — Next.js calls history.pushState internally
+    const originalPush = window.history.pushState.bind(window.history)
+    window.history.pushState = function (state: unknown, title: string, url?: string | URL | null) {
+      const newPath = url ? new URL(String(url), location.href).pathname : location.pathname
+      if (newPath !== location.pathname) setLoading(true)
+      return originalPush(state, title, url)
+    }
+
+    // 3. Browser back / forward
+    const handlePopState = () => setLoading(true)
+
     document.addEventListener('click', handleClick)
-    return () => document.removeEventListener('click', handleClick)
+    window.addEventListener('popstate', handlePopState)
+    return () => {
+      document.removeEventListener('click', handleClick)
+      window.removeEventListener('popstate', handlePopState)
+      window.history.pushState = originalPush
+    }
   }, [])
 
   if (!loading) return null

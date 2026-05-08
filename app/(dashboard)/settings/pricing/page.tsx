@@ -9,15 +9,12 @@ export default async function PricingRulesPage() {
 
   const supabase = await createClient()
 
-  const { data: property } = await supabase
-    .from('properties').select('id, name').eq('id', session.propertyId).single()
-  if (!property) redirect('/onboarding')
+  const [propertyRes, rulesRes] = await Promise.all([
+    supabase.from('properties').select('id, name').eq('id', session.propertyId).single(),
+    supabase.from('pricing_rules').select('*').eq('property_id', session.propertyId).order('created_at'),
+  ])
 
-  const { data: rules } = await supabase
-    .from('pricing_rules')
-    .select('*')
-    .eq('property_id', property.id)
-    .order('created_at')
+  if (!propertyRes.data) redirect('/onboarding')
 
-  return <PricingClient propertyId={property.id} rules={rules ?? []} />
+  return <PricingClient propertyId={session.propertyId} rules={rulesRes.data ?? []} />
 }

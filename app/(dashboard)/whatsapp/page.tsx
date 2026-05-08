@@ -8,26 +8,18 @@ export default async function WhatsAppPage() {
   if (session.role === 'housekeeping' || session.role === 'receptionist') redirect('/dashboard')
 
   const supabase = await createClient()
-
-  const { data: property } = await supabase
-    .from('properties').select('id, name, phone, wifi_password, check_out_time').eq('id', session.propertyId).single()
-  if (!property) redirect('/onboarding')
-
-  const { data: messages } = await supabase
-    .from('whatsapp_messages')
-    .select('*, guest:guest_id(first_name, last_name)')
-    .eq('property_id', property.id)
-    .order('sent_at', { ascending: false })
-    .limit(50)
-
-  // Active bookings for sending messages
   const today = new Date().toISOString().split('T')[0]
-  const { data: activeBookings } = await supabase
-    .from('bookings')
-    .select('*, guest:guest_id(first_name, last_name, phone, whatsapp)')
-    .eq('property_id', property.id)
-    .eq('status', 'checked_in')
-    .gte('check_out_date', today)
+
+  const [propertyRes, messagesRes, activeBookingsRes] = await Promise.all([
+    supabase.from('properties').select('id, name, phone, wifi_password, check_out_time').eq('id', session.propertyId).single(),
+    supabase.from('whatsapp_messages').select('*, guest:guest_id(first_name, last_name)').eq('property_id', session.propertyId).order('sent_at', { ascending: false }).limit(50),
+    supabase.from('bookings').select('*, guest:guest_id(first_name, last_name, phone, whatsapp)').eq('property_id', session.propertyId).eq('status', 'checked_in').gte('check_out_date', today),
+  ])
+
+  const property = propertyRes.data
+  if (!property) redirect('/onboarding')
+  const messages = messagesRes.data
+  const activeBookings = activeBookingsRes.data
 
   return (
     <WhatsAppClient

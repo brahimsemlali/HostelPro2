@@ -347,7 +347,7 @@ export function CheckInWizard({ property, beds, preselectedBedId }: Props) {
         status: 'sent',
       })
       .then(({ error }) => {
-        if (error) console.error('[WhatsApp log]', error.message)
+        void error
       })
 
     window.open(link, '_blank')

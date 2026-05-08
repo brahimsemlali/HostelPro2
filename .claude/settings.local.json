@@ -38,7 +38,10 @@
       "Bash(npm install *)",
       "mcp__magic__21st_magic_component_inspiration",
       "mcp__playwright__browser_resize",
-      "mcp__playwright__browser_evaluate"
+      "mcp__playwright__browser_evaluate",
+      "Skill(debugging-code)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

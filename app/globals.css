@@ -490,3 +490,80 @@
   transition: width var(--duration-base) var(--ease-out-quart);
 }
 .hp-link:hover::after { width: 100%; }
+
+/* ─────────────────────────────────────────
+   Landing page — responsive layout
+   ───────────────────────────────────────── */
+.lp-section { padding: 100px 24px; }
+.lp-hero-section { padding: 120px 24px 80px; }
+
+.lp-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.lp-stat-item { text-align: center; padding: 24px 20px; }
+
+.lp-bento-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  grid-auto-rows: minmax(180px, auto);
+}
+
+.lp-audience-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.lp-pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.lp-footer-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr;
+  gap: 40px;
+  padding-bottom: 48px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .lp-pricing-grid { grid-template-columns: repeat(2, 1fr); }
+  .lp-footer-grid { grid-template-columns: repeat(2, 1fr); gap: 32px; }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .lp-section { padding: 64px 20px; }
+  .lp-hero-section { padding: 100px 20px 56px; }
+  .lp-nav-links { display: none !important; }
+  .lp-hero-mock { display: none; }
+  .lp-stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .lp-stat-item { border-right: none !important; padding: 20px 16px; }
+  .lp-stat-item:nth-child(-n+2) { border-bottom: 1px solid #E8EDEF; }
+  .lp-audience-grid { grid-template-columns: 1fr; }
+  .lp-pricing-grid { grid-template-columns: 1fr; }
+  .lp-pricing-featured { transform: none !important; }
+  .lp-footer-grid { grid-template-columns: repeat(2, 1fr); gap: 28px; }
+  .lp-cta-box { padding: 40px 24px !important; }
+}
+
+/* Small mobile */
+@media (max-width: 540px) {
+  .lp-bento-grid { grid-template-columns: 1fr; }
+  .lp-bento-grid > * { grid-column: span 1 !important; grid-row: span 1 !important; }
+  .lp-footer-grid { grid-template-columns: 1fr; }
+}
+
+@media (min-width: 541px) and (max-width: 768px) {
+  .lp-bento-grid { grid-template-columns: repeat(2, 1fr); }
+  .lp-bento-grid > * { grid-column: span 1 !important; grid-row: span 1 !important; }
+}

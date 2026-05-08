@@ -44,16 +44,16 @@ function bedColors(s: BedState) {
 }
 
 const fadeUp: Variants = {
-  hidden: { opacity: 0, y: 28, filter: 'blur(8px)' },
+  hidden: { opacity: 0, y: 20, filter: 'blur(4px)' },
   visible: (i: number = 0) => ({
     opacity: 1, y: 0, filter: 'blur(0px)',
-    transition: { duration: 0.8, delay: i * 0.13, ease: [0.25, 0.4, 0.25, 1] },
+    transition: { duration: 0.55, delay: i * 0.07, ease: [0.25, 0.4, 0.25, 1] },
   }),
 }
 
 const staggerContainer: Variants = {
   hidden: {},
-  visible: { transition: { staggerChildren: 0.1, delayChildren: 0.15 } },
+  visible: { transition: { staggerChildren: 0.07, delayChildren: 0.08 } },
 }
 
 // ── Animated counter on scroll ─────────────────────────────────────────────
@@ -479,7 +479,7 @@ export default function LandingPage() {
           </div>
           <span style={{ fontSize: 15, fontWeight: 700, color: '#0E1A1F', letterSpacing: '-0.3px' }}>HostelPro</span>
         </Link>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
+        <div className="lp-nav-links" style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
           {['Features', 'Pricing'].map((l) => (
             <a key={l} href={`#${l.toLowerCase()}`} style={{ fontSize: 13.5, fontWeight: 500, color: '#5C6B72', textDecoration: 'none' }}>{l}</a>
           ))}
@@ -501,9 +501,9 @@ export default function LandingPage() {
       </motion.nav>
 
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <section style={{
+      <section className="lp-hero-section" style={{
         position: 'relative', minHeight: '100vh', display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', padding: '120px 24px 80px',
+        alignItems: 'center', justifyContent: 'center',
         textAlign: 'center', overflow: 'hidden',
         background: 'linear-gradient(180deg, #030f0b 0%, #0a1f1c 40%, #0d2b26 70%, #0E1A1F 100%)',
       }}>
@@ -560,7 +560,7 @@ export default function LandingPage() {
           custom={10} variants={fadeUp} initial="hidden" animate="visible"
           style={{ position: 'relative', zIndex: 1, fontSize: 17, lineHeight: 1.65, color: 'rgba(255,255,255,0.45)', maxWidth: 560, marginBottom: 40 }}
         >
-          Beds, guests, payments, police declarations, WhatsApp — one calm command center for hostels, riads and guesthouses across Morocco.
+          Check in a guest, generate the police fiche, collect payment, send a WhatsApp welcome — all in under 2 minutes. Built for Moroccan hospitality.
         </motion.p>
 
         {/* CTA */}
@@ -597,9 +597,10 @@ export default function LandingPage() {
 
         {/* Dashboard mock */}
         <motion.div
-          initial={{ opacity: 0, y: 60, filter: 'blur(10px)' }}
+          initial={{ opacity: 0, y: 36, filter: 'blur(6px)' }}
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-          transition={{ duration: 1.1, delay: 0.7, ease: [0.25, 0.4, 0.25, 1] }}
+          transition={{ duration: 0.65, delay: 0.25, ease: [0.25, 0.4, 0.25, 1] }}
+          className="lp-hero-mock"
           style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 900 }}
         >
           <TiltCard>
@@ -767,7 +768,7 @@ export default function LandingPage() {
           whileInView="visible"
           viewport={{ once: true, margin: '-80px' }}
           variants={staggerContainer}
-          style={{ maxWidth: 900, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 2 }}
+          className="lp-stats-grid"
         >
           {[
             { val: 200, suffix: '+', label: 'Properties in Morocco' },
@@ -779,7 +780,8 @@ export default function LandingPage() {
               key={s.label}
               variants={fadeUp}
               custom={i}
-              style={{ textAlign: 'center', padding: '24px 20px', borderRight: i < 3 ? '1px solid #E8EDEF' : undefined }}
+              className="lp-stat-item"
+              style={{ borderRight: i < 3 ? '1px solid #E8EDEF' : undefined }}
             >
               <div style={{ fontSize: 36, fontWeight: 800, letterSpacing: '-0.04em', color: '#0E1A1F', lineHeight: 1, marginBottom: 8 }}>
                 <Counter to={s.val} suffix={s.suffix} prefix={s.prefix} />
@@ -791,7 +793,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Features bento ───────────────────────────────────────────────── */}
-      <section id="features" style={{ padding: '100px 24px', background: '#F9FBFA' }}>
+      <section id="features" className="lp-section" style={{ background: '#F9FBFA' }}>
         <div style={{ maxWidth: 1080, margin: '0 auto' }}>
           <motion.div
             initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-60px' }}
@@ -816,7 +818,7 @@ export default function LandingPage() {
           </motion.div>
 
           {/* Bento grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gridTemplateRows: 'auto auto', gap: 16, gridAutoRows: 'minmax(180px, auto)' }}>
+          <div className="lp-bento-grid">
             {/* Large: bed map 2x2 */}
             <BedMapCard />
 
@@ -863,7 +865,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Audience ─────────────────────────────────────────────────────── */}
-      <section id="audience" style={{ padding: '100px 24px', background: '#fff' }}>
+      <section id="audience" className="lp-section" style={{ background: '#fff' }}>
         <div style={{ maxWidth: 1080, margin: '0 auto' }}>
           <motion.div
             initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-60px' }}
@@ -885,7 +887,7 @@ export default function LandingPage() {
           <motion.div
             initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-40px' }}
             variants={staggerContainer}
-            style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}
+            className="lp-audience-grid"
           >
             {[
               { icon: '🏨', title: 'Hostels & backpackers', desc: 'Manage dorm beds, shared facilities, and high guest turnover with ease. Built for the pace of budget hospitality.' },
@@ -915,7 +917,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Pricing ──────────────────────────────────────────────────────── */}
-      <section id="pricing" style={{ padding: '100px 24px', background: '#F1F9F4' }}>
+      <section id="pricing" className="lp-section" style={{ background: '#F1F9F4' }}>
         <div style={{ maxWidth: 960, margin: '0 auto', textAlign: 'center' }}>
           <motion.div
             initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-60px' }}
@@ -966,7 +968,7 @@ export default function LandingPage() {
           <motion.div
             initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-40px' }}
             variants={staggerContainer}
-            style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, alignItems: 'start' }}
+            className="lp-pricing-grid"
           >
             {[
               {
@@ -987,6 +989,7 @@ export default function LandingPage() {
                 variants={fadeUp}
                 custom={i}
                 whileHover={{ y: -4, transition: { type: 'spring', stiffness: 300, damping: 22 } }}
+                className={plan.featured ? 'lp-pricing-featured' : undefined}
                 style={{
                   background: '#fff',
                   border: `1.5px solid ${plan.featured ? '#21C77A' : '#DDE4E7'}`,
@@ -1051,7 +1054,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Testimonial ──────────────────────────────────────────────────── */}
-      <section style={{ padding: '100px 24px', background: '#0E1A1F', textAlign: 'center' }}>
+      <section className="lp-section" style={{ background: '#0E1A1F', textAlign: 'center' }}>
         <motion.div
           initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-60px' }}
           variants={staggerContainer}
@@ -1081,6 +1084,7 @@ export default function LandingPage() {
         <motion.div
           initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-60px' }}
           variants={staggerContainer}
+          className="lp-cta-box"
           style={{
             maxWidth: 700, margin: '0 auto',
             background: 'linear-gradient(135deg, #0a1f1c 0%, #0d2b26 50%, #0E1A1F 100%)',
@@ -1129,7 +1133,7 @@ export default function LandingPage() {
       {/* ── Footer ───────────────────────────────────────────────────────── */}
       <footer style={{ background: '#0E1A1F', padding: '64px 24px 32px' }}>
         <div style={{ maxWidth: 1080, margin: '0 auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1fr', gap: 40, paddingBottom: 48, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          <div className="lp-footer-grid">
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
                 <div style={{ width: 30, height: 30, background: '#21C77A', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

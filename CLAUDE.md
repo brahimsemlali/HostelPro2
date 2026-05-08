@@ -22,6 +22,20 @@ The App Router is used. Do NOT use Pages Router patterns.
 
 ---
 
+## ⚠️ CRITICAL — MIDDLEWARE FILE NAME
+
+Next.js 16 uses **`proxy.ts`** (not `middleware.ts`) as the edge middleware file.
+The function must be named `export async function proxy(request: NextRequest)`.
+Do NOT create or rename to `middleware.ts` — Next.js 16 will error if both exist.
+
+### Auth logic in `proxy.ts`
+- `'/'` is **exact-matched** (`pathname === '/'`), not prefix-matched — putting `'/'` in a `startsWith` array would make every route public (all paths start with `/`)
+- Authenticated users hitting `/`, `/login`, or `/register` are redirected to `/dashboard`
+- Unauthenticated users hitting protected routes are redirected to `/login?next=<pathname>`
+- Public prefixes: `/login`, `/register`, `/forgot-password`, `/reset-password`, `/accept-invite`, `/checkin`, `/api/auth`, `/api/staff/accept-invite`
+
+---
+
 ## ⚠️ CRITICAL — UI COMPONENT LIBRARY
 
 This project uses **`@base-ui/react`**, NOT Radix UI / shadcn/ui primitives.
@@ -158,8 +172,9 @@ creates password → account linked → can log in.
 - `POST /api/staff/revoke` — owner only, sets `is_active = false`
 - `POST /api/staff/accept-invite` — public (called after signUp), links `user_id` to staff record
 
-### Public routes (in `middleware.ts`)
-`/login`, `/signup`, `/accept-invite`, `/api/staff/accept-invite` are public.
+### Public routes (in `proxy.ts`)
+`/login`, `/register`, `/accept-invite`, `/checkin`, `/api/auth`, `/api/staff/accept-invite` are public.
+`/` is public for unauthenticated visitors (shows landing page); authenticated users are redirected to `/dashboard`.
 Everything else requires auth.
 
 ---
@@ -218,6 +233,11 @@ Shows a staff identity badge (role + name) for non-owner users.
 - Keyframes `hp-nav-spin` and `hp-nav-pulse` are defined in `app/globals.css`
 
 Do NOT re-add `NextTopLoader` or any other page progress bar — `NavigationLoader` handles this.
+
+The loader intercepts three navigation types:
+1. Clicks on internal `<a>` / `<Link>` elements
+2. `router.push()` / `router.replace()` — via `window.history.pushState` monkey-patch
+3. Browser back / forward — via `popstate` event
 
 ---
 
@@ -286,8 +306,9 @@ const CreateActivityModal = dynamic(() => import('./CreateActivityModal').then(m
 | Real-time dashboard | ✅ | Supabase Realtime subscriptions |
 | Activity log feed (dashboard) | ✅ | `activity_log` table + `lib/activity.ts` |
 | **Activity feed role filtering** | ✅ | `components/dashboard/DashboardClient.tsx` |
-| **Navigation loader (globe)** | ✅ | `components/shared/NavigationLoader.tsx` |
-| Security middleware | ✅ | `proxy.ts` |
+| **Navigation loader (globe)** | ✅ | `components/shared/NavigationLoader.tsx` — catches clicks, `router.push()`, back/forward |
+| **Landing page** | ✅ | `app/page.tsx` — public marketing page, shown to unauthenticated visitors at `/` |
+| Security middleware | ✅ | `proxy.ts` (Next.js 16 convention — NOT middleware.ts) |
 | Security headers | ✅ | `next.config.ts` |
 | Rate limiting | ✅ | `lib/rate-limit.ts` |
 | List pagination | ✅ | guests, bookings, payments pages |

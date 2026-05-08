@@ -10,20 +10,16 @@ export default async function IntegrationsPage() {
   const supabase = await createClient()
 
   // Use select('*') so missing columns don't cause query failure before migration is run
-  const { data: property, error: propError } = await supabase
-    .from('properties')
-    .select('*')
-    .eq('id', session.propertyId)
-    .single()
+  // Fetch property + existing booking refs in parallel
+  const [propertyRes, existingRefsRes] = await Promise.all([
+    supabase.from('properties').select('*').eq('id', session.propertyId).single(),
+    supabase.from('bookings').select('external_booking_id').eq('property_id', session.propertyId).eq('source', 'booking_com').not('external_booking_id', 'is', null),
+  ])
+
+  const { data: property, error: propError } = propertyRes
   if (!property || propError) redirect('/onboarding')
 
-  // Fetch existing external bookings to detect duplicates
-  const { data: existingRefs } = await supabase
-    .from('bookings')
-    .select('external_booking_id')
-    .eq('property_id', property.id)
-    .eq('source', 'booking_com')
-    .not('external_booking_id', 'is', null)
+  const { data: existingRefs } = existingRefsRes
 
   const importedRefs = new Set((existingRefs ?? []).map((b) => b.external_booking_id))
 

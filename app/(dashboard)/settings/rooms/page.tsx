@@ -9,15 +9,10 @@ export default async function RoomsPage() {
 
   const supabase = await createClient()
 
-  const { data: property } = await supabase
-    .from('properties').select('id').eq('id', session.propertyId).single()
-  if (!property) redirect('/onboarding')
+  const [roomsRes, bedsRes] = await Promise.all([
+    supabase.from('rooms').select('*').eq('property_id', session.propertyId).order('name'),
+    supabase.from('beds').select('*').eq('property_id', session.propertyId).order('name'),
+  ])
 
-  const { data: rooms } = await supabase
-    .from('rooms').select('*').eq('property_id', property.id).order('name')
-
-  const { data: beds } = await supabase
-    .from('beds').select('*').eq('property_id', property.id).order('name')
-
-  return <RoomsClient propertyId={property.id} rooms={rooms ?? []} beds={beds ?? []} />
+  return <RoomsClient propertyId={session.propertyId} rooms={roomsRes.data ?? []} beds={bedsRes.data ?? []} />
 }

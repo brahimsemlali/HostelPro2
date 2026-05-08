@@ -211,8 +211,7 @@ export function AddArrivalModal({
 
         onSuccess()
         onClose()
-      } catch (err) {
-        console.error('Error creating arrival:', err)
+      } catch {
         toast.error(t('arrival.toast.error'))
       } finally {
         setSaving(false)

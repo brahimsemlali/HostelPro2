@@ -1,8 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-// Routes that DO NOT require authentication
-const PUBLIC_ROUTES = [
+// Routes that DO NOT require authentication (prefix-matched except '/')
+const PUBLIC_ROUTE_PREFIXES = [
   '/login',
   '/register',
   '/forgot-password',
@@ -17,8 +17,10 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Allow public routes and Next.js internals
+  // '/' is exact-matched to avoid making every path public (all paths start with '/')
   const isPublic =
-    PUBLIC_ROUTES.some((r) => pathname.startsWith(r)) ||
+    pathname === '/' ||
+    PUBLIC_ROUTE_PREFIXES.some((r) => pathname.startsWith(r)) ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon')
 
