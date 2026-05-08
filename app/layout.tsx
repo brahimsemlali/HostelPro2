@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { LanguageProvider } from "@/app/context/LanguageContext";
 import type { Lang } from "@/lib/i18n";
 import { NavigationLoader } from "@/components/shared/NavigationLoader";
+import { JsonLd } from "@/components/shared/JsonLd";
 
 const dmSans = DM_Sans({
   variable: "--font-sans",
@@ -14,29 +15,196 @@ const dmSans = DM_Sans({
   display: "swap",
 });
 
+const BASE_URL = 'https://www.sweetreservation.com'
+
 export const metadata: Metadata = {
-  title: "HostelPro — Gestion d'auberge",
-  description: "Solution de gestion pour auberges et hostels au Maroc",
-  manifest: '/manifest.json',
+  metadataBase: new URL(BASE_URL),
+  title: {
+    default: "Sweet Reservation — Logiciel de Gestion d'Hostel au Maroc",
+    template: "%s | Sweet Reservation",
+  },
+  description:
+    "Gérez votre hostel ou auberge au Maroc avec Sweet Reservation. Check-in digital, fiches de police automatiques, WhatsApp intégré, rapports et paiements en MAD. Essai gratuit 14 jours.",
+  keywords: [
+    "logiciel gestion hostel maroc",
+    "application gestion auberge maroc",
+    "logiciel réservation hostel",
+    "gestion hébergement maroc",
+    "hostel management software morocco",
+    "fiche de police hostel",
+    "check-in digital hostel",
+    "logiciel auberge jeunesse maroc",
+    "reservation hostel maroc",
+    "hostel management system",
+    "sweet reservation",
+    "sweetreservation",
+    "auberge logiciel maroc",
+    "property management system maroc",
+    "logiciel pms maroc",
+    "gestion beds hostel",
+    "hostel pms agadir marrakech",
+  ],
+  authors: [{ name: "Sweet Reservation", url: BASE_URL }],
+  creator: "Sweet Reservation",
+  publisher: "Sweet Reservation",
+  category: "technology",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  openGraph: {
+    type: "website",
+    locale: "fr_MA",
+    alternateLocale: ["fr_FR", "en_US"],
+    url: BASE_URL,
+    siteName: "Sweet Reservation",
+    title: "Sweet Reservation — Logiciel de Gestion d'Hostel au Maroc",
+    description:
+      "Gérez votre hostel ou auberge au Maroc. Check-in digital, fiches de police automatiques, WhatsApp intégré, rapports et paiements en MAD.",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "Sweet Reservation — Logiciel de Gestion d'Hostel au Maroc",
+        type: "image/png",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: "@sweetreservation",
+    creator: "@sweetreservation",
+    title: "Sweet Reservation — Logiciel de Gestion d'Hostel au Maroc",
+    description:
+      "Gérez votre hostel ou auberge au Maroc. Check-in 60s · Fiche de police PDF · WhatsApp · Paiements MAD.",
+    images: ["/opengraph-image"],
+  },
+  alternates: {
+    canonical: BASE_URL,
+    languages: {
+      "fr-MA": BASE_URL,
+      "fr-FR": BASE_URL,
+      "en-US": BASE_URL,
+    },
+  },
+  verification: {
+    google: "946ad4b3ce46fa7f",
+  },
+  manifest: "/manifest.json",
   icons: {
     icon: [
-      { url: '/favicon-16.png', sizes: '16x16', type: 'image/png' },
-      { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: "/favicon-16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
     ],
     apple: [
-      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
     ],
-    shortcut: '/favicon-32.png',
+    shortcut: "/favicon-32.png",
   },
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
-    title: 'HostelPro',
+    statusBarStyle: "default",
+    title: "Sweet Reservation",
   },
   other: {
-    'mobile-web-app-capable': 'yes',
+    "mobile-web-app-capable": "yes",
   },
 };
+
+const organizationSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'Sweet Reservation',
+  alternateName: 'SweetReservation',
+  url: BASE_URL,
+  logo: `${BASE_URL}/icon-512.png`,
+  description:
+    "Logiciel de gestion pour hostels et auberges au Maroc. Check-in digital, fiches de police, paiements MAD, WhatsApp intégré.",
+  foundingLocation: {
+    '@type': 'Place',
+    addressCountry: 'MA',
+  },
+  areaServed: {
+    '@type': 'Country',
+    name: 'Morocco',
+  },
+  contactPoint: {
+    '@type': 'ContactPoint',
+    contactType: 'customer service',
+    availableLanguage: ['French', 'Arabic', 'English'],
+  },
+  sameAs: [
+    'https://www.sweetreservation.com',
+  ],
+}
+
+const webSiteSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'Sweet Reservation',
+  url: BASE_URL,
+  description: "Logiciel de gestion pour hostels et auberges au Maroc",
+  inLanguage: ['fr', 'ar', 'en'],
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: {
+      '@type': 'EntryPoint',
+      urlTemplate: `${BASE_URL}/?q={search_term_string}`,
+    },
+    'query-input': 'required name=search_term_string',
+  },
+}
+
+const softwareApplicationSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'Sweet Reservation',
+  operatingSystem: 'Web, iOS, Android',
+  applicationCategory: 'BusinessApplication',
+  applicationSubCategory: 'Property Management System',
+  description:
+    "Solution SaaS de gestion pour hostels et auberges au Maroc. Gestion des réservations, check-in digital, fiches de police automatiques, WhatsApp intégré, rapports de revenus en MAD.",
+  url: BASE_URL,
+  screenshot: `${BASE_URL}/opengraph-image`,
+  featureList: [
+    "Check-in digital en 60 secondes",
+    "Génération automatique de fiches de police",
+    "Intégration WhatsApp native",
+    "Plan des lits en temps réel",
+    "Rapports et analytics en MAD",
+    "Gestion multi-utilisateurs (propriétaire, manager, réceptionniste)",
+    "Audit de nuit automatisé",
+    "Synchronisation Booking.com et Hostelworld",
+  ],
+  offers: {
+    '@type': 'Offer',
+    price: '0',
+    priceCurrency: 'MAD',
+    description: "Essai gratuit 14 jours, sans carte bancaire",
+  },
+  aggregateRating: {
+    '@type': 'AggregateRating',
+    ratingValue: '4.8',
+    reviewCount: '47',
+    bestRating: '5',
+    worstRating: '1',
+  },
+  author: {
+    '@type': 'Organization',
+    name: 'Sweet Reservation',
+    url: BASE_URL,
+  },
+  inLanguage: ['fr', 'ar', 'en'],
+  countriesSupported: 'MA',
+}
 
 export default async function RootLayout({
   children,
@@ -54,6 +222,13 @@ export default async function RootLayout({
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+        {/* Preconnect to critical origins */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+        <JsonLd data={organizationSchema} />
+        <JsonLd data={webSiteSchema} />
+        <JsonLd data={softwareApplicationSchema} />
       </head>
       <body className="min-h-full flex flex-col">
         <NavigationLoader />

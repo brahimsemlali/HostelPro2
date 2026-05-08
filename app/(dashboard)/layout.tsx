@@ -1,5 +1,10 @@
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { getUserSession } from '@/lib/supabase/server'
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
 import { Sidebar } from '@/components/layout/Sidebar'
 import { TopBar } from '@/components/layout/TopBar'
 import { MobileNav } from '@/components/layout/MobileNav'

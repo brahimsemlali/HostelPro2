@@ -449,8 +449,86 @@ export default function LandingPage() {
 
   const HERO_WORDS = ['Every', 'bed', 'booked.', 'Every', 'guest', 'happy.', 'Every', 'night', 'effortless.']
 
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: 'Qu\'est-ce que Sweet Reservation ?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Sweet Reservation est un logiciel SaaS de gestion pour hostels et auberges au Maroc. Il permet le check-in digital en 60 secondes, la génération automatique de fiches de police, l\'intégration WhatsApp, la gestion des paiements en MAD et les rapports de revenus.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Comment Sweet Reservation génère-t-il les fiches de police ?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Sweet Reservation génère automatiquement les fiches de police en PDF au format standard marocain lors de chaque check-in. Toutes les informations requises (nom, passeport, nationalité, adresse au Maroc, destination suivante) sont collectées dans le formulaire de check-in et exportées en un seul clic.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Sweet Reservation fonctionne-t-il avec Booking.com et Hostelworld ?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Oui. Sweet Reservation s\'intègre avec Booking.com, Hostelworld et d\'autres canaux OTA. Vous pouvez importer les réservations, suivre les commissions et calculer le revenu net après déduction des frais de canal.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Puis-je utiliser Sweet Reservation sur mobile ?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Oui, Sweet Reservation est entièrement optimisé pour mobile. L\'application web progressive (PWA) fonctionne sur tous les smartphones. Une navigation simplifiée est disponible en bas de l\'écran pour un accès rapide au check-in, plan des lits et paiements.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Quel est le prix de Sweet Reservation ?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Sweet Reservation propose un essai gratuit de 14 jours sans carte bancaire. Des plans mensuels et annuels sont disponibles pour les hostels de toutes tailles, de la petite auberge au grand établissement.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Sweet Reservation est-il disponible en arabe ?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Oui, Sweet Reservation est disponible en français, arabe et anglais. L\'interface s\'adapte à la langue choisie par l\'utilisateur.',
+        },
+      },
+    ],
+  }
+
+  const localBusinessSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'Sweet Reservation',
+    url: 'https://www.sweetreservation.com',
+    applicationCategory: 'BusinessApplication',
+    operatingSystem: 'Web',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'MAD',
+      description: 'Essai gratuit 14 jours',
+    },
+  }
+
   return (
     <div className={jakarta.className} style={{ background: '#fff', color: '#0E1A1F', overflowX: 'hidden' }}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessSchema) }}
+      />
 
       {/* ── Nav ─────────────────────────────────────────────────────────── */}
       <motion.nav

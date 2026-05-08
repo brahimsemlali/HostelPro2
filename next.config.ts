@@ -42,11 +42,45 @@ const securityHeaders = [
 ]
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      // Canonical: redirect bare domain → www
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'sweetreservation.com' }],
+        destination: 'https://www.sweetreservation.com/:path*',
+        permanent: true,
+      },
+    ]
+  },
+
   async headers() {
     return [
+      // Security headers on all routes
       {
         source: '/(.*)',
         headers: securityHeaders,
+      },
+      // Long-lived cache for hashed static assets (_next/static)
+      {
+        source: '/_next/static/(.*)',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      // Medium cache for public images/fonts
+      {
+        source: '/(favicon.*|icon.*|apple-touch-icon.*|og-image.*|opengraph-image.*)',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' },
+        ],
+      },
+      // Sitemap and robots.txt — short cache so updates propagate quickly
+      {
+        source: '/(sitemap.xml|robots.txt)',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=3600, stale-while-revalidate=86400' },
+        ],
       },
     ]
   },

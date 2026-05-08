@@ -1,26 +1,69 @@
 {
-  "name": "HostelPro — Gestion d'auberge",
-  "short_name": "HostelPro",
-  "description": "Solution de gestion pour auberges et hostels au Maroc",
-  "start_url": "/",
+  "name": "Sweet Reservation — Gestion d'Hostel Maroc",
+  "short_name": "SweetRes",
+  "description": "Logiciel de gestion pour hostels et auberges au Maroc. Check-in digital, fiches de police, WhatsApp, paiements MAD.",
+  "start_url": "/dashboard",
+  "id": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "background_color": "#0A1F1C",
   "theme_color": "#0F6E56",
   "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "fr",
+  "dir": "ltr",
+  "categories": ["business", "productivity", "travel"],
+  "iarc_rating_id": "",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
-  "categories": ["business", "productivity"],
-  "lang": "fr"
+  "shortcuts": [
+    {
+      "name": "Nouveau check-in",
+      "short_name": "Check-in",
+      "description": "Enregistrer un nouveau client",
+      "url": "/guests/new",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Plan des lits",
+      "short_name": "Lits",
+      "description": "Voir l'état des lits en direct",
+      "url": "/beds",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Paiements",
+      "short_name": "Paiements",
+      "description": "Enregistrer un paiement",
+      "url": "/payments",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "related_applications": [],
+  "protocol_handlers": []
 }
