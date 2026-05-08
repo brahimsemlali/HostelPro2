@@ -34,7 +34,10 @@ export default async function ReportsPage() {
       .in('status', ['checked_in', 'checked_out', 'confirmed']),
   ])
 
-  if (!propertyRes.data) redirect('/onboarding')
+  if (!propertyRes.data) {
+    if (propertyRes.error?.code === 'PGRST116') redirect('/onboarding')
+    else redirect('/login?error=service_unavailable')
+  }
 
   return (
     <ReportsClient

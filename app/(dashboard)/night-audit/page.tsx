@@ -10,9 +10,12 @@ export default async function NightAuditPage() {
 
   const supabase = await createClient()
 
-  const { data: property } = await supabase
+  const { data: property, error: propertyError } = await supabase
     .from('properties').select('id, name, city, police_prefecture').eq('id', session.propertyId).single()
-  if (!property) redirect('/onboarding')
+  if (!property) {
+    if (propertyError?.code === 'PGRST116') redirect('/onboarding')
+    else redirect('/login?error=service_unavailable')
+  }
 
   // Use local date to avoid UTC off-by-one at midnight in UTC+1 (Morocco)
   const today = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD

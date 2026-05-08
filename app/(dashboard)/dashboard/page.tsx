@@ -12,13 +12,18 @@ export default async function DashboardPage() {
 
   const supabase = await createClient()
 
-  const { data: property } = await supabase
+  const { data: property, error: propertyError } = await supabase
     .from('properties')
     .select('id, name, city, check_in_time, check_out_time, currency, review_url')
     .eq('id', session.propertyId)
     .single()
 
-  if (!property) redirect('/onboarding')
+  // Only redirect to onboarding if the property genuinely doesn't exist (PGRST116 = no rows).
+  // A network/DB error returns a different code — don't boot the user to onboarding on outages.
+  if (!property) {
+    if (propertyError?.code === 'PGRST116') redirect('/onboarding')
+    else redirect('/login?error=service_unavailable')
+  }
 
   // Local date to avoid UTC off-by-one at midnight in UTC+1 (Morocco)
   const today = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD

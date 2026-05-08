@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getRouteHandlerSession, createAdminClient } from '@/lib/supabase/server'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 
+const APP_URL: string = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.sweetreservation.com'
+
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req)
   const rl = rateLimit({ key: `invite:${ip}`, limit: 20, windowSeconds: 3600 })
@@ -56,7 +58,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle()
 
     if (pendingInvite) {
-      const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/accept-invite?token=${pendingInvite.token}`
+      const inviteUrl = `${APP_URL}/accept-invite?token=${pendingInvite.token}`
       return NextResponse.json({ inviteUrl, token: pendingInvite.token, reused: true })
     }
 
@@ -85,8 +87,8 @@ export async function POST(req: NextRequest) {
 
     const acceptInvitePath = `/accept-invite?token=${invitation.token}`
     // PKCE callback route exchanges the auth code, then redirects to acceptInvitePath
-    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback?next=${encodeURIComponent(acceptInvitePath)}`
-    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}${acceptInvitePath}`
+    const callbackUrl = `${APP_URL}/api/auth/callback?next=${encodeURIComponent(acceptInvitePath)}`
+    const inviteUrl = `${APP_URL}${acceptInvitePath}`
 
     // Send the invite email via Supabase Auth.
     // inviteUserByEmail creates the user (or re-invites if they exist) and sends an email

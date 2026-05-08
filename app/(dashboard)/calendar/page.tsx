@@ -14,9 +14,12 @@ export default async function CalendarPage({
 
   const supabase = await createClient()
 
-  const { data: property } = await supabase
+  const { data: property, error: propertyError } = await supabase
     .from('properties').select('id').eq('id', session.propertyId).single()
-  if (!property) redirect('/onboarding')
+  if (!property) {
+    if (propertyError?.code === 'PGRST116') redirect('/onboarding')
+    else redirect('/login?error=service_unavailable')
+  }
 
   // Default: today, show 14 days. Validate `from` is a real ISO date to prevent bad input.
   const todayStr = new Date().toISOString().split('T')[0]

@@ -12,15 +12,13 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
 
-    // Validate that this property belongs to the authenticated owner
-    const { data: property } = await supabase
-      .from('properties')
-      .select('id')
-      .eq('id', propertyId)
-      .eq('owner_id', user.id)
-      .single()
+    // Allow access if user is the property owner OR an active staff member of that property
+    const [ownerRes, staffRes] = await Promise.all([
+      supabase.from('properties').select('id').eq('id', propertyId).eq('owner_id', user.id).maybeSingle(),
+      supabase.from('staff').select('id').eq('property_id', propertyId).eq('user_id', user.id).eq('is_active', true).maybeSingle(),
+    ])
 
-    if (!property) {
+    if (!ownerRes.data && !staffRes.data) {
       return NextResponse.json({ error: 'Propriété introuvable' }, { status: 403 })
     }
 

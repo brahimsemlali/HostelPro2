@@ -116,17 +116,16 @@ export function AddArrivalModal({
     if (selectedBedId && checkInDate && checkOutDate && !totalPrice) {
       const bed = beds.find((b) => b.id === selectedBedId)
       if (bed) {
-        const nights = Math.max(
-          1,
-          Math.round(
-            (new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) /
-              86400000,
-          ),
-        )
-        setTotalPrice(String(bed.base_price * nights))
+        const inMs = new Date(checkInDate).getTime()
+        const outMs = new Date(checkOutDate).getTime()
+        if (!isNaN(inMs) && !isNaN(outMs) && outMs > inMs) {
+          const nights = Math.max(1, Math.round((outMs - inMs) / 86400000))
+          setTotalPrice(String(bed.base_price * nights))
+        }
       }
     }
-  }, [selectedBedId, checkInDate, checkOutDate, beds, totalPrice])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBedId, checkInDate, checkOutDate, beds])
 
   // ── Submit ─────────────────────────────────────────────────────────────
   const handleSubmit = useCallback(

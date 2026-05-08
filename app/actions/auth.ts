@@ -77,7 +77,7 @@ export async function forgotPasswordAction(formData: FormData) {
 
   const supabase = await getSupabase()
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/reset-password`,
+    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.sweetreservation.com'}/reset-password`,
   })
 
   // Always return success to avoid user enumeration (don't reveal if email exists)

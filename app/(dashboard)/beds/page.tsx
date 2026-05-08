@@ -21,7 +21,10 @@ export default async function BedsPage() {
       .gte('check_out_date', today),
   ])
 
-  if (!propertyRes.data) redirect('/onboarding')
+  if (!propertyRes.data) {
+    if (propertyRes.error?.code === 'PGRST116') redirect('/onboarding')
+    else redirect('/login?error=service_unavailable')
+  }
 
   return (
     <BedMapClient

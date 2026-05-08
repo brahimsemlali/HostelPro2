@@ -56,6 +56,8 @@ function extractGuestName(summary: string): { first_name: string; last_name: str
   // Booking.com uses: "First Last" or "CLOSED" or "Blocked"
   const cleaned = summary.replace(/\(.*?\)/g, '').trim()
   if (!cleaned || /closed|blocked|unavailable|ferme/i.test(cleaned)) return null
+  // Reject summaries that are purely numeric or contain no letters (e.g. booking IDs)
+  if (!/[a-zA-ZÀ-ÿ]/.test(cleaned)) return null
   const parts = cleaned.split(/\s+/)
   if (parts.length === 0) return null
   const first_name = parts[0] ?? 'Inconnu'

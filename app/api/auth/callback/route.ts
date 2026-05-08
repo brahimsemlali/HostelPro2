@@ -6,7 +6,9 @@ import { NextRequest, NextResponse } from 'next/server'
 // Used by invite emails, magic links, and OAuth redirects.
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get('code')
-  const next = req.nextUrl.searchParams.get('next') ?? '/dashboard'
+  const rawNext = req.nextUrl.searchParams.get('next') ?? '/dashboard'
+  // Only allow relative paths to prevent open redirect attacks
+  const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/dashboard'
 
   if (code) {
     const cookieStore = await cookies()

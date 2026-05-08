@@ -17,7 +17,10 @@ export default async function WhatsAppPage() {
   ])
 
   const property = propertyRes.data
-  if (!property) redirect('/onboarding')
+  if (!property) {
+    if (propertyRes.error?.code === 'PGRST116') redirect('/onboarding')
+    else redirect('/login?error=service_unavailable')
+  }
   const messages = messagesRes.data
   const activeBookings = activeBookingsRes.data
 

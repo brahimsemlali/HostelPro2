@@ -141,7 +141,7 @@ export async function getRouteHandlerSession(): Promise<UserSession | null> {
     ? await admin.from('subscriptions').select('status').eq('property_id', propertyId).maybeSingle()
     : { data: null }
 
-  const isSuperAdmin = (process.env.SUPERADMIN_EMAILS ?? '').split(',').includes(user.email ?? '')
+  const isSuperAdmin = (process.env.SUPERADMIN_EMAILS ?? '').split(',').filter(Boolean).includes(user.email ?? '')
 
   if (properties && properties.length > 0) {
     const activeFromCookie = cookieStore.get('hp-active-property')?.value
@@ -218,6 +218,7 @@ export const getUserSession = cache(async (): Promise<UserSession | null> => {
 
   const isSuperAdmin = (process.env.SUPERADMIN_EMAILS ?? '')
     .split(',')
+    .filter(Boolean)
     .includes(user.email ?? '')
 
   if (properties && properties.length > 0) {

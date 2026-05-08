@@ -1,8 +1,15 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { getUserId } from '@/lib/supabase/server'
+import { rateLimit, getClientIp } from '@/lib/rate-limit'
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const ip = getClientIp(req)
+  const rl = rateLimit({ key: `accept-invite:${ip}`, limit: 10, windowSeconds: 3600 })
+  if (!rl.allowed) {
+    return NextResponse.json({ error: 'Trop de tentatives. Réessayez dans une heure.' }, { status: 429 })
+  }
+
   try {
     const userId = await getUserId()
     if (!userId) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
@@ -37,25 +44,28 @@ export async function POST(req: Request) {
       .maybeSingle()
 
     if (existingStaff) {
-      await admin
+      const { error: updateErr } = await admin
         .from('staff')
         .update({ user_id: userId, is_active: true })
         .eq('id', existingStaff.id)
+      if (updateErr) return NextResponse.json({ error: 'Erreur lors de l\'activation du compte' }, { status: 500 })
     } else {
-      await admin.from('staff').insert({
+      const { error: insertErr } = await admin.from('staff').insert({
         property_id: invitation.property_id,
         user_id: userId,
         name: invitation.name,
         role: invitation.role,
         is_active: true,
       })
+      if (insertErr) return NextResponse.json({ error: 'Erreur lors de la création du compte' }, { status: 500 })
     }
 
     // Mark invitation as accepted
-    await admin
+    const { error: acceptErr } = await admin
       .from('staff_invitations')
       .update({ accepted_at: new Date().toISOString() })
       .eq('id', invitation.id)
+    if (acceptErr) return NextResponse.json({ error: 'Erreur lors de la validation de l\'invitation' }, { status: 500 })
 
     return NextResponse.json({ ok: true })
   } catch {

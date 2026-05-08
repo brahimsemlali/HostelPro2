@@ -62,6 +62,7 @@ export function rateLimit({ key, limit, windowSeconds }: RateLimitOptions): Rate
 export function getClientIp(req: Request): string {
   const headers = req instanceof Request ? req.headers : new Headers()
   return (
+    headers.get('cf-connecting-ip') ||
     headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
     headers.get('x-real-ip') ||
     'unknown'

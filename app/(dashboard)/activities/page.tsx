@@ -9,9 +9,12 @@ export default async function ActivitiesPage() {
 
   const supabase = await createClient()
 
-  const { data: property } = await supabase
+  const { data: property, error: propertyError } = await supabase
     .from('properties').select('id, name, currency').eq('id', session.propertyId).single()
-  if (!property) redirect('/onboarding')
+  if (!property) {
+    if (propertyError?.code === 'PGRST116') redirect('/onboarding')
+    else redirect('/login?error=service_unavailable')
+  }
 
   // Fetch upcoming activities
   const today = new Date().toISOString().split('T')[0]

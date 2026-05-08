@@ -87,7 +87,10 @@ export default async function PaymentsPage() {
   ])
 
   const property = propertyRes.data
-  if (!property) redirect('/onboarding')
+  if (!property) {
+    if (propertyRes.error?.code === 'PGRST116') redirect('/onboarding')
+    else redirect('/login?error=service_unavailable')
+  }
 
   // Calculate pending
   const paidByBooking: Record<string, number> = {}

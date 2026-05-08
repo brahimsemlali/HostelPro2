@@ -347,7 +347,7 @@ export function CheckInWizard({ property, beds, preselectedBedId }: Props) {
         status: 'sent',
       })
       .then(({ error }) => {
-        void error
+        if (error) toast.error('Erreur lors de l\'enregistrement du message WhatsApp')
       })
 
     window.open(link, '_blank')
@@ -780,7 +780,13 @@ export function CheckInWizard({ property, beds, preselectedBedId }: Props) {
             <NavButtons
               onBack={() => setStep(1)}
               onNext={() => setStep(3)}
-              nextDisabled={!guestForm.first_name || !guestForm.last_name}
+              nextDisabled={
+                !guestForm.first_name ||
+                !guestForm.last_name ||
+                !guestForm.nationality ||
+                !guestForm.document_number ||
+                !guestForm.phone
+              }
             />
           </div>
         </div>

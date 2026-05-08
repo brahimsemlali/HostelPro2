@@ -17,7 +17,10 @@ export default async function IntegrationsPage() {
   ])
 
   const { data: property, error: propError } = propertyRes
-  if (!property || propError) redirect('/onboarding')
+  if (!property) {
+    if (propError?.code === 'PGRST116') redirect('/onboarding')
+    else redirect('/login?error=service_unavailable')
+  }
 
   const { data: existingRefs } = existingRefsRes
 

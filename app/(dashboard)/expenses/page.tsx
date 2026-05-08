@@ -9,13 +9,16 @@ export default async function ExpensesPage() {
 
   const supabase = await createClient()
 
-  const { data: property } = await supabase
+  const { data: property, error: propertyError } = await supabase
     .from('properties')
     .select('id, name')
     .eq('id', session.propertyId)
     .single()
 
-  if (!property) redirect('/onboarding')
+  if (!property) {
+    if (propertyError?.code === 'PGRST116') redirect('/onboarding')
+    else redirect('/login?error=service_unavailable')
+  }
 
   // Fetch last 90 days of expenses + all inventory items in parallel
   const ninetyDaysAgo = new Date()

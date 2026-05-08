@@ -66,6 +66,14 @@ export async function POST(
   if (date_of_birth && !/^\d{4}-\d{2}-\d{2}$/.test(date_of_birth)) {
     return NextResponse.json({ error: 'Format de date invalide (attendu : YYYY-MM-DD)' }, { status: 400 })
   }
+  const validGenders = ['M', 'F']
+  if (gender && !validGenders.includes(String(gender))) {
+    return NextResponse.json({ error: 'Genre invalide (M ou F)' }, { status: 400 })
+  }
+  const validDocTypes = ['passport', 'cin', 'id_card']
+  if (document_type && !validDocTypes.includes(String(document_type))) {
+    return NextResponse.json({ error: 'Type de document invalide' }, { status: 400 })
+  }
 
   const guestData = {
     first_name: String(first_name).trim(),

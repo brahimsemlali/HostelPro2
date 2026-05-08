@@ -50,7 +50,8 @@ export async function sendWhatsAppBroadcast(phones: string[], messageText: strin
     const cleaned = phone.replace(/\D/g, '')
 
     try {
-      const response = await fetch(`https://graph.facebook.com/v17.0/${phoneId}/messages`, {
+      const waApiVersion = process.env.WHATSAPP_API_VERSION ?? 'v20.0'
+      const response = await fetch(`https://graph.facebook.com/${waApiVersion}/${phoneId}/messages`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
