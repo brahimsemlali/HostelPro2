@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
     }
 
     const response = await fetch(icalUrl, {
-      headers: { 'User-Agent': 'HostelPro/1.0' },
+      headers: { 'User-Agent': 'SweetReservation/1.0' },
       signal: AbortSignal.timeout(10000),
     })
 

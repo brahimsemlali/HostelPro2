@@ -277,7 +277,7 @@ export default function ProductDemo() {
               className="rounded-lg px-4 py-1 text-[11px] font-medium border"
               style={{ background: "rgba(15,110,86,0.04)", color: "#8AA09C", borderColor: "rgba(15,110,86,0.08)" }}
             >
-              hostelpro.ma/dashboard
+              sweetreservation.com/dashboard
             </div>
           </div>
         </div>

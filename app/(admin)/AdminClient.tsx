@@ -73,7 +73,7 @@ export function AdminClient({ properties }: Props) {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-[#0A1F1C]">Command Center</h1>
-            <p className="text-sm text-[#64748B]">Superadmin Dashboard — HostelPro SaaS</p>
+            <p className="text-sm text-[#64748B]">Superadmin Dashboard — Sweet Reservation SaaS</p>
           </div>
         </div>
         

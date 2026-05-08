@@ -555,7 +555,7 @@ export default function LandingPage() {
               <rect x="6" y="3" width="4" height="2" rx="1" fill="white"/>
             </svg>
           </div>
-          <span style={{ fontSize: 15, fontWeight: 700, color: '#0E1A1F', letterSpacing: '-0.3px' }}>HostelPro</span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: '#0E1A1F', letterSpacing: '-0.3px' }}>Sweet Reservation</span>
         </Link>
         <div className="lp-nav-links" style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
           {['Features', 'Pricing'].map((l) => (
@@ -696,7 +696,7 @@ export default function LandingPage() {
                 </div>
                 <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
                   <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '2px 14px' }}>
-                    hostelpro.ma/dashboard
+                    sweetreservation.com/dashboard
                   </div>
                 </div>
               </div>
@@ -711,7 +711,7 @@ export default function LandingPage() {
                         <rect x="6" y="3" width="4" height="2" rx="1" fill="white"/>
                       </svg>
                     </div>
-                    <span style={{ fontSize: 12.5, fontWeight: 700, color: 'rgba(255,255,255,0.9)', letterSpacing: '-0.2px' }}>HostelPro</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 700, color: 'rgba(255,255,255,0.9)', letterSpacing: '-0.2px' }}>Sweet Reservation</span>
                   </div>
                   {[
                     { icon: '🏠', label: t('nav.dashboard'), active: true },
@@ -1143,7 +1143,7 @@ export default function LandingPage() {
             variants={fadeUp}
             style={{ fontSize: 'clamp(20px,3.5vw,26px)', fontWeight: 600, lineHeight: 1.5, color: 'rgba(255,255,255,0.82)', marginBottom: 36 }}
           >
-            Before HostelPro, I was spending{' '}
+            Before Sweet Reservation, I was spending{' '}
             <em style={{ fontStyle: 'normal', color: '#21C77A' }}>two hours every night</em>{' '}
             writing spreadsheets and filling forms by hand. Now I run the whole hostel from my phone.
           </motion.p>
@@ -1178,7 +1178,7 @@ export default function LandingPage() {
             Ready to run your hostel from your phone?
           </motion.h3>
           <motion.p variants={fadeUp} style={{ fontSize: 15, color: 'rgba(255,255,255,0.45)', marginBottom: 32, lineHeight: 1.65, position: 'relative' }}>
-            Join 200+ Moroccan properties on HostelPro. 14-day free trial, no credit card required.
+            Join 200+ Moroccan properties on Sweet Reservation. 14-day free trial, no credit card required.
           </motion.p>
           <motion.div variants={fadeUp} style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', position: 'relative' }}>
             <motion.div whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.97 }}>
@@ -1220,7 +1220,7 @@ export default function LandingPage() {
                     <rect x="6" y="3" width="4" height="2" rx="1" fill="white"/>
                   </svg>
                 </div>
-                <span style={{ fontSize: 15, fontWeight: 700, color: '#fff', letterSpacing: '-0.3px' }}>HostelPro</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: '#fff', letterSpacing: '-0.3px' }}>Sweet Reservation</span>
               </div>
               <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', lineHeight: 1.7, marginTop: 14, marginBottom: 18 }}>
                 The all-in-one management platform for hostels, riads, and guesthouses across Morocco and North Africa.
@@ -1242,7 +1242,7 @@ export default function LandingPage() {
             ))}
           </div>
           <div style={{ paddingTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)' }}>© {new Date().getFullYear()} HostelPro. All rights reserved.</span>
+            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)' }}>© {new Date().getFullYear()} Sweet Reservation. All rights reserved.</span>
             <div style={{ display: 'flex', gap: 20 }}>
               {['Privacy', 'Terms', 'Cookies'].map((l) => (
                 <a key={l} href="#" style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)', textDecoration: 'none' }}>{l}</a>

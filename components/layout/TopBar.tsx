@@ -72,7 +72,7 @@ export function TopBar() {
   const t = useT()
 
   const titleKey = routeKeys.find(([key]) => pathname === key || pathname.startsWith(key + '/'))?.[1]
-  const title = titleKey ? t(titleKey) : 'HostelPro'
+  const title = titleKey ? t(titleKey) : 'Sweet Reservation'
 
   const displayName = session?.staffName ?? t(`role.${session?.role ?? 'owner'}`)
   const displayRole = session?.staffName ? t(`role.${session.role}`) : ''

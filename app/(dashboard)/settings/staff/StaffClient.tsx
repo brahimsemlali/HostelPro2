@@ -116,7 +116,7 @@ export function StaffClient({ staff }: Props) {
     if (!credentials) return
     const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/login`
     const message =
-      `Bonjour ${credentials.name} 👋\n\nVoici vos identifiants pour HostelPro :\n\n` +
+      `Bonjour ${credentials.name} 👋\n\nVoici vos identifiants pour Sweet Reservation :\n\n` +
       `📧 Email : ${credentials.email}\n` +
       `🔑 Mot de passe : ${credentials.password}\n\n` +
       `🔗 Se connecter : ${loginUrl}\n\n` +

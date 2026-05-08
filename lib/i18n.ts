@@ -142,7 +142,7 @@ const fr = {
 
   // Auth - Register
   'register.heading': 'Créer un compte',
-  'register.subheading': 'Rejoignez HostelPro et gérez votre auberge en toute simplicité.',
+  'register.subheading': 'Rejoignez Sweet Reservation et gérez votre auberge en toute simplicité.',
   'register.email': 'Email',
   'register.password': 'Mot de passe',
   'register.passwordPlaceholder': '8 caractères minimum',
@@ -165,7 +165,7 @@ const fr = {
   // Onboarding
   'onboarding.lang.title': 'Choisissez votre langue',
   'onboarding.lang.subtitle': 'Vous pourrez la modifier dans les paramètres.',
-  'onboarding.step1.title': 'Bienvenue sur HostelPro!',
+  'onboarding.step1.title': 'Bienvenue sur Sweet Reservation!',
   'onboarding.step1.subtitle': 'Configurez votre établissement en 3 étapes.',
   'onboarding.step1.propertyName': 'Nom de votre auberge *',
   'onboarding.step1.propertyPlaceholder': 'Ex: Auberge Atlas',
@@ -188,7 +188,7 @@ const fr = {
   'onboarding.step3.beds': 'lits',
   'onboarding.step3.dorm': 'Dortoir',
   'onboarding.step3.private': 'Privée',
-  'onboarding.step3.launch': 'Démarrer HostelPro',
+  'onboarding.step3.launch': 'Démarrer Sweet Reservation',
   'onboarding.step3.launching': 'Création en cours...',
   'onboarding.success': 'Votre auberge est configurée!',
 
@@ -216,7 +216,7 @@ const fr = {
   'settings.integrations.badge': 'Nouveau',
 
   // Dashboard
-  'dashboard.welcome': 'Bienvenue sur HostelPro',
+  'dashboard.welcome': 'Bienvenue sur Sweet Reservation',
   'dashboard.welcomeSubtitle': 'Votre tableau de bord est prêt. Commencez par configurer vos chambres et vos lits pour démarrer.',
   'dashboard.setup.step1': 'Configurer les chambres',
   'dashboard.setup.step1desc': 'Ajoutez vos dortoirs et chambres privées avec leurs lits.',
@@ -1179,7 +1179,7 @@ const en = {
 
   // Auth - Register
   'register.heading': 'Create an account',
-  'register.subheading': 'Join HostelPro and manage your hostel with ease.',
+  'register.subheading': 'Join Sweet Reservation and manage your hostel with ease.',
   'register.email': 'Email',
   'register.password': 'Password',
   'register.passwordPlaceholder': 'Minimum 8 characters',
@@ -1202,7 +1202,7 @@ const en = {
   // Onboarding
   'onboarding.lang.title': 'Choose your language',
   'onboarding.lang.subtitle': 'You can change it later in settings.',
-  'onboarding.step1.title': 'Welcome to HostelPro!',
+  'onboarding.step1.title': 'Welcome to Sweet Reservation!',
   'onboarding.step1.subtitle': 'Set up your property in 3 steps.',
   'onboarding.step1.propertyName': 'Your hostel name *',
   'onboarding.step1.propertyPlaceholder': 'e.g. Atlas Hostel',
@@ -1225,7 +1225,7 @@ const en = {
   'onboarding.step3.beds': 'beds',
   'onboarding.step3.dorm': 'Dorm',
   'onboarding.step3.private': 'Private',
-  'onboarding.step3.launch': 'Launch HostelPro',
+  'onboarding.step3.launch': 'Launch Sweet Reservation',
   'onboarding.step3.launching': 'Setting up...',
   'onboarding.success': 'Your hostel is set up!',
 
@@ -1253,7 +1253,7 @@ const en = {
   'settings.integrations.badge': 'New',
 
   // Dashboard
-  'dashboard.welcome': 'Welcome to HostelPro',
+  'dashboard.welcome': 'Welcome to Sweet Reservation',
   'dashboard.welcomeSubtitle': 'Your dashboard is ready. Start by configuring your rooms and beds.',
   'dashboard.setup.step1': 'Configure rooms',
   'dashboard.setup.step1desc': 'Add your dorms and private rooms with their beds.',

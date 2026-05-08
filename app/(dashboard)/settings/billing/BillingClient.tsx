@@ -25,7 +25,7 @@ export function BillingClient({ propertyId, subscription }: Props) {
     <div className="p-6 space-y-8 max-w-5xl mx-auto hp-page-in">
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold text-[#0A1F1C]">Abonnement & Facturation</h1>
-        <p className="text-[#94A3B8] text-sm">Gérez votre accès à HostelPro et vos méthodes de paiement.</p>
+        <p className="text-[#94A3B8] text-sm">Gérez votre accès à Sweet Reservation et vos méthodes de paiement.</p>
       </div>
 
       {/* Current Status Banner */}
@@ -83,7 +83,7 @@ export function BillingClient({ propertyId, subscription }: Props) {
                   </ul>
                   <Button 
                     className="w-full bg-[#0F6E56] hover:bg-[#0c5a46] rounded-xl py-6"
-                    onClick={() => window.open('https://hostelpro.lemonsqueezy.com/checkout?embed=1', '_blank')}
+                    onClick={() => window.open('https://sweetreservation.lemonsqueezy.com/checkout?embed=1', '_blank')}
                   >
                     Sélectionner
                   </Button>

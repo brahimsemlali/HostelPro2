@@ -72,7 +72,7 @@ export default function LoginPage() {
 
         <div className="relative flex items-center gap-3">
           <AppLogo size={40} className="rounded-[12px]" />
-          <span className="font-semibold text-white text-[18px] tracking-tight">HostelPro</span>
+          <span className="font-semibold text-white text-[18px] tracking-tight">Sweet Reservation</span>
         </div>
 
         <div className="relative space-y-7">
@@ -136,7 +136,7 @@ export default function LoginPage() {
         {/* Mobile logo */}
         <div className="lg:hidden flex items-center gap-2.5 mb-8">
           <AppLogo size={40} className="rounded-[12px]" />
-          <span className="font-semibold text-[18px] tracking-tight">HostelPro</span>
+          <span className="font-semibold text-[18px] tracking-tight">Sweet Reservation</span>
         </div>
 
         <div className="w-full max-w-[380px]">

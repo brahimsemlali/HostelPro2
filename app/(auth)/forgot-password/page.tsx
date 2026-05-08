@@ -64,7 +64,7 @@ export default function ForgotPasswordPage() {
       <div className="flex-1 flex flex-col items-center justify-center p-6 bg-[oklch(0.972_0_0)]">
         <div className="lg:hidden flex items-center gap-2.5 mb-8">
           <AppLogo size={40} className="rounded-[12px]" />
-          <span className="font-semibold text-[18px] tracking-tight">HostelPro</span>
+          <span className="font-semibold text-[18px] tracking-tight">Sweet Reservation</span>
         </div>
 
         <div className="w-full max-w-[380px]">

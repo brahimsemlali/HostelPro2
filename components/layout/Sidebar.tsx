@@ -114,7 +114,7 @@ export function Sidebar() {
       <div className="flex items-center gap-2.5 px-5 pt-5 pb-4">
         <AppLogo size={34} className="rounded-[9px]" />
         <div>
-          <span className="font-semibold text-[14px] text-[#0A1F1C] tracking-tight leading-none">HostelPro</span>
+          <span className="font-semibold text-[14px] text-[#0A1F1C] tracking-tight leading-none">Sweet Reservation</span>
           <p className="text-[10px] text-[#94A3B8] leading-none mt-1">{t('nav.hotelManagement')}</p>
         </div>
       </div>

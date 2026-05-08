@@ -7,14 +7,14 @@ interface AppLogoProps {
 }
 
 /**
- * HostelPro brand icon — uses the real app icon image.
+ * Sweet Reservation brand icon — uses the real app icon image.
  * The icon already has the teal background baked in, so no wrapper bg needed.
  */
 export function AppLogo({ size = 36, className }: AppLogoProps) {
   return (
     <Image
       src="/icon.png"
-      alt="HostelPro"
+      alt="Sweet Reservation"
       width={size}
       height={size}
       className={cn('flex-shrink-0 object-cover', className)}
