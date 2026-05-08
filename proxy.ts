@@ -22,7 +22,11 @@ export async function proxy(request: NextRequest) {
     pathname === '/' ||
     PUBLIC_ROUTE_PREFIXES.some((r) => pathname.startsWith(r)) ||
     pathname.startsWith('/_next') ||
-    pathname.startsWith('/favicon')
+    pathname.startsWith('/favicon') ||
+    pathname === '/sitemap.xml' ||
+    pathname === '/robots.txt' ||
+    pathname === '/opengraph-image' ||
+    pathname.startsWith('/google')
 
   // Create a response that we can mutate cookies on
   let response = NextResponse.next({ request })
