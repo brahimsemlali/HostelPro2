@@ -660,7 +660,7 @@ export default function LandingPage() {
             </Link>
           </motion.div>
           <motion.div whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.97 }}>
-            <a href="#features" style={{
+            <Link href="/login" style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               fontSize: 15, fontWeight: 600, color: 'rgba(255,255,255,0.7)', textDecoration: 'none',
               padding: '14px 24px', borderRadius: 14,
@@ -668,8 +668,8 @@ export default function LandingPage() {
               background: 'rgba(255,255,255,0.05)',
               backdropFilter: 'blur(8px)',
             }}>
-              See how it works
-            </a>
+              Se connecter
+            </Link>
           </motion.div>
         </motion.div>
 
