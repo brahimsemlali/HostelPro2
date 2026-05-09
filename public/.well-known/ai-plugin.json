@@ -1,0 +1,17 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "Sweet Reservation",
+  "name_for_model": "sweet_reservation",
+  "description_for_human": "Logiciel de gestion pour hostels et auberges au Maroc. Check-in digital, fiches de police, WhatsApp, paiements MAD.",
+  "description_for_model": "Sweet Reservation is a hostel property management system for Morocco. It handles guest check-in (60 seconds), automatic police registration form (fiche de police) PDF generation, bed map management, WhatsApp messaging, MAD payments, and revenue reporting. Primarily French-language, also supports Arabic and English.",
+  "auth": {
+    "type": "none"
+  },
+  "api": {
+    "type": "openapi",
+    "url": "https://www.sweetreservation.com/api/openapi.json"
+  },
+  "logo_url": "https://www.sweetreservation.com/icon-512.png",
+  "contact_email": "contact@sweetreservation.com",
+  "legal_info_url": "https://www.sweetreservation.com"
+}

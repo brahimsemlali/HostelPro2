@@ -1,0 +1,40 @@
+# Sweet Reservation
+
+> Logiciel SaaS de gestion pour hostels et auberges au Maroc.
+> Hostel management SaaS for Morocco and North Africa.
+
+Sweet Reservation is a French-language property management system (PMS) built specifically for Moroccan hostels and auberges. It replaces paper registers, Excel sheets, and WhatsApp notes with a single digital platform.
+
+## What it does
+
+- **Check-in digital** — Complete guest check-in in under 60 seconds, including bed assignment and payment recording
+- **Fiche de police** — Automatic generation of the Moroccan police registration form (fiche de police) as a PDF, compliant with prefecture requirements
+- **Live bed map** — Real-time visual grid of every bed's status (available, occupied, dirty, maintenance)
+- **WhatsApp integration** — Send welcome messages, payment reminders, and checkout notifications via WhatsApp (wa.me deep links + Meta Cloud API)
+- **Payments in MAD** — Record cash, bank transfer (virement), and CMI card payments in Moroccan Dirhams
+- **Night audit** — Guided end-of-day cash reconciliation and police report generation
+- **Revenue reports** — RevPAR, occupancy rate, channel profitability (Booking.com, Hostelworld, direct)
+- **Staff management** — Owner + manager + receptionist + housekeeping roles with invite flow
+- **Multi-language** — French (primary), Arabic, English
+
+## Who it's for
+
+Hostel and auberge owners in Morocco (Agadir, Marrakech, Casablanca, Fes, Tangier, Chefchaouen). Also relevant for riads and small guesthouses that need police form compliance.
+
+## Pricing
+
+- Free 14-day trial, no credit card required
+- Starter plan: $19/month (up to 20 beds)
+- Pro plan: $49/month (unlimited beds, advanced reports, staff management)
+- Bank wire payment in MAD available for Moroccan customers
+
+## Key URLs
+
+- Homepage: https://www.sweetreservation.com
+- Sign up: https://www.sweetreservation.com/register
+- Login: https://www.sweetreservation.com/login
+
+## Company
+
+Sweet Reservation (Stayy Sarl), Morocco.
+Contact: https://www.sweetreservation.com

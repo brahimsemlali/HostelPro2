@@ -42,5 +42,8 @@ export default function robots(): MetadataRoute.Robots {
     ],
     sitemap: 'https://www.sweetreservation.com/sitemap.xml',
     host: 'https://www.sweetreservation.com',
+    // AI crawler guidance
+    // llms.txt: https://www.sweetreservation.com/llms.txt
+    // llms-full.md: https://www.sweetreservation.com/llms-full.md
   }
 }

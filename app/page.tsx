@@ -1227,15 +1227,41 @@ export default function LandingPage() {
               </p>
             </div>
             {[
-              { title: 'Company', links: ['About', 'Blog', 'Careers', 'Contact'] },
-              { title: 'Help', links: ['Documentation', 'Getting started', 'FAQ', 'Service status'] },
-              { title: 'Resources', links: ['Hostel guide', 'Police form templates', 'WhatsApp templates', 'Morocco tourism'] },
+              {
+                title: 'Produit',
+                links: [
+                  { label: 'Fonctionnalités', href: '#features' },
+                  { label: 'Tarifs', href: '#pricing' },
+                  { label: 'Connexion', href: '/login' },
+                  { label: 'Essai gratuit', href: '/register' },
+                ],
+              },
+              {
+                title: 'Ressources',
+                links: [
+                  { label: 'Blog', href: '/blog' },
+                  { label: 'Fiche de police guide', href: '/blog/fiche-de-police-hostel-maroc' },
+                  { label: 'Booking.com vs Hostelworld', href: '/blog/booking-com-vs-hostelworld-maroc' },
+                  { label: 'Ouvrir un hostel au Maroc', href: '/blog/ouvrir-hostel-maroc-guide' },
+                ],
+              },
+              {
+                title: 'Villes',
+                links: [
+                  { label: 'Hostel Marrakech', href: '/logiciel-hostel-marrakech' },
+                  { label: 'Hostel Agadir', href: '/logiciel-hostel-agadir' },
+                  { label: 'Hostel Casablanca', href: '/logiciel-hostel-casablanca' },
+                  { label: 'Hostel Fès', href: '/logiciel-hostel-fes' },
+                  { label: 'Hostel Tanger', href: '/logiciel-hostel-tanger' },
+                  { label: 'Hostel Chefchaouen', href: '/logiciel-hostel-chefchaouen' },
+                ],
+              },
             ].map((col) => (
               <div key={col.title}>
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: 18 }}>{col.title}</div>
                 <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {col.links.map((l) => (
-                    <li key={l}><a href="#" style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}>{l}</a></li>
+                    <li key={l.label}><Link href={l.href} style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}>{l.label}</Link></li>
                   ))}
                 </ul>
               </div>
