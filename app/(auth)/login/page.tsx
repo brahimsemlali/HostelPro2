@@ -34,7 +34,7 @@ export default function LoginPage() {
       toast.error(translateAuthError(result.error, t))
       setLoading(false)
     } else if (result?.success) {
-      window.location.href = '/dashboard'
+      window.location.href = result.redirect ?? '/dashboard'
     }
   }
 

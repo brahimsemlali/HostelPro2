@@ -37,6 +37,12 @@ export async function loginAction(formData: FormData) {
 
   if (error) return { error: error.message }
 
+  // Superadmins have no property row — redirect them to /admin to avoid dashboard loop
+  const superadminEmails = (process.env.SUPERADMIN_EMAILS ?? '').split(',').filter(Boolean)
+  if (superadminEmails.includes(email)) {
+    return { success: true, redirect: '/admin' }
+  }
+
   // Return success — client will navigate with window.location.href
   // so the new cookie is committed before navigation
   return { success: true }
