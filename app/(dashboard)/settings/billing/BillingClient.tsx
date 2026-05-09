@@ -4,11 +4,11 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Check, CreditCard, Landmark, Zap, MessageCircle } from 'lucide-react'
+import { Check, ExternalLink, Landmark, Zap, MessageCircle, Loader2 } from 'lucide-react'
 import { BILLING_PLANS, BANK_WIRE_DETAILS } from '@/lib/constants'
-import { formatCurrency } from '@/lib/utils'
 import type { Subscription } from '@/types'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 interface Props {
   propertyId: string
@@ -16,7 +16,28 @@ interface Props {
 }
 
 export function BillingClient({ propertyId, subscription }: Props) {
-  const [loading, setLoading] = useState(false)
+  const [loadingVariant, setLoadingVariant] = useState<string | null>(null)
+
+  async function handleCheckout(variantId: string) {
+    setLoadingVariant(variantId)
+    try {
+      const res = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ variantId }),
+      })
+      const data = await res.json() as { url?: string; error?: string }
+      if (!res.ok || !data.url) {
+        toast.error(data.error ?? 'Erreur lors de la création du paiement')
+        return
+      }
+      window.location.href = data.url
+    } catch {
+      toast.error('Impossible de contacter le service de paiement')
+    } finally {
+      setLoadingVariant(null)
+    }
+  }
 
   const isExpired = subscription && new Date(subscription.current_period_end) < new Date()
   const isActive = subscription && (subscription.status === 'active' || subscription.status === 'trialing') && !isExpired
@@ -52,9 +73,11 @@ export function BillingClient({ propertyId, subscription }: Props) {
               </p>
             </div>
           </div>
-          {isActive && (
-            <Badge className="bg-[#0F6E56] hover:bg-[#0F6E56]">{subscription?.provider === 'manual_wire' ? 'Virement' : 'LemonSqueezy'}</Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {isActive && (
+              <Badge className="bg-[#0F6E56] hover:bg-[#0F6E56]">{subscription?.provider === 'manual_wire' ? 'Virement' : 'LemonSqueezy'}</Badge>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -81,11 +104,15 @@ export function BillingClient({ propertyId, subscription }: Props) {
                       </li>
                     ))}
                   </ul>
-                  <Button 
+                  <Button
                     className="w-full bg-[#0F6E56] hover:bg-[#0c5a46] rounded-xl py-6"
-                    onClick={() => window.open('https://sweetreservation.lemonsqueezy.com/checkout?embed=1', '_blank')}
+                    disabled={loadingVariant === plan.ls_variant_id}
+                    onClick={() => handleCheckout(plan.ls_variant_id)}
                   >
-                    Sélectionner
+                    {loadingVariant === plan.ls_variant_id
+                      ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Chargement…</>
+                      : 'Sélectionner'
+                    }
                   </Button>
                 </CardContent>
               </Card>

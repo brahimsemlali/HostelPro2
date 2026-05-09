@@ -11,6 +11,7 @@ const PUBLIC_ROUTE_PREFIXES = [
   '/checkin',           // public pre-check-in page
   '/api/auth',
   '/api/staff/accept-invite',
+  '/api/webhooks/lemonsqueezy',
 ]
 
 export async function proxy(request: NextRequest) {

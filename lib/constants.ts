@@ -54,19 +54,19 @@ export const BILLING_PLANS = [
   {
     id: 'starter_monthly',
     name: 'Starter (Mensuel)',
-    price: 19, // USD
+    price: 19,
     currency: 'USD',
     features: ['Jusqu\'à 20 lits', 'Fiches de police PDF', 'Lien WhatsApp', 'Support email'],
-    ls_variant_id: '123456', // Placeholder
+    ls_variant_id: '1633090',
   },
   {
     id: 'pro_monthly',
     name: 'Pro (Mensuel)',
-    price: 49, // USD
+    price: 49,
     currency: 'USD',
     features: ['Lits illimités', 'Rapports avancés', 'Gestion du staff', 'Support WhatsApp'],
-    ls_variant_id: '234567', // Placeholder
-  }
+    ls_variant_id: '1633110',
+  },
 ]
 
 export const BANK_WIRE_DETAILS = {
