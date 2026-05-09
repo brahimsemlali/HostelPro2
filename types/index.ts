@@ -247,6 +247,7 @@ export type UserSession = {
   hideRevenue: boolean
   isSuperAdmin: boolean
   subscriptionStatus: SubscriptionStatus | null
+  subscriptionPeriodEnd: string | null
   /** All properties this owner controls — only populated for owners, empty for staff */
   allProperties: { id: string; name: string; city: string }[]
 }

@@ -5,13 +5,14 @@
 
 ## WHAT THIS IS
 
-**HostelPro** — a hostel/auberge management SaaS for the Moroccan market.
+**Sweet Reservation** (formerly HostelPro) — a hostel/auberge management SaaS for the Moroccan market.
 Production-grade, not a prototype. French UI, MAD currency, Moroccan police form (fiche de police) generation.
 Stack: Next.js App Router · Supabase (Postgres + RLS + Auth) · **@base-ui/react** · Tailwind CSS v3 · TypeScript strict.
 
 Working directory: `/Users/strapexmaroc/Stayy/hostelpro`
 Dev server: `npm run dev` (port 3000)
 GitHub: `https://github.com/brahimsemlali/HostelPro2`
+Live domain: `https://www.sweetreservation.com` (Vercel, verified on Google Search Console)
 
 ---
 
@@ -32,7 +33,8 @@ Do NOT create or rename to `middleware.ts` — Next.js 16 will error if both exi
 - `'/'` is **exact-matched** (`pathname === '/'`), not prefix-matched — putting `'/'` in a `startsWith` array would make every route public (all paths start with `/`)
 - Authenticated users hitting `/`, `/login`, or `/register` are redirected to `/dashboard`
 - Unauthenticated users hitting protected routes are redirected to `/login?next=<pathname>`
-- Public prefixes: `/login`, `/register`, `/forgot-password`, `/reset-password`, `/accept-invite`, `/checkin`, `/api/auth`, `/api/staff/accept-invite`
+- Public prefixes: `/login`, `/register`, `/forgot-password`, `/reset-password`, `/accept-invite`, `/checkin`, `/api/auth`, `/api/staff/accept-invite`, `/api/webhooks/lemonsqueezy`
+- Marketing/SEO pages are public: `/blog`, `/logiciel-hostel-*`, `/sitemap.xml`, `/robots.txt`, `/og-image`
 
 ---
 
@@ -69,9 +71,62 @@ Do NOT introduce generic/purple gradient aesthetics. Keep the Apple-minimal dire
 
 ---
 
+## BILLING — LEMONSQUEEZY (LIVE)
+
+LemonSqueezy is the payment processor. Stripe is NOT used.
+
+### Store details
+- Store ID: `370406`
+- Store URL: `https://sweetreservation.lemonsqueezy.com`
+- Variant IDs (in `lib/constants.ts`):
+  - Starter: `1633090`
+  - Pro: `1633110`
+
+### Environment variables (all set in Vercel + `.env.local`)
+```env
+LEMONSQUEEZY_API_KEY=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...
+LEMONSQUEEZY_STORE_ID=370406
+LEMONSQUEEZY_WEBHOOK_SECRET=sweetreservation2026secret
+LEMONSQUEEZY_STARTER_VARIANT_ID=1633090
+LEMONSQUEEZY_PRO_VARIANT_ID=1633110
+```
+
+### API routes
+- `POST /api/billing/checkout` — owner-only, creates a LS checkout with `property_id` in `custom_data`, returns `{ url }` for redirect
+- `POST /api/webhooks/lemonsqueezy` — **public** (no auth), verifies HMAC-SHA256 (`X-Signature` header), upserts `subscriptions` table via service-role client
+
+### Webhook security
+- Uses `crypto.timingSafeEqual` — never use string comparison for HMAC
+- Raw body must be read with `request.text()` (not `request.json()`) before HMAC check
+- Webhook secret must be alphanumeric-only — special chars (`!`, `#`) break LS webhook creation silently
+
+### Subscriptions table
+Schema: `id, property_id (unique), provider, status, ls_subscription_id, ls_variant_id, current_period_end, updated_at, created_at`
+
+Key migration: `018_subscriptions_updated_at.sql` — adds `updated_at` column needed by webhook upsert.
+
+### Plan-aware signup flow
+Landing page CTA → `/register?plan=starter|pro` → onboarding wizard (passes `?plan=`) → billing page (`/settings/billing?checkout=starter|pro`) → auto-triggers checkout via `useEffect` on mount → LemonSqueezy hosted checkout → webhook fires → subscription activated.
+
+`BillingClient.tsx` auto-trigger:
+```typescript
+useEffect(() => {
+  const planKey = new URLSearchParams(window.location.search).get('checkout')
+  if (!planKey) return
+  const match = BILLING_PLANS.find(p => p.id.startsWith(planKey))
+  if (match) handleCheckout(match.ls_variant_id)
+  window.history.replaceState({}, '', window.location.pathname) // clean URL
+}, [])
+```
+
+### LS store verification
+As of May 2026, the LS store may still be in verification (1–3 business days). Live checkouts only work after verification. Test mode works immediately.
+
+---
+
 ## MULTI-USER AUTH — FULLY IMPLEMENTED
 
-This is the most important architectural addition. The app supports **owner + staff sub-accounts**.
+The app supports **owner + staff sub-accounts**.
 
 ### Role hierarchy (lowest → highest)
 ```
@@ -145,7 +200,15 @@ This redirect is applied in `app/(dashboard)/dashboard/page.tsx` after `getUserS
 | `009_performance_indexes.sql` | Performance indexes |
 | `010_activities_and_automation.sql` | `activities` table (hostel events with WhatsApp broadcast) |
 | `011_owner_whatsapp_api.sql` | Adds `whatsapp_phone_number_id`, `whatsapp_access_token` to `properties` |
-| `016_payments_performance_index.sql` | Composite index on `payments(property_id, status, type, payment_date DESC)` — **run in Supabase SQL Editor if not yet applied** |
+| `016_payments_performance_index.sql` | Composite index on `payments(property_id, status, type, payment_date DESC)` |
+| `017_fix_view_security.sql` | Security fix for views |
+| `018_subscriptions_updated_at.sql` | Adds `updated_at TIMESTAMPTZ` to `subscriptions` table (needed by LS webhook upsert) |
+
+### `subscriptions` table
+Added for LemonSqueezy billing. Key columns:
+`id, property_id (UNIQUE), provider ('lemonsqueezy'|'manual_wire'), status ('active'|'trialing'|'past_due'|'cancelled'|'expired'), ls_subscription_id, ls_variant_id, current_period_end, updated_at, created_at`
+
+The billing page (`/settings/billing`) reads from this table to show current status.
 
 ### Key extra columns added by migrations
 - `guests.is_flagged` (BOOLEAN), `guests.flag_reason` (TEXT)
@@ -173,9 +236,48 @@ creates password → account linked → can log in.
 - `POST /api/staff/accept-invite` — public (called after signUp), links `user_id` to staff record
 
 ### Public routes (in `proxy.ts`)
-`/login`, `/register`, `/accept-invite`, `/checkin`, `/api/auth`, `/api/staff/accept-invite` are public.
+`/login`, `/register`, `/accept-invite`, `/checkin`, `/api/auth`, `/api/staff/accept-invite`, `/api/webhooks/lemonsqueezy` are public.
 `/` is public for unauthenticated visitors (shows landing page); authenticated users are redirected to `/dashboard`.
 Everything else requires auth.
+
+---
+
+## SEO & MARKETING PAGES — BUILT
+
+### Domain
+`www.sweetreservation.com` — verified on Google Search Console, sitemap submitted.
+
+### City landing pages (6 cities)
+Located at `app/logiciel-hostel-{city}/page.tsx`. All use the shared `components/marketing/CityPage.tsx` component.
+Cities: `marrakech`, `agadir`, `casablanca`, `fes`, `tanger`, `chefchaouen`
+Data source: `lib/city-data.ts` — hero content, challenges, stats, testimonials, FAQs, keywords per city.
+
+Each city page exports:
+- `generateMetadata()` with city-specific title/description/OG
+- `SoftwareApplication` JSON-LD schema
+- `BreadcrumbList` JSON-LD schema
+
+### Blog
+- Index: `app/blog/page.tsx`
+- Articles: `app/blog/[slug]/page.tsx`
+- Data: `lib/blog-posts.ts` — 4 articles:
+  - `fiche-de-police-hostel-maroc`
+  - `booking-com-vs-hostelworld-maroc`
+  - `ouvrir-hostel-maroc-guide`
+  - `excel-vs-logiciel-pms-hostel`
+
+Each article exports `Article` + `BreadcrumbList` JSON-LD schemas.
+
+### AI crawler discovery files
+- `public/llms.txt` — plain-text product summary for LLMs (2025/2026 standard)
+- `public/llms-full.md` — extended markdown version
+- `public/.well-known/ai-plugin.json` — AI plugin manifest
+
+### Sitemap
+`app/sitemap.ts` dynamically includes city pages and blog slugs.
+
+### Structured data in root layout
+`app/layout.tsx` includes a `SoftwareApplication` JSON-LD schema with `UnitPriceSpecification` pricing for both plans.
 
 ---
 
@@ -295,6 +397,7 @@ const CreateActivityModal = dynamic(() => import('./CreateActivityModal').then(m
 | Dynamic pricing rules | ✅ | `app/(dashboard)/settings/pricing/` |
 | Integrations (WhatsApp API) | ✅ | `app/(dashboard)/settings/integrations/` |
 | Staff management + invite flow | ✅ | `app/(dashboard)/settings/staff/` |
+| **Billing page (LemonSqueezy)** | ✅ | `app/(dashboard)/settings/billing/` |
 | Multi-user auth (owner + staff) | ✅ | `lib/supabase/server.ts`, `app/context/SessionContext.tsx` |
 | Role-based sidebar | ✅ | `components/layout/Sidebar.tsx` |
 | Accept-invite page | ✅ | `app/accept-invite/` |
@@ -307,7 +410,15 @@ const CreateActivityModal = dynamic(() => import('./CreateActivityModal').then(m
 | Activity log feed (dashboard) | ✅ | `activity_log` table + `lib/activity.ts` |
 | **Activity feed role filtering** | ✅ | `components/dashboard/DashboardClient.tsx` |
 | **Navigation loader (globe)** | ✅ | `components/shared/NavigationLoader.tsx` — catches clicks, `router.push()`, back/forward |
-| **Landing page** | ✅ | `app/page.tsx` — public marketing page, shown to unauthenticated visitors at `/` |
+| **Landing page** | ✅ | `app/page.tsx` — public marketing page at `/`, CTAs link to `/register?plan=X` |
+| **Plan-aware signup flow** | ✅ | Landing → `/register?plan=X` → onboarding → `/settings/billing?checkout=X` → LS checkout |
+| **LemonSqueezy billing integration** | ✅ | `app/api/billing/checkout/route.ts`, `app/api/webhooks/lemonsqueezy/route.ts` |
+| **Subscriptions table** | ✅ | Tracks active plan per property, read by billing page |
+| **City SEO landing pages (6)** | ✅ | `app/logiciel-hostel-{city}/page.tsx` + `components/marketing/CityPage.tsx` |
+| **Blog (index + articles)** | ✅ | `app/blog/page.tsx`, `app/blog/[slug]/page.tsx`, `lib/blog-posts.ts` |
+| **AI crawler files** | ✅ | `public/llms.txt`, `public/llms-full.md`, `public/.well-known/ai-plugin.json` |
+| **Sitemap (dynamic)** | ✅ | `app/sitemap.ts` — includes city pages + blog posts |
+| **JSON-LD structured data** | ✅ | SoftwareApplication + BreadcrumbList + Article schemas |
 | Security middleware | ✅ | `proxy.ts` (Next.js 16 convention — NOT middleware.ts) |
 | Security headers | ✅ | `next.config.ts` |
 | Rate limiting | ✅ | `lib/rate-limit.ts` |
@@ -333,9 +444,9 @@ const CreateActivityModal = dynamic(() => import('./CreateActivityModal').then(m
 
 ---
 
-## WHAT STILL NEEDS EXTERNAL SETUP (future SaaS work)
+## WHAT STILL NEEDS EXTERNAL SETUP
 
-- Billing: Stripe integration (subscription plans, trial)
+- LemonSqueezy store verification — pending (1–3 business days). Live checkouts only after approval.
 - Error monitoring: Sentry.io
 - CI/CD: GitHub Actions → Vercel deployment pipeline
 - Staging environment
@@ -350,17 +461,24 @@ lib/supabase/server.ts               → getUserSession(), createClient()
 lib/supabase/client.ts               → createClient() for browser (singleton)
 app/context/SessionContext.tsx        → useSession(), useHasRole(), useCanDo()
 lib/activity.ts                       → logActivity() — call after every important action
-types/index.ts                        → All shared types (Staff, StaffRole, UserSession, Activity, etc.)
+lib/constants.ts                      → BILLING_PLANS (with ls_variant_id), BANK_WIRE_DETAILS
+lib/city-data.ts                      → Data for 6 city landing pages
+lib/blog-posts.ts                     → Blog articles metadata + content
+types/index.ts                        → All shared types (Staff, StaffRole, UserSession, Subscription, etc.)
 app/globals.css                       → Design system (shadows, animations, colors, nav-loader keyframes)
 stores/app.store.ts                   → Zustand: realtimeConnected (null|bool), dirtyBedsCount, property
 components/layout/Sidebar.tsx         → Role-based nav
 components/layout/TopBar.tsx          → Frosted glass header + live indicator
 components/layout/MobileNav.tsx       → Bottom navigation bar
 components/shared/NavigationLoader.tsx → Globe page-transition overlay (registered in app/layout.tsx)
+components/marketing/CityPage.tsx     → Shared city landing page component (framer-motion, dark hero)
 components/dashboard/DashboardClient.tsx → Main dashboard component
 app/actions/activities.ts             → Server actions: createActivityAction, deleteActivityAction, notifyGuestsAction
+app/api/billing/checkout/route.ts     → POST: creates LemonSqueezy checkout, returns redirect URL
+app/api/webhooks/lemonsqueezy/route.ts → POST: public webhook, verifies HMAC, upserts subscriptions
+app/(dashboard)/settings/billing/BillingClient.tsx → Billing UI with auto-checkout trigger
 lib/whatsapp/templates.ts             → buildWhatsAppLink(), WHATSAPP_TEMPLATES
-supabase/migrations/                  → All DB migrations (001–016)
+supabase/migrations/                  → All DB migrations (001–018)
 ```
 
 ---
@@ -398,10 +516,15 @@ This is applied in `DashboardClient.tsx` using `canViewRevenue` from `useCanDo('
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_APP_URL=https://www.sweetreservation.com
 WHATSAPP_API_TOKEN=
 WHATSAPP_PHONE_NUMBER_ID=
 WHATSAPP_BUSINESS_ACCOUNT_ID=
+LEMONSQUEEZY_API_KEY=
+LEMONSQUEEZY_STORE_ID=370406
+LEMONSQUEEZY_WEBHOOK_SECRET=sweetreservation2026secret
+LEMONSQUEEZY_STARTER_VARIANT_ID=1633090
+LEMONSQUEEZY_PRO_VARIANT_ID=1633110
 ```
 
 ---
@@ -424,6 +547,7 @@ WHATSAPP_BUSINESS_ACCOUNT_ID=
 - `Date.now()` in async server components is fine but ESLint flags it as `react-hooks/purity` — suppress with `// eslint-disable-next-line react-hooks/purity` on that line
 - Recharts `YAxis tickFormatter`: use `v >= 1000 ? \`${(v/1000).toFixed(1).replace(/\.0$/,'')}k\` : String(v)` — the simple `(v/1000).toFixed(0)k` rounds small values incorrectly
 - `realtimeConnected` in the Zustand store is `boolean | null`. `null` = still initialising (never connected yet). Components must guard against `null` before rendering connection status.
+- framer-motion `ease` arrays: cast as `[number, number, number, number]` not `number[]` — the Variants type is strict about this
 
 ---
 
@@ -454,4 +578,16 @@ Never put derived-from-state values (e.g. `beds.length`, `startDate`) inside `us
 const bedsLengthRef = useRef(initialData.beds.length)
 setBeds((prev) => { bedsLengthRef.current = next.length; return next })
 // refreshForecast uses bedsLengthRef.current — not in deps → no loop
+```
+
+### LemonSqueezy webhook gotchas
+- Always read body with `request.text()` before any `await request.json()` — HMAC must be over raw bytes
+- Webhook signing secret must be alphanumeric only — LS silently fails to create webhooks with special characters
+- `CREATE POLICY IF NOT EXISTS` is invalid PostgreSQL syntax — do not use it in migrations
+- The service-role Supabase client bypasses RLS — always use it in webhook routes, never the anon client
+
+### CityPage component (framer-motion)
+`components/marketing/CityPage.tsx` uses framer-motion. The `fadeUpProps(i)` helper returns inline animation props — do NOT use a `Variants`-typed object because framer-motion's `Easing` type doesn't accept `number[]` directly. Use:
+```typescript
+ease: [0.22, 1, 0.36, 1] as [number, number, number, number]
 ```

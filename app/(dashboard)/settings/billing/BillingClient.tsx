@@ -18,15 +18,21 @@ interface Props {
 export function BillingClient({ propertyId, subscription }: Props) {
   const [loadingVariant, setLoadingVariant] = useState<string | null>(null)
 
-  // Auto-trigger checkout when arriving from register → onboarding flow
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
+
+    // Show success toast when returning from LemonSqueezy checkout
+    if (params.get('success') === '1') {
+      toast.success('Paiement confirmé — votre abonnement est actif !')
+      window.history.replaceState({}, '', window.location.pathname)
+      return
+    }
+
+    // Auto-trigger checkout when arriving from register → onboarding flow
     const planKey = params.get('checkout')
     if (!planKey) return
-    const { BILLING_PLANS: plans } = require('@/lib/constants') as { BILLING_PLANS: { id: string; ls_variant_id: string }[] }
-    const match = plans.find((p: { id: string }) => p.id.startsWith(planKey))
+    const match = BILLING_PLANS.find((p) => p.id.startsWith(planKey))
     if (match) handleCheckout(match.ls_variant_id)
-    // Clean URL
     window.history.replaceState({}, '', window.location.pathname)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -52,8 +58,14 @@ export function BillingClient({ propertyId, subscription }: Props) {
     }
   }
 
-  const isExpired = subscription && new Date(subscription.current_period_end) < new Date()
+  const now = new Date()
+  const periodEnd = subscription ? new Date(subscription.current_period_end) : null
+  const isExpired = periodEnd ? periodEnd < now : false
   const isActive = subscription && (subscription.status === 'active' || subscription.status === 'trialing') && !isExpired
+  const isTrial = subscription?.status === 'trialing' && !isExpired
+  const trialDaysLeft = isTrial && periodEnd
+    ? Math.max(0, Math.ceil((periodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+    : null
 
   return (
     <div className="p-6 space-y-8 max-w-5xl mx-auto hp-page-in">
@@ -77,18 +89,22 @@ export function BillingClient({ propertyId, subscription }: Props) {
             </div>
             <div>
               <p className="font-semibold text-[#0A1F1C]">
-                Statut : {isActive ? (subscription?.status === 'trialing' ? 'Essai Gratuit' : 'Actif') : 'Inactif / Expiré'}
+                Statut : {isActive ? (isTrial ? `Essai Gratuit${trialDaysLeft !== null ? ` — ${trialDaysLeft}j restants` : ''}` : 'Actif') : 'Inactif / Expiré'}
               </p>
               <p className="text-sm text-[#475569]">
-                {subscription 
-                  ? `Votre abonnement ${subscription.provider === 'manual_wire' ? 'manuel' : 'automatique'} se termine le ${new Date(subscription.current_period_end).toLocaleDateString('fr-FR')}`
-                  : "Vous n'avez pas encore d'abonnement actif."}
+                {subscription
+                  ? isTrial
+                    ? `Votre essai gratuit se termine le ${periodEnd!.toLocaleDateString('fr-FR')}. Souscrivez pour continuer.`
+                    : `Votre abonnement ${subscription.provider === 'manual_wire' ? 'manuel' : 'automatique'} se renouvelle le ${periodEnd!.toLocaleDateString('fr-FR')}`
+                  : "Vous n&apos;avez pas encore d&apos;abonnement actif."}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             {isActive && (
-              <Badge className="bg-[#0F6E56] hover:bg-[#0F6E56]">{subscription?.provider === 'manual_wire' ? 'Virement' : 'LemonSqueezy'}</Badge>
+              <Badge className={cn("hover:opacity-90", isTrial ? "bg-amber-500" : "bg-[#0F6E56]")}>
+                {isTrial ? 'Essai' : subscription?.provider === 'manual_wire' ? 'Virement' : 'LemonSqueezy'}
+              </Badge>
             )}
           </div>
         </CardContent>

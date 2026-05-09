@@ -76,6 +76,9 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(homeUrl)
   }
 
+  // Expose pathname to server components via header (used for subscription gating)
+  response.headers.set('x-pathname', pathname)
+
   return response
 }
 

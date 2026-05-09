@@ -138,7 +138,7 @@ export async function getRouteHandlerSession(): Promise<UserSession | null> {
 
   const propertyId = properties?.[0]?.id ?? staffMember?.property_id
   const { data: subData } = propertyId
-    ? await admin.from('subscriptions').select('status').eq('property_id', propertyId).maybeSingle()
+    ? await admin.from('subscriptions').select('status, current_period_end').eq('property_id', propertyId).maybeSingle()
     : { data: null }
 
   const isSuperAdmin = (process.env.SUPERADMIN_EMAILS ?? '').split(',').filter(Boolean).includes(user.email ?? '')
@@ -157,6 +157,7 @@ export async function getRouteHandlerSession(): Promise<UserSession | null> {
       hideRevenue: false,
       isSuperAdmin,
       subscriptionStatus: subData?.status ?? null,
+      subscriptionPeriodEnd: (subData as { status: string; current_period_end: string | null } | null)?.current_period_end ?? null,
       allProperties: properties,
     }
   }
@@ -172,6 +173,7 @@ export async function getRouteHandlerSession(): Promise<UserSession | null> {
       hideRevenue: staffMember.hide_revenue ?? false,
       isSuperAdmin,
       subscriptionStatus: subData?.status ?? null,
+      subscriptionPeriodEnd: (subData as { status: string; current_period_end: string | null } | null)?.current_period_end ?? null,
       allProperties: [],
     }
   }
@@ -209,10 +211,10 @@ export const getUserSession = cache(async (): Promise<UserSession | null> => {
     .limit(1)
     .maybeSingle()
 
-  // 3. Subscription status?
+  // 3. Subscription status + period end?
   const { data: sub } = await supabase
     .from('subscriptions')
-    .select('status')
+    .select('status, current_period_end')
     .eq('property_id', staffMember?.property_id ?? properties?.[0]?.id)
     .maybeSingle()
 
@@ -241,6 +243,7 @@ export const getUserSession = cache(async (): Promise<UserSession | null> => {
       hideRevenue: false,
       isSuperAdmin,
       subscriptionStatus: sub?.status ?? null,
+      subscriptionPeriodEnd: (sub as { status: string; current_period_end: string | null } | null)?.current_period_end ?? null,
       allProperties: properties,
     }
   }
@@ -256,6 +259,7 @@ export const getUserSession = cache(async (): Promise<UserSession | null> => {
       hideRevenue: staffMember.hide_revenue ?? false,
       isSuperAdmin,
       subscriptionStatus: sub?.status ?? null,
+      subscriptionPeriodEnd: (sub as { status: string; current_period_end: string | null } | null)?.current_period_end ?? null,
       allProperties: [],
     }
   }

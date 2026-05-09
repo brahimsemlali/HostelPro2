@@ -111,13 +111,27 @@ export default function OnboardingPage() {
         if (bedsErr) throw new Error(`Lits "${roomDef.name}": ${bedsErr.message}`)
       }
 
-      const { error: staffErr } = await supabase.from('staff').insert({
+      await supabase.from('staff').insert({
         property_id: prop.id,
         user_id: user.id,
         name: user.email?.split('@')[0] || 'Admin',
         role: 'owner',
         is_active: true
       })
+
+      // Create 30-day free trial — gives immediate access without requiring checkout
+      const trialEnd = new Date()
+      trialEnd.setDate(trialEnd.getDate() + 30)
+      await supabase.from('subscriptions').upsert({
+        property_id: prop.id,
+        status: 'trialing',
+        provider: 'free_trial',
+        ls_subscription_id: null,
+        ls_variant_id: null,
+        current_period_end: trialEnd.toISOString(),
+        cancel_at_period_end: false,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'property_id' })
 
       toast.success(t('onboarding.success'))
       const plan = new URLSearchParams(window.location.search).get('plan')

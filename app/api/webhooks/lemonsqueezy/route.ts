@@ -17,7 +17,7 @@ function mapStatus(lsStatus: string): string {
     unpaid: 'past_due',
     cancelled: 'cancelled',
     expired: 'expired',
-    paused: 'cancelled',
+    paused: 'past_due',  // paused = temporarily suspended, treat as past_due (grace period applies)
     on_trial: 'trialing',
   }
   return map[lsStatus] ?? 'active'
@@ -82,11 +82,8 @@ export async function POST(request: Request) {
   const attrs = payload.data.attributes
   const lsSubscriptionId = payload.data.id
 
-  // Determine period end — prefer renews_at, fall back to ends_at, then 30 days
-  const periodEnd =
-    attrs.renews_at ??
-    attrs.ends_at ??
-    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+  // Determine period end — prefer renews_at, fall back to ends_at, then null (don't fabricate)
+  const periodEnd = attrs.renews_at ?? attrs.ends_at ?? null
 
   let status = mapStatus(attrs.status)
   if (event_name === 'subscription_cancelled') status = 'cancelled'
