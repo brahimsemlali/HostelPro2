@@ -1050,15 +1050,15 @@ export default function LandingPage() {
           >
             {[
               {
-                name: 'Starter', monthly: 249, features: ['Up to 10 beds', 'Unlimited check-ins', 'Police form PDF', 'Live bed map', '1 staff account'],
+                name: 'Starter', monthly: 249, planKey: 'starter', features: ['Up to 10 beds', 'Unlimited check-ins', 'Police form PDF', 'Live bed map', '1 staff account'],
                 featured: false,
               },
               {
-                name: 'Business', monthly: 549, features: ['Unlimited beds', 'Unlimited staff', 'WhatsApp integration', 'Revenue analytics', 'Night audit wizard', 'Cash reconciliation', 'Priority support'],
+                name: 'Business', monthly: 549, planKey: 'pro', features: ['Unlimited beds', 'Unlimited staff', 'WhatsApp integration', 'Revenue analytics', 'Night audit wizard', 'Cash reconciliation', 'Priority support'],
                 featured: true,
               },
               {
-                name: 'Enterprise', monthly: 999, features: ['Everything in Business', 'Multi-property', 'Custom onboarding', 'Dedicated account manager', 'SLA guarantee'],
+                name: 'Enterprise', monthly: 999, planKey: 'enterprise', features: ['Everything in Business', 'Multi-property', 'Custom onboarding', 'Dedicated account manager', 'SLA guarantee'],
                 featured: false,
               },
             ].map((plan, i) => (
@@ -1112,7 +1112,7 @@ export default function LandingPage() {
                 </ul>
                 <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                   <Link
-                    href="/register"
+                    href={plan.planKey === 'enterprise' ? 'https://wa.me/212600000000' : `/register?plan=${plan.planKey}`}
                     style={{
                       display: 'block', textAlign: 'center', fontSize: 14, fontWeight: 700,
                       padding: '12px 20px', borderRadius: 12, textDecoration: 'none',
@@ -1122,7 +1122,7 @@ export default function LandingPage() {
                       boxShadow: plan.featured ? '0 4px 16px rgba(33,199,122,0.35)' : undefined,
                     }}
                   >
-                    {plan.featured ? 'Start 14-day free trial' : plan.name === 'Enterprise' ? 'Contact us' : 'Get started'}
+                    {plan.planKey === 'enterprise' ? 'Contact us' : plan.featured ? 'Start 14-day free trial' : 'Get started'}
                   </Link>
                 </motion.div>
               </motion.div>

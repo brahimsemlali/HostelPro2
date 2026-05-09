@@ -28,6 +28,11 @@ export default function RegisterPage() {
   const [showPass, setShowPass] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
 
+  function getPlan() {
+    if (typeof window === 'undefined') return null
+    return new URLSearchParams(window.location.search).get('plan')
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (password !== confirm) {
@@ -44,7 +49,9 @@ export default function RegisterPage() {
       toast.success('Compte créé! Vérifiez votre email.')
       window.location.href = '/login'
     } else if (result?.success) {
-      window.location.href = result.redirect ?? '/onboarding'
+      const plan = getPlan()
+      const base = result.redirect ?? '/onboarding'
+      window.location.href = plan ? `${base}?plan=${plan}` : base
     }
   }
 

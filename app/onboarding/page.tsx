@@ -120,7 +120,8 @@ export default function OnboardingPage() {
       })
 
       toast.success(t('onboarding.success'))
-      window.location.href = '/dashboard'
+      const plan = new URLSearchParams(window.location.search).get('plan')
+      window.location.href = plan ? `/settings/billing?checkout=${plan}` : '/dashboard'
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('common.error'))
     } finally {

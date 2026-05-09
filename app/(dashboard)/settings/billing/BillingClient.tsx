@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -17,6 +17,19 @@ interface Props {
 
 export function BillingClient({ propertyId, subscription }: Props) {
   const [loadingVariant, setLoadingVariant] = useState<string | null>(null)
+
+  // Auto-trigger checkout when arriving from register → onboarding flow
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const planKey = params.get('checkout')
+    if (!planKey) return
+    const { BILLING_PLANS: plans } = require('@/lib/constants') as { BILLING_PLANS: { id: string; ls_variant_id: string }[] }
+    const match = plans.find((p: { id: string }) => p.id.startsWith(planKey))
+    if (match) handleCheckout(match.ls_variant_id)
+    // Clean URL
+    window.history.replaceState({}, '', window.location.pathname)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handleCheckout(variantId: string) {
     setLoadingVariant(variantId)
