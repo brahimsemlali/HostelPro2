@@ -54,15 +54,15 @@ export const BILLING_PLANS = [
   {
     id: 'starter_monthly',
     name: 'Starter (Mensuel)',
-    price: 19,
+    price: 35,
     currency: 'USD',
-    features: ['Jusqu\'à 20 lits', 'Fiches de police PDF', 'Lien WhatsApp', 'Support email'],
+    features: ['Jusqu\'à 45 lits', 'Fiches de police PDF', 'Lien WhatsApp', 'Support email'],
     ls_variant_id: '1633090',
   },
   {
     id: 'pro_monthly',
     name: 'Pro (Mensuel)',
-    price: 49,
+    price: 70,
     currency: 'USD',
     features: ['Lits illimités', 'Rapports avancés', 'Gestion du staff', 'Support WhatsApp'],
     ls_variant_id: '1633110',

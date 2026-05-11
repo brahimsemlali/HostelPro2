@@ -274,7 +274,7 @@ Avant l'ouverture, votre établissement sera inspecté sur :
 | Cuisine équipée | 20 000 – 40 000 MAD |
 | Sanitaires | 30 000 – 60 000 MAD |
 | WiFi + technologie | 10 000 – 20 000 MAD |
-| Logiciel PMS | 0 (essai gratuit) puis ~250 MAD/mois |
+| Logiciel PMS | 0 (essai gratuit) puis ~350 MAD/mois |
 | Formalités et classement | 5 000 – 15 000 MAD |
 | Fonds de roulement (3 mois) | 30 000 – 50 000 MAD |
 | **Total** | **235 000 – 435 000 MAD** |

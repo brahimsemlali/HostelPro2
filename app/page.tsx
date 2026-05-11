@@ -1050,11 +1050,11 @@ export default function LandingPage() {
           >
             {[
               {
-                name: 'Starter', monthly: 249, planKey: 'starter', features: ['Up to 10 beds', 'Unlimited check-ins', 'Police form PDF', 'Live bed map', '1 staff account'],
+                name: 'Starter', monthly: 35, planKey: 'starter', features: ['Up to 45 beds', 'Unlimited check-ins', 'Police form PDF', 'Live bed map', '1 staff account'],
                 featured: false,
               },
               {
-                name: 'Business', monthly: 549, planKey: 'pro', features: ['Unlimited beds', 'Unlimited staff', 'WhatsApp integration', 'Revenue analytics', 'Night audit wizard', 'Cash reconciliation', 'Priority support'],
+                name: 'Business', monthly: 70, planKey: 'pro', features: ['Unlimited beds', 'Unlimited staff', 'WhatsApp integration', 'Revenue analytics', 'Night audit wizard', 'Cash reconciliation', 'Priority support'],
                 featured: true,
               },
               {
@@ -1093,7 +1093,7 @@ export default function LandingPage() {
                   >
                     <div style={{ fontSize: 36, fontWeight: 800, letterSpacing: '-0.04em', color: '#0E1A1F', lineHeight: 1, marginBottom: 4 }}>
                       {annual ? Math.round(plan.monthly * 0.8) : plan.monthly}
-                      <span style={{ fontSize: 16, fontWeight: 600, color: '#8593A0' }}> MAD</span>
+                      <span style={{ fontSize: 16, fontWeight: 600, color: '#8593A0' }}> USD</span>
                     </div>
                   </motion.div>
                 </AnimatePresence>

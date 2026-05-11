@@ -221,13 +221,13 @@ const softwareApplicationSchema = {
     {
       '@type': 'Offer',
       name: 'Starter',
-      price: '19',
+      price: '35',
       priceCurrency: 'USD',
-      description: "Jusqu'à 20 lits — fiches de police, WhatsApp, rapports",
+      description: "Jusqu'à 45 lits — fiches de police, WhatsApp, rapports",
       availability: 'https://schema.org/InStock',
       priceSpecification: {
         '@type': 'UnitPriceSpecification',
-        price: '19',
+        price: '35',
         priceCurrency: 'USD',
         billingDuration: 1,
         billingIncrement: 1,
@@ -237,13 +237,13 @@ const softwareApplicationSchema = {
     {
       '@type': 'Offer',
       name: 'Pro',
-      price: '49',
+      price: '70',
       priceCurrency: 'USD',
       description: "Lits illimités — rapports avancés, gestion du staff, support WhatsApp",
       availability: 'https://schema.org/InStock',
       priceSpecification: {
         '@type': 'UnitPriceSpecification',
-        price: '49',
+        price: '70',
         priceCurrency: 'USD',
         billingDuration: 1,
         billingIncrement: 1,

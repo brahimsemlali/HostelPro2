@@ -136,7 +136,7 @@ export const CITIES: Record<string, CityData> = {
     faq: [
       {
         q: 'Sweet Reservation est-il adapté aux petites auberges de 10 à 20 lits à Agadir ?',
-        a: 'Absolument. Le plan Starter à 19$/mois est conçu pour les établissements jusqu\'à 20 lits. Toutes les fonctionnalités essentielles sont incluses : fiches de police, WhatsApp, paiements, rapports.',
+        a: 'Absolument. Le plan Starter à 35$/mois est conçu pour les établissements jusqu\'à 45 lits. Toutes les fonctionnalités essentielles sont incluses : fiches de police, WhatsApp, paiements, rapports.',
       },
       {
         q: 'Puis-je payer en MAD via virement ?',
@@ -359,7 +359,7 @@ export const CITIES: Record<string, CityData> = {
     challenges: [
       {
         title: 'Petites structures familiales',
-        body: 'La plupart des auberges de Chefchaouen ont moins de 20 lits et sont gérées en famille. Le plan Starter à 19$/mois est fait pour vous — toutes les fonctionnalités sans la complexité.',
+        body: 'La plupart des auberges de Chefchaouen ont moins de 45 lits et sont gérées en famille. Le plan Starter à 35$/mois est fait pour vous — toutes les fonctionnalités sans la complexité.',
       },
       {
         title: 'Forte saisonnalité',
