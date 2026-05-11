@@ -62,9 +62,9 @@ export const BILLING_PLANS = [
   {
     id: 'pro_monthly',
     name: 'Pro (Mensuel)',
-    price: 70,
+    price: 100,
     currency: 'USD',
-    features: ['Lits illimités', 'Rapports avancés', 'Gestion du staff', 'Support WhatsApp'],
+    features: ['Lits illimités', 'Synchronisation OTA automatique (Booking.com, Hostelworld…)', 'Rapports avancés', 'Gestion du staff', 'Support WhatsApp prioritaire'],
     ls_variant_id: '1633110',
   },
 ]

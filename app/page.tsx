@@ -1054,7 +1054,7 @@ export default function LandingPage() {
                 featured: false,
               },
               {
-                name: 'Business', monthly: 70, planKey: 'pro', features: ['Unlimited beds', 'Unlimited staff', 'WhatsApp integration', 'Revenue analytics', 'Night audit wizard', 'Cash reconciliation', 'Priority support'],
+                name: 'Business', monthly: 100, planKey: 'pro', features: ['Unlimited beds', 'Auto OTA sync (Booking.com, Hostelworld…)', 'Unlimited staff', 'Revenue analytics', 'Night audit wizard', 'Cash reconciliation', 'Priority WhatsApp support'],
                 featured: true,
               },
               {

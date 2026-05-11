@@ -237,13 +237,13 @@ const softwareApplicationSchema = {
     {
       '@type': 'Offer',
       name: 'Pro',
-      price: '70',
+      price: '100',
       priceCurrency: 'USD',
-      description: "Lits illimités — rapports avancés, gestion du staff, support WhatsApp",
+      description: "Lits illimités — synchronisation OTA automatique, rapports avancés, gestion du staff, support WhatsApp",
       availability: 'https://schema.org/InStock',
       priceSpecification: {
         '@type': 'UnitPriceSpecification',
-        price: '70',
+        price: '100',
         priceCurrency: 'USD',
         billingDuration: 1,
         billingIncrement: 1,
