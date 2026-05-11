@@ -183,7 +183,7 @@ export function BillingClient({ propertyId, subscription }: Props) {
                   * Après le virement, envoyez une capture d'écran sur WhatsApp pour activation immédiate.
                 </p>
                 <Button variant="outline" className="w-full border-[#25D366]/30 text-[#25D366] hover:bg-[#25D366]/5 gap-2"
-                  onClick={() => window.open('https://wa.me/212600000000', '_blank')}>
+                  onClick={() => window.open('https://wa.me/212679760746', '_blank')}>
                   <MessageCircle className="w-4 h-4" />
                   Envoyer le reçu (WhatsApp)
                 </Button>

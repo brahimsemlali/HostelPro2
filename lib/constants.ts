@@ -70,8 +70,8 @@ export const BILLING_PLANS = [
 ]
 
 export const BANK_WIRE_DETAILS = {
-  bank_name: 'Attijariwafa Bank',
-  account_holder: 'Stayy Sarl (Sweet Reservation)',
-  rib: '007 780 0000000000000000 00',
+  bank_name: 'Saham Bank',
+  account_holder: 'Brahim Semlali',
+  rib: '022010000277002837541725',
   city: 'Casablanca',
 }

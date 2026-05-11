@@ -1112,7 +1112,7 @@ export default function LandingPage() {
                 </ul>
                 <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                   <Link
-                    href={plan.planKey === 'enterprise' ? 'https://wa.me/212600000000' : `/register?plan=${plan.planKey}`}
+                    href={plan.planKey === 'enterprise' ? 'https://wa.me/212679760746' : `/register?plan=${plan.planKey}`}
                     style={{
                       display: 'block', textAlign: 'center', fontSize: 14, fontWeight: 700,
                       padding: '12px 20px', borderRadius: 12, textDecoration: 'none',
