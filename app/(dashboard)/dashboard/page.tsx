@@ -57,6 +57,7 @@ export default async function DashboardPage() {
     roomsRes,
     allBedsRes,
     allCheckedInRes,
+    subscriptionRes,
   ] = await Promise.all([
     supabase.from('beds').select('id, status').eq('property_id', property.id),
 
@@ -143,6 +144,12 @@ export default async function DashboardPage() {
       .select('id, total_price, check_out_date, guest:guest_id(first_name, last_name), extras:booking_extras(quantity, unit_price), booking_payments:payments(booking_id, amount, type, status)')
       .eq('property_id', property.id)
       .eq('status', 'checked_in'),
+
+    supabase
+      .from('subscriptions')
+      .select('status, current_period_end')
+      .eq('property_id', property.id)
+      .single(),
   ])
 
   // Split consolidated arrivals by date
@@ -249,5 +256,12 @@ export default async function DashboardPage() {
     pendingPayments,
   }
 
-  return <DashboardCommandCenter property={property} initialData={initialData} />
+  const trialDaysLeft = (() => {
+    const sub = subscriptionRes.data
+    if (!sub || sub.status !== 'trialing' || !sub.current_period_end) return null
+    const diff = Math.ceil((new Date(sub.current_period_end).getTime() - Date.now()) / 86_400_000)
+    return diff > 0 ? diff : 0
+  })()
+
+  return <DashboardCommandCenter property={property} initialData={initialData} trialDaysLeft={trialDaysLeft} />
 }

@@ -235,9 +235,10 @@ function ForecastStrip({ days }: { days: ForecastDay[] }) {
 interface Props {
   property: DashboardProperty
   initialData: DashboardInitialData
+  trialDaysLeft: number | null
 }
 
-export function DashboardCommandCenter({ property, initialData }: Props) {
+export function DashboardCommandCenter({ property, initialData, trialDaysLeft }: Props) {
   const supabase = createClient()
   const session = useSession()
   const t = useT()
@@ -728,6 +729,36 @@ export function DashboardCommandCenter({ property, initialData }: Props) {
 
       {/* Alerts Row */}
       <div className="space-y-3">
+        {trialDaysLeft !== null && (
+          <Link href="/settings/billing">
+            <div className={`group flex items-center gap-4 rounded-[24px] border p-4 hover:shadow-lg transition-all cursor-pointer animate-in slide-in-from-top-4 duration-500 ${
+              trialDaysLeft <= 7
+                ? 'border-amber-200 bg-amber-50/50 hover:bg-amber-50 hover:shadow-amber-500/10'
+                : 'border-teal-200 bg-teal-50/50 hover:bg-teal-50 hover:shadow-teal-500/10'
+            }`}>
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110 ${
+                trialDaysLeft <= 7 ? 'bg-amber-100' : 'bg-teal-100'
+              }`}>
+                <Clock className={`w-5 h-5 ${trialDaysLeft <= 7 ? 'text-amber-600' : 'text-teal-600'}`} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-bold ${trialDaysLeft <= 7 ? 'text-amber-900' : 'text-teal-900'}`}>
+                  {trialDaysLeft === 0
+                    ? 'Votre essai gratuit se termine aujourd\'hui'
+                    : `${trialDaysLeft} jour${trialDaysLeft > 1 ? 's' : ''} restant${trialDaysLeft > 1 ? 's' : ''} dans votre essai gratuit`}
+                </p>
+                <p className={`text-xs mt-0.5 ${trialDaysLeft <= 7 ? 'text-amber-700' : 'text-teal-700'}`}>
+                  Choisissez un plan pour continuer après la période d&apos;essai — cliquez pour voir les offres
+                </p>
+              </div>
+              <div className={`text-xs font-bold px-3 py-1.5 rounded-xl flex-shrink-0 ${
+                trialDaysLeft <= 7 ? 'bg-amber-100 text-amber-700' : 'bg-teal-100 text-teal-700'
+              }`}>
+                Voir les plans
+              </div>
+            </div>
+          </Link>
+        )}
         {displayHousekeepingAlert && (
           <Link href="/housekeeping">
             <div className="group flex items-center gap-4 rounded-[24px] border border-amber-200 bg-amber-50/50 p-4 hover:bg-amber-50 hover:shadow-lg hover:shadow-amber-500/10 transition-all cursor-pointer animate-in slide-in-from-top-4 duration-500">
