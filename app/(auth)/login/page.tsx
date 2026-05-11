@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { Loader2, BedDouble, Users, BarChart3, CheckCircle2, Eye, EyeOff } from 'lucide-react'
+import { Loader2, BedDouble, Users, BarChart3, CheckCircle2, Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import { AppLogo } from '@/components/shared/AppLogo'
 import { LanguageSwitcher } from '@/components/shared/LanguageSwitcher'
 import { useT } from '@/app/context/LanguageContext'
@@ -127,6 +127,14 @@ export default function LoginPage() {
 
       {/* ── Right form panel ── */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 bg-[#F4F6F8]">
+
+        {/* Back to home */}
+        <div className="absolute top-4 left-4">
+          <Link href="/" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[oklch(0.52_0_0)] hover:text-[#0F6E56] transition-colors px-3 py-1.5 rounded-xl hover:bg-white">
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Accueil
+          </Link>
+        </div>
 
         {/* Language switcher */}
         <div className="absolute top-4 right-4">
