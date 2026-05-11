@@ -1,16 +1,29 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { Globe } from 'lucide-react'
 
 export function NavigationLoader() {
   const pathname = usePathname()
   const [loading, setLoading] = useState(false)
+  const safetyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const startLoading = () => {
+    setLoading(true)
+    if (safetyTimer.current) clearTimeout(safetyTimer.current)
+    safetyTimer.current = setTimeout(() => setLoading(false), 4000)
+  }
+
+  const stopLoading = () => {
+    if (safetyTimer.current) clearTimeout(safetyTimer.current)
+    setLoading(false)
+  }
 
   // Hide when the new page has rendered
   useEffect(() => {
-    setLoading(false)
+    stopLoading()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname])
 
   useEffect(() => {
@@ -22,6 +35,7 @@ export function NavigationLoader() {
       if (
         !href ||
         href.startsWith('#') ||
+        href.includes('/#') ||
         href.startsWith('http') ||
         href.startsWith('mailto:') ||
         href.startsWith('tel:') ||
@@ -30,25 +44,31 @@ export function NavigationLoader() {
         e.ctrlKey ||
         e.shiftKey
       ) return
-      setLoading(true)
+      startLoading()
     }
 
     // 2. router.push() / router.replace() — Next.js calls history.pushState internally
     const originalPush = window.history.pushState.bind(window.history)
     window.history.pushState = function (state: unknown, title: string, url?: string | URL | null) {
-      const newPath = url ? new URL(String(url), location.href).pathname : location.pathname
-      if (newPath !== location.pathname) setLoading(true)
+      const next = url ? new URL(String(url), location.href) : null
+      const pathChanged = next ? next.pathname !== location.pathname : false
+      if (pathChanged) startLoading()
       return originalPush(state, title, url)
     }
 
     // 3. Browser back / forward
-    const handlePopState = () => setLoading(true)
+    const handlePopState = () => startLoading()
+
+    // 4. Hash-only navigation — clear loader immediately (no page change)
+    const handleHashChange = () => stopLoading()
 
     document.addEventListener('click', handleClick)
     window.addEventListener('popstate', handlePopState)
+    window.addEventListener('hashchange', handleHashChange)
     return () => {
       document.removeEventListener('click', handleClick)
       window.removeEventListener('popstate', handlePopState)
+      window.removeEventListener('hashchange', handleHashChange)
       window.history.pushState = originalPush
     }
   }, [])

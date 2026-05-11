@@ -1122,7 +1122,7 @@ export default function LandingPage() {
                       boxShadow: plan.featured ? '0 4px 16px rgba(33,199,122,0.35)' : undefined,
                     }}
                   >
-                    {plan.planKey === 'enterprise' ? 'Contact us' : plan.featured ? 'Start 14-day free trial' : 'Get started'}
+                    {plan.planKey === 'enterprise' ? 'Contact us' : plan.planKey === 'starter' ? 'Start 30-day free trial' : 'Get started'}
                   </Link>
                 </motion.div>
               </motion.div>
