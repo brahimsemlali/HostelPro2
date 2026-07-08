@@ -7,6 +7,7 @@ import { LanguageProvider } from "@/app/context/LanguageContext";
 import type { Lang } from "@/lib/i18n";
 import { NavigationLoader } from "@/components/shared/NavigationLoader";
 import { JsonLd } from "@/components/shared/JsonLd";
+import { Analytics } from "@vercel/analytics/next";
 
 const dmSans = DM_Sans({
   variable: "--font-sans",
@@ -297,6 +298,7 @@ export default async function RootLayout({
           {children}
         </LanguageProvider>
         <Toaster position="top-right" richColors />
+        <Analytics />
       </body>
     </html>
   );

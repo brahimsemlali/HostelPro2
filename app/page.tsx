@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Plus_Jakarta_Sans } from 'next/font/google'
+import { Fraunces, Plus_Jakarta_Sans } from 'next/font/google'
 import { useEffect, useRef, useState } from 'react'
 import {
   motion,
@@ -22,6 +22,31 @@ const jakarta = Plus_Jakarta_Sans({
   display: 'swap',
 })
 
+const fraunces = Fraunces({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  style: ['normal', 'italic'],
+  display: 'swap',
+})
+
+// ── Palette — matches the app's Apple-minimal teal design system ───────────
+const C = {
+  ink: '#0A1F1C',          // near-black teal — headings
+  body: '#42524D',         // body copy
+  muted: '#5F6F6A',        // secondary text
+  faint: '#8C9B96',        // tertiary text
+  teal: '#0F6E56',         // primary teal (dark)
+  tealDeep: '#0A4B3C',     // pressed / gradient end
+  mint: '#16a37d',         // primary teal (light)
+  tint: 'rgba(15,110,86,0.08)',   // soft teal wash
+  tintStrong: 'rgba(15,110,86,0.14)',
+  border: '#E3EBE7',       // hairline
+  surface: '#F6F9F7',      // section wash
+  card: '#FFFFFF',
+}
+
+const tealGradient = `linear-gradient(135deg, ${C.mint} 0%, ${C.teal} 100%)`
+
 type BedState = 'O' | 'A' | 'D' | '_' | 'new'
 
 const INITIAL_BED_STATES: BedState[] = [
@@ -37,10 +62,10 @@ const BED_LABELS = [
 ]
 
 function bedColors(s: BedState) {
-  if (s === 'O' || s === 'new') return { bg: '#21C77A', text: '#fff', border: '#1AAE6A' }
-  if (s === 'A') return { bg: '#0F6B41', text: '#fff', border: '#0A5032' }
+  if (s === 'O' || s === 'new') return { bg: C.mint, text: '#fff', border: '#12876A' }
+  if (s === 'A') return { bg: C.teal, text: '#fff', border: C.tealDeep }
   if (s === 'D') return { bg: '#FEF3C7', text: '#B45309', border: '#FCD34D' }
-  return { bg: 'rgba(255,255,255,0.05)', text: 'rgba(255,255,255,0.2)', border: 'rgba(255,255,255,0.1)' }
+  return { bg: '#F2F6F4', text: '#B7C4BF', border: C.border }
 }
 
 const fadeUp: Variants = {
@@ -73,28 +98,26 @@ function Counter({ to, suffix = '', prefix = '' }: { to: number; suffix?: string
   return <span ref={ref}>{prefix}{val.toLocaleString('fr-MA')}{suffix}</span>
 }
 
-// ── Hero background shape ──────────────────────────────────────────────────
-function HeroShape({ className, w, h, rotate, color, delay }: {
-  className: string; w: number; h: number; rotate: number; color: string; delay: number
+// ── Soft atmospheric glow (light theme) ────────────────────────────────────
+function GlowBlob({ className, w, h, color, delay }: {
+  className: string; w: number; h: number; color: string; delay: number
 }) {
   return (
     <motion.div
       className={`absolute pointer-events-none ${className}`}
-      initial={{ opacity: 0, y: -120, rotate: rotate - 12 }}
-      animate={{ opacity: 1, y: 0, rotate }}
-      transition={{ duration: 2.6, delay, ease: [0.23, 0.86, 0.39, 0.96] }}
+      initial={{ opacity: 0, scale: 0.85 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 2.4, delay, ease: [0.23, 0.86, 0.39, 0.96] }}
     >
       <motion.div
-        animate={{ y: [0, 20, 0] }}
-        transition={{ duration: 11 + delay * 3, repeat: Infinity, ease: 'easeInOut' }}
-        style={{ width: w, height: h }}
-      >
-        <div style={{
-          width: '100%', height: '100%', borderRadius: 999,
+        animate={{ y: [0, 22, 0] }}
+        transition={{ duration: 12 + delay * 3, repeat: Infinity, ease: 'easeInOut' }}
+        style={{
+          width: w, height: h, borderRadius: '50%',
           background: `radial-gradient(ellipse, ${color} 0%, transparent 65%)`,
-          border: '1.5px solid rgba(33,199,122,0.18)',
-        }} />
-      </motion.div>
+          filter: 'blur(24px)',
+        }}
+      />
     </motion.div>
   )
 }
@@ -140,11 +163,20 @@ function BentoCard({ children, className, delay = 0 }: {
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.7, delay, ease: [0.25, 0.4, 0.25, 1] }}
       whileHover={{ y: -4, scale: 1.01, transition: { type: 'spring', stiffness: 300, damping: 22 } }}
-      className={`relative overflow-hidden rounded-[20px] border border-[#E8EDEF] bg-white ${className ?? ''}`}
-      style={{ boxShadow: '0 2px 20px rgba(14,26,31,0.05)' }}
+      className={`relative overflow-hidden rounded-[22px] border bg-white ${className ?? ''}`}
+      style={{ borderColor: C.border, boxShadow: '0 1px 2px rgba(10,31,28,0.04), 0 12px 36px rgba(10,31,28,0.06)' }}
     >
       {children}
     </motion.div>
+  )
+}
+
+// ── Card eyebrow label ─────────────────────────────────────────────────────
+function CardLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.faint, marginBottom: 12 }}>
+      {children}
+    </div>
   )
 }
 
@@ -182,11 +214,11 @@ function BedMapCard() {
   return (
     <BentoCard className="p-5 col-span-2 row-span-2" delay={0}>
       <div className="mb-3 flex items-center gap-2">
-        <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#21C77A' }} />
-        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5C6B72' }}>
+        <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.mint }} />
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.faint }}>
           Live Bed Map
         </span>
-        <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 600, color: '#21C77A', background: '#E2F4EA', padding: '2px 8px', borderRadius: 999 }}>
+        <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 600, color: C.teal, background: C.tint, padding: '2px 8px', borderRadius: 999 }}>
           17/24 occupied
         </span>
       </div>
@@ -196,7 +228,7 @@ function BedMapCard() {
           return (
             <motion.div
               key={i}
-              animate={s === 'new' ? { scale: [0.85, 1.08, 1], backgroundColor: ['#21C77A', '#21C77A'] } : { scale: 1 }}
+              animate={s === 'new' ? { scale: [0.85, 1.08, 1] } : { scale: 1 }}
               transition={{ duration: 0.5 }}
               style={{
                 aspectRatio: '1',
@@ -218,12 +250,12 @@ function BedMapCard() {
       </div>
       <div style={{ display: 'flex', gap: 14, marginTop: 14, flexWrap: 'wrap' }}>
         {[
-          { color: '#21C77A', label: 'Occupied' },
-          { color: '#0F6B41', label: 'Arriving' },
+          { color: C.mint, label: 'Occupied' },
+          { color: C.teal, label: 'Arriving' },
           { color: '#FCD34D', label: 'Dirty' },
-          { color: '#E8EDEF', label: 'Available', border: '#C0CBCE' },
+          { color: '#F2F6F4', label: 'Available', border: '#C6D2CD' },
         ].map((l) => (
-          <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10.5, color: '#5C6B72' }}>
+          <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10.5, color: C.muted }}>
             <div style={{ width: 9, height: 9, borderRadius: 3, background: l.color, border: l.border ? `1px solid ${l.border}` : undefined }} />
             {l.label}
           </div>
@@ -241,11 +273,11 @@ function RevenueCard() {
   return (
     <BentoCard className="p-5 col-span-2" delay={0.1} >
       <div ref={ref}>
-        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5C6B72', marginBottom: 4 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.faint, marginBottom: 4 }}>
           Revenue — 7 days
         </div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: '#0E1A1F', letterSpacing: '-0.03em', marginBottom: 14 }}>
-          38 450 MAD <span style={{ fontSize: 12, fontWeight: 600, color: '#21C77A', background: '#E2F4EA', padding: '2px 8px', borderRadius: 999 }}>+18%</span>
+        <div style={{ fontSize: 22, fontWeight: 800, color: C.ink, letterSpacing: '-0.03em', marginBottom: 14 }}>
+          38 450 MAD <span style={{ fontSize: 12, fontWeight: 600, color: C.teal, background: C.tint, padding: '2px 8px', borderRadius: 999 }}>+18%</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 56 }}>
           {bars.map((h, i) => (
@@ -258,7 +290,7 @@ function RevenueCard() {
                 flex: 1,
                 height: `${h}%`,
                 borderRadius: '3px 3px 0 0',
-                background: i === 6 ? '#21C77A' : '#C9EBD7',
+                background: i === 6 ? tealGradient : 'rgba(22,163,125,0.22)',
                 transformOrigin: 'bottom',
               }}
             />
@@ -290,14 +322,12 @@ function WhatsAppCard() {
 
   return (
     <BentoCard className="p-4 row-span-2" delay={0.2}>
-      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5C6B72', marginBottom: 10 }}>
-        WhatsApp Hub
-      </div>
+      <CardLabel>WhatsApp Hub</CardLabel>
       <div style={{ background: '#ECE5DD', borderRadius: 12, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 10, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
-          <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#21C77A', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, fontWeight: 700 }}>Y</div>
+          <div style={{ width: 32, height: 32, borderRadius: '50%', background: C.mint, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, fontWeight: 700 }}>Y</div>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#0E1A1F' }}>Youssef Benali</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.ink }}>Youssef Benali</div>
             <div style={{ fontSize: 10, color: '#00a884' }}>online</div>
           </div>
         </div>
@@ -316,12 +346,12 @@ function WhatsAppCard() {
                   padding: '8px 11px',
                   fontSize: 11.5,
                   lineHeight: 1.55,
-                  color: '#0E1A1F',
+                  color: C.ink,
                   whiteSpace: 'pre-line',
                 }}
               >
                 {b.text}
-                <div style={{ fontSize: 9, color: '#8593A0', textAlign: 'right', marginTop: 2 }}>{b.time}</div>
+                <div style={{ fontSize: 9, color: C.faint, textAlign: 'right', marginTop: 2 }}>{b.time}</div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -343,18 +373,16 @@ function CheckInCard() {
 
   return (
     <BentoCard className="p-5" delay={0.15}>
-      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5C6B72', marginBottom: 12 }}>
-        Check-in
-      </div>
-      <div style={{ fontSize: 28, fontWeight: 800, color: '#0E1A1F', letterSpacing: '-0.04em', lineHeight: 1, marginBottom: 4 }}>
+      <CardLabel>Check-in</CardLabel>
+      <div className={fraunces.className} style={{ fontSize: 30, fontWeight: 600, color: C.teal, letterSpacing: '-0.02em', lineHeight: 1, marginBottom: 4 }}>
         60s
       </div>
-      <div style={{ fontSize: 11, color: '#5C6B72', marginBottom: 14 }}>Average check-in time</div>
+      <div style={{ fontSize: 11, color: C.muted, marginBottom: 14 }}>Average check-in time</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {steps.map((s, i) => (
           <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <motion.div
-              animate={{ background: i <= active ? '#21C77A' : '#E8EDEF', scale: i === active ? 1.15 : 1 }}
+              animate={{ background: i <= active ? C.mint : '#EAF0ED', scale: i === active ? 1.15 : 1 }}
               transition={{ type: 'spring', stiffness: 300, damping: 20 }}
               style={{ width: 18, height: 18, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
             >
@@ -365,7 +393,7 @@ function CheckInCard() {
               )}
             </motion.div>
             <motion.span
-              animate={{ color: i <= active ? '#0E1A1F' : '#8593A0', fontWeight: i === active ? 600 : 400 }}
+              animate={{ color: i <= active ? C.ink : C.faint, fontWeight: i === active ? 600 : 400 }}
               style={{ fontSize: 12 }}
             >
               {s}
@@ -387,9 +415,7 @@ function PDFCard() {
 
   return (
     <BentoCard className="p-5" delay={0.25}>
-      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5C6B72', marginBottom: 12 }}>
-        Police Form
-      </div>
+      <CardLabel>Police Form</CardLabel>
       <AnimatePresence mode="wait">
         {generated ? (
           <motion.div
@@ -400,13 +426,13 @@ function PDFCard() {
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}
           >
-            <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#E2F4EA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#21C77A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <div style={{ width: 44, height: 44, borderRadius: '50%', background: C.tint, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={C.mint} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#0F6B41' }}>PDF Generated!</div>
-            <div style={{ fontSize: 10, color: '#8593A0' }}>fiche-police-benali.pdf</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.teal }}>PDF Generated!</div>
+            <div style={{ fontSize: 10, color: C.faint }}>fiche-police-benali.pdf</div>
           </motion.div>
         ) : (
           <motion.div
@@ -416,21 +442,21 @@ function PDFCard() {
             exit={{ opacity: 0 }}
             style={{ display: 'flex', flexDirection: 'column', gap: 5 }}
           >
-            <div style={{ background: '#F1F9F4', borderRadius: 8, padding: '8px 10px', border: '1px solid #E2F4EA' }}>
+            <div style={{ background: '#F4F9F6', borderRadius: 8, padding: '8px 10px', border: `1px solid ${C.border}` }}>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <div style={{ width: 20, height: 24, background: '#0F6B41', borderRadius: 3, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 20, height: 24, background: C.teal, borderRadius: 3, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <span style={{ fontSize: 8, color: '#fff', fontWeight: 700 }}>PDF</span>
                 </div>
                 <div>
-                  <div style={{ fontSize: 10, fontWeight: 600, color: '#0E1A1F' }}>FICHE DE POLICE</div>
-                  <div style={{ fontSize: 9, color: '#8593A0' }}>1 click generation</div>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: C.ink }}>FICHE DE POLICE</div>
+                  <div style={{ fontSize: 9, color: C.faint }}>1 click generation</div>
                 </div>
               </div>
             </div>
             <motion.div
               animate={{ width: ['0%', '100%'] }}
               transition={{ duration: 2.3, ease: 'easeInOut', repeat: Infinity }}
-              style={{ height: 3, background: 'linear-gradient(90deg, #21C77A, #0F6B41)', borderRadius: 999 }}
+              style={{ height: 3, background: tealGradient, borderRadius: 999 }}
             />
           </motion.div>
         )}
@@ -439,69 +465,115 @@ function PDFCard() {
   )
 }
 
+// ── FAQ — single source for the visible section AND the JSON-LD schema ────
+const FAQ_ITEMS = [
+  {
+    q: 'Qu\'est-ce que Sweet Reservation ?',
+    a: 'Sweet Reservation est un logiciel SaaS de gestion pour hostels et auberges au Maroc. Il permet le check-in digital en 60 secondes, la génération automatique de fiches de police, l\'intégration WhatsApp, la gestion des paiements en MAD et les rapports de revenus.',
+  },
+  {
+    q: 'Comment Sweet Reservation génère-t-il les fiches de police ?',
+    a: 'Sweet Reservation génère automatiquement les fiches de police en PDF au format standard marocain lors de chaque check-in. Toutes les informations requises (nom, passeport, nationalité, adresse au Maroc, destination suivante) sont collectées dans le formulaire de check-in et exportées en un seul clic.',
+  },
+  {
+    q: 'Sweet Reservation fonctionne-t-il avec Booking.com et Hostelworld ?',
+    a: 'Oui. Sweet Reservation s\'intègre avec Booking.com, Hostelworld et d\'autres canaux OTA. Vous pouvez importer les réservations, suivre les commissions et calculer le revenu net après déduction des frais de canal.',
+  },
+  {
+    q: 'Puis-je utiliser Sweet Reservation sur mobile ?',
+    a: 'Oui, Sweet Reservation est entièrement optimisé pour mobile. L\'application web progressive (PWA) fonctionne sur tous les smartphones. Une navigation simplifiée est disponible en bas de l\'écran pour un accès rapide au check-in, plan des lits et paiements.',
+  },
+  {
+    q: 'Quel est le prix de Sweet Reservation ?',
+    a: 'Sweet Reservation propose un essai gratuit de 14 jours sans carte bancaire. Des plans mensuels et annuels sont disponibles pour les hostels de toutes tailles, de la petite auberge au grand établissement.',
+  },
+  {
+    q: 'Sweet Reservation est-il disponible en arabe ?',
+    a: 'Oui, Sweet Reservation est disponible en français, arabe et anglais. L\'interface s\'adapte à la langue choisie par l\'utilisateur.',
+  },
+]
+
+// ── FAQ accordion item ─────────────────────────────────────────────────────
+function FAQRow({ q, a, open, onToggle }: { q: string; a: string; open: boolean; onToggle: () => void }) {
+  return (
+    <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 2px rgba(10,31,28,0.03)' }}>
+      <button
+        onClick={onToggle}
+        aria-expanded={open}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+          padding: '18px 22px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left',
+        }}
+      >
+        <span style={{ fontSize: 15, fontWeight: 600, color: C.ink, lineHeight: 1.4 }}>{q}</span>
+        <motion.span
+          animate={{ rotate: open ? 45 : 0 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+          style={{
+            flexShrink: 0, width: 26, height: 26, borderRadius: '50%',
+            background: open ? tealGradient : C.tint,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={open ? '#fff' : C.teal} strokeWidth="2.5" strokeLinecap="round">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+        </motion.span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.32, ease: [0.25, 0.4, 0.25, 1] }}
+            style={{ overflow: 'hidden' }}
+          >
+            <p style={{ padding: '0 22px 20px', fontSize: 14, lineHeight: 1.7, color: C.muted }}>{a}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// ── Logo mark ──────────────────────────────────────────────────────────────
+function LogoMark({ size = 30 }: { size?: number }) {
+  return (
+    <div style={{
+      width: size, height: size, background: tealGradient, borderRadius: size * 0.28,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      boxShadow: '0 2px 8px rgba(15,110,86,0.3), inset 0 1px 0 rgba(255,255,255,0.25)',
+    }}>
+      <svg width={size * 0.55} height={size * 0.55} viewBox="0 0 16 16" fill="none">
+        <path d="M3 8.5C3 6 4.5 4 8 4C11.5 4 13 6 13 8.5C13 11 11 13 8 13C5 13 3 11 3 8.5Z" fill="white" opacity="0.92"/>
+        <rect x="6" y="3" width="4" height="2" rx="1" fill="white"/>
+      </svg>
+    </div>
+  )
+}
+
 // ── Main landing page ─────────────────────────────────────────────────────
 export default function LandingPage() {
   const t = useT()
   const [annual, setAnnual] = useState(false)
   const { scrollY } = useScroll()
-  const navBg = useTransform(scrollY, [0, 80], ['rgba(255,255,255,0.5)', 'rgba(255,255,255,0.88)'])
-  const navShadow = useTransform(scrollY, [0, 80], ['0 0 0 rgba(14,26,31,0)', '0 2px 24px rgba(14,26,31,0.08)'])
+  const navBg = useTransform(scrollY, [0, 80], ['rgba(255,255,255,0.55)', 'rgba(255,255,255,0.92)'])
+  const navShadow = useTransform(scrollY, [0, 80], ['0 0 0 rgba(10,31,28,0)', '0 2px 24px rgba(10,31,28,0.08)'])
 
   const HERO_WORDS = ['Every', 'bed', 'booked.', 'Every', 'guest', 'happy.', 'Every', 'night', 'effortless.']
+  const ACCENTS = new Set(['booked.', 'happy.', 'effortless.'])
+
+  const [openFaq, setOpenFaq] = useState<number | null>(0)
 
   const faqSchema = {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
-    mainEntity: [
-      {
-        '@type': 'Question',
-        name: 'Qu\'est-ce que Sweet Reservation ?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'Sweet Reservation est un logiciel SaaS de gestion pour hostels et auberges au Maroc. Il permet le check-in digital en 60 secondes, la génération automatique de fiches de police, l\'intégration WhatsApp, la gestion des paiements en MAD et les rapports de revenus.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'Comment Sweet Reservation génère-t-il les fiches de police ?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'Sweet Reservation génère automatiquement les fiches de police en PDF au format standard marocain lors de chaque check-in. Toutes les informations requises (nom, passeport, nationalité, adresse au Maroc, destination suivante) sont collectées dans le formulaire de check-in et exportées en un seul clic.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'Sweet Reservation fonctionne-t-il avec Booking.com et Hostelworld ?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'Oui. Sweet Reservation s\'intègre avec Booking.com, Hostelworld et d\'autres canaux OTA. Vous pouvez importer les réservations, suivre les commissions et calculer le revenu net après déduction des frais de canal.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'Puis-je utiliser Sweet Reservation sur mobile ?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'Oui, Sweet Reservation est entièrement optimisé pour mobile. L\'application web progressive (PWA) fonctionne sur tous les smartphones. Une navigation simplifiée est disponible en bas de l\'écran pour un accès rapide au check-in, plan des lits et paiements.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'Quel est le prix de Sweet Reservation ?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'Sweet Reservation propose un essai gratuit de 14 jours sans carte bancaire. Des plans mensuels et annuels sont disponibles pour les hostels de toutes tailles, de la petite auberge au grand établissement.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'Sweet Reservation est-il disponible en arabe ?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'Oui, Sweet Reservation est disponible en français, arabe et anglais. L\'interface s\'adapte à la langue choisie par l\'utilisateur.',
-        },
-      },
-    ],
+    mainEntity: FAQ_ITEMS.map((item) => ({
+      '@type': 'Question',
+      name: item.q,
+      acceptedAnswer: { '@type': 'Answer', text: item.a },
+    })),
   }
 
   const localBusinessSchema = {
@@ -520,7 +592,7 @@ export default function LandingPage() {
   }
 
   return (
-    <div className={jakarta.className} style={{ background: '#fff', color: '#0E1A1F', overflowX: 'hidden' }}>
+    <div className={jakarta.className} style={{ background: '#fff', color: C.ink, overflowX: 'hidden' }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
@@ -540,7 +612,7 @@ export default function LandingPage() {
           background: navBg,
           backdropFilter: 'blur(20px) saturate(180%)',
           WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-          border: '1px solid rgba(232,237,239,0.9)',
+          border: `1px solid ${C.border}`,
           boxShadow: navShadow,
           whiteSpace: 'nowrap',
         }}
@@ -549,28 +621,23 @@ export default function LandingPage() {
         transition={{ duration: 0.5, ease: [0.25, 0.4, 0.25, 1] }}
       >
         <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none' }}>
-          <div style={{ width: 30, height: 30, background: '#21C77A', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M3 8.5C3 6 4.5 4 8 4C11.5 4 13 6 13 8.5C13 11 11 13 8 13C5 13 3 11 3 8.5Z" fill="white" opacity="0.9"/>
-              <rect x="6" y="3" width="4" height="2" rx="1" fill="white"/>
-            </svg>
-          </div>
-          <span style={{ fontSize: 15, fontWeight: 700, color: '#0E1A1F', letterSpacing: '-0.3px' }}>Sweet Reservation</span>
+          <LogoMark />
+          <span style={{ fontSize: 15, fontWeight: 700, color: C.ink, letterSpacing: '-0.3px' }}>Sweet Reservation</span>
         </Link>
         <div className="lp-nav-links" style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
           {['Features', 'Pricing'].map((l) => (
-            <a key={l} href={`#${l.toLowerCase()}`} style={{ fontSize: 13.5, fontWeight: 500, color: '#5C6B72', textDecoration: 'none' }}>{l}</a>
+            <a key={l} href={`#${l.toLowerCase()}`} style={{ fontSize: 13.5, fontWeight: 500, color: C.muted, textDecoration: 'none' }}>{l}</a>
           ))}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 6 }}>
-          <Link href="/login" style={{ fontSize: 13.5, fontWeight: 500, color: '#5C6B72', textDecoration: 'none', padding: '7px 14px', borderRadius: 999 }}>
+          <Link href="/login" style={{ fontSize: 13.5, fontWeight: 500, color: C.muted, textDecoration: 'none', padding: '7px 14px', borderRadius: 999 }}>
             Sign in
           </Link>
           <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-            <Link href="/register" style={{
+            <Link href="/register?plan=starter" style={{
               fontSize: 13.5, fontWeight: 600, color: '#fff', textDecoration: 'none',
-              padding: '8px 18px', borderRadius: 999, background: '#21C77A',
-              boxShadow: '0 2px 12px rgba(33,199,122,0.4)', display: 'block',
+              padding: '8px 18px', borderRadius: 999, background: tealGradient,
+              boxShadow: '0 2px 12px rgba(15,110,86,0.35), inset 0 1px 0 rgba(255,255,255,0.2)', display: 'block',
             }}>
               Start free
             </Link>
@@ -583,36 +650,47 @@ export default function LandingPage() {
         position: 'relative', minHeight: '100vh', display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
         textAlign: 'center', overflow: 'hidden',
-        background: 'linear-gradient(180deg, #030f0b 0%, #0a1f1c 40%, #0d2b26 70%, #0E1A1F 100%)',
+        background: 'linear-gradient(180deg, #FFFFFF 0%, #F7FBF9 45%, #EEF6F2 100%)',
       }}>
         {/* Grid dot pattern */}
         <div style={{
           position: 'absolute', inset: 0, zIndex: 0,
-          backgroundImage: 'radial-gradient(rgba(33,199,122,0.15) 1px, transparent 1px)',
-          backgroundSize: '32px 32px',
-          maskImage: 'radial-gradient(ellipse 80% 60% at 50% 40%, #000 40%, transparent 100%)',
-          WebkitMaskImage: 'radial-gradient(ellipse 80% 60% at 50% 40%, #000 40%, transparent 100%)',
+          backgroundImage: 'radial-gradient(rgba(15,110,86,0.13) 1px, transparent 1px)',
+          backgroundSize: '30px 30px',
+          maskImage: 'radial-gradient(ellipse 80% 60% at 50% 38%, #000 30%, transparent 100%)',
+          WebkitMaskImage: 'radial-gradient(ellipse 80% 60% at 50% 38%, #000 30%, transparent 100%)',
         }} />
 
-        {/* Glowing orbs */}
-        <HeroShape className="left-[-8%] top-[22%]" w={580} h={140} rotate={10} color="rgba(33,199,122,0.18)" delay={0.3} />
-        <HeroShape className="right-[-4%] top-[60%]" w={460} h={110} rotate={-14} color="rgba(15,107,65,0.22)" delay={0.5} />
-        <HeroShape className="left-[8%] bottom-[8%]" w={300} h={80} rotate={-6} color="rgba(33,199,122,0.12)" delay={0.4} />
-        <HeroShape className="right-[18%] top-[8%]" w={200} h={55} rotate={18} color="rgba(33,199,122,0.15)" delay={0.65} />
+        {/* Soft glows */}
+        <GlowBlob className="left-[-10%] top-[18%]" w={620} h={260} color="rgba(22,163,125,0.16)" delay={0.3} />
+        <GlowBlob className="right-[-6%] top-[55%]" w={520} h={230} color="rgba(15,110,86,0.12)" delay={0.5} />
+        <GlowBlob className="left-[12%] bottom-[4%]" w={340} h={170} color="rgba(22,163,125,0.10)" delay={0.4} />
 
-        {/* Centre glow */}
-        <div style={{
-          position: 'absolute', top: '30%', left: '50%', transform: 'translate(-50%, -50%)',
-          width: 600, height: 300, borderRadius: '50%',
-          background: 'radial-gradient(ellipse, rgba(33,199,122,0.12) 0%, transparent 70%)',
-          pointerEvents: 'none', zIndex: 0,
-        }} />
+        {/* Badge */}
+        <motion.div
+          custom={0} variants={fadeUp} initial="hidden" animate="visible"
+          style={{
+            position: 'relative', zIndex: 1,
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            fontSize: 12.5, fontWeight: 600, color: C.teal,
+            background: 'rgba(255,255,255,0.75)', border: `1px solid ${C.border}`,
+            padding: '7px 16px', borderRadius: 999, marginBottom: 28,
+            boxShadow: '0 1px 4px rgba(10,31,28,0.05)',
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          <span style={{ position: 'relative', display: 'inline-flex', width: 7, height: 7 }}>
+            <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: C.mint, opacity: 0.5, animation: 'ping 1.8s cubic-bezier(0,0,0.2,1) infinite' }} />
+            <span style={{ position: 'relative', width: 7, height: 7, borderRadius: '50%', background: C.mint }} />
+          </span>
+          Built for Moroccan hospitality
+        </motion.div>
 
-        {/* H1 — word by word */}
-        <div style={{ position: 'relative', zIndex: 1, marginBottom: 24, maxWidth: 820 }}>
+        {/* H1 — word by word, serif accents */}
+        <div style={{ position: 'relative', zIndex: 1, marginBottom: 24, maxWidth: 860 }}>
           <h1 style={{
-            fontSize: 'clamp(38px, 6vw, 68px)', fontWeight: 800, lineHeight: 1.05,
-            letterSpacing: '-0.035em',
+            fontSize: 'clamp(40px, 6.2vw, 74px)', fontWeight: 700, lineHeight: 1.06,
+            letterSpacing: '-0.03em', color: C.ink,
           }}>
             {HERO_WORDS.map((word, i) => (
               <motion.span
@@ -621,13 +699,21 @@ export default function LandingPage() {
                 variants={fadeUp}
                 initial="hidden"
                 animate="visible"
+                className={ACCENTS.has(word) ? fraunces.className : undefined}
                 style={{
                   display: 'inline-block',
-                  marginRight: word === 'booked.' || word === 'happy.' || word === 'effortless.' ? '0' : '0.28em',
-                  color: word === 'booked.' || word === 'happy.' || word === 'effortless.' ? '#21C77A' : 'rgba(255,255,255,0.92)',
+                  marginRight: word === 'effortless.' ? '0' : '0.28em',
+                  fontStyle: ACCENTS.has(word) ? 'italic' : 'normal',
+                  fontWeight: ACCENTS.has(word) ? 500 : 700,
+                  letterSpacing: ACCENTS.has(word) ? '-0.015em' : undefined,
+                  background: ACCENTS.has(word) ? tealGradient : undefined,
+                  WebkitBackgroundClip: ACCENTS.has(word) ? 'text' : undefined,
+                  backgroundClip: ACCENTS.has(word) ? 'text' : undefined,
+                  color: ACCENTS.has(word) ? 'transparent' : C.ink,
+                  paddingRight: ACCENTS.has(word) ? '0.06em' : undefined,
                 }}
               >
-                {word}{(word === 'booked.' || word === 'happy.') ? ' ' : ''}
+                {word}
               </motion.span>
             ))}
           </h1>
@@ -636,7 +722,7 @@ export default function LandingPage() {
         {/* Subtitle */}
         <motion.p
           custom={10} variants={fadeUp} initial="hidden" animate="visible"
-          style={{ position: 'relative', zIndex: 1, fontSize: 17, lineHeight: 1.65, color: 'rgba(255,255,255,0.45)', maxWidth: 560, marginBottom: 40 }}
+          style={{ position: 'relative', zIndex: 1, fontSize: 17, lineHeight: 1.65, color: C.muted, maxWidth: 560, marginBottom: 40 }}
         >
           Check in a guest, generate the police fiche, collect payment, send a WhatsApp welcome — all in under 2 minutes. Built for Moroccan hospitality.
         </motion.p>
@@ -644,14 +730,14 @@ export default function LandingPage() {
         {/* CTA */}
         <motion.div
           custom={12} variants={fadeUp} initial="hidden" animate="visible"
-          style={{ position: 'relative', zIndex: 1, display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 64 }}
+          style={{ position: 'relative', zIndex: 1, display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 20 }}
         >
           <motion.div whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.97 }}>
-            <Link href="/register" style={{
+            <Link href="/register?plan=starter" style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               fontSize: 15, fontWeight: 700, color: '#fff', textDecoration: 'none',
-              padding: '14px 28px', borderRadius: 14, background: '#21C77A',
-              boxShadow: '0 6px 30px rgba(33,199,122,0.45), 0 0 0 1px rgba(33,199,122,0.3)',
+              padding: '14px 28px', borderRadius: 14, background: tealGradient,
+              boxShadow: '0 8px 28px rgba(15,110,86,0.32), inset 0 1px 0 rgba(255,255,255,0.22)',
             }}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M5 12h14M12 5l7 7-7 7"/>
@@ -660,20 +746,39 @@ export default function LandingPage() {
             </Link>
           </motion.div>
           <motion.div whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.97 }}>
-            <Link href="/login" style={{
+            <a href="#pricing" style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
-              fontSize: 15, fontWeight: 600, color: 'rgba(255,255,255,0.7)', textDecoration: 'none',
+              fontSize: 15, fontWeight: 600, color: C.ink, textDecoration: 'none',
               padding: '14px 24px', borderRadius: 14,
-              border: '1px solid rgba(255,255,255,0.12)',
-              background: 'rgba(255,255,255,0.05)',
+              border: `1px solid ${C.border}`,
+              background: 'rgba(255,255,255,0.8)',
               backdropFilter: 'blur(8px)',
+              boxShadow: '0 1px 4px rgba(10,31,28,0.05)',
             }}>
-              Se connecter
-            </Link>
+              See pricing
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 5v14M5 12l7 7 7-7"/>
+              </svg>
+            </a>
           </motion.div>
         </motion.div>
 
-        {/* Dashboard mock */}
+        {/* Reassurance line */}
+        <motion.div
+          custom={14} variants={fadeUp} initial="hidden" animate="visible"
+          style={{ position: 'relative', zIndex: 1, display: 'flex', gap: 18, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 56, fontSize: 12.5, color: C.faint, fontWeight: 500 }}
+        >
+          {['No credit card required', 'Setup in 5 minutes', 'Français · العربية · English'].map((s) => (
+            <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.mint} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              {s}
+            </span>
+          ))}
+        </motion.div>
+
+        {/* Dashboard mock — light */}
         <motion.div
           initial={{ opacity: 0, y: 36, filter: 'blur(6px)' }}
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
@@ -684,18 +789,18 @@ export default function LandingPage() {
           <TiltCard>
             <div style={{
               borderRadius: 20, overflow: 'hidden',
-              boxShadow: '0 32px 80px rgba(0,0,0,0.5), 0 4px 16px rgba(0,0,0,0.3), 0 0 0 1px rgba(33,199,122,0.2)',
-              background: '#0a1a15',
+              boxShadow: '0 40px 100px rgba(10,31,28,0.18), 0 8px 28px rgba(10,31,28,0.08), 0 0 0 1px rgba(10,31,28,0.05)',
+              background: '#fff',
             }}>
               {/* Chrome bar */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', background: 'rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', background: '#F6F9F7', borderBottom: `1px solid ${C.border}` }}>
                 <div style={{ display: 'flex', gap: 6 }}>
                   {['#FF5F57','#FEBC2E','#28C840'].map((c) => (
                     <div key={c} style={{ width: 12, height: 12, borderRadius: '50%', background: c }} />
                   ))}
                 </div>
                 <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '2px 14px' }}>
+                  <div style={{ fontSize: 11, color: C.faint, background: '#fff', border: `1px solid ${C.border}`, borderRadius: 6, padding: '2px 14px' }}>
                     sweetreservation.com/dashboard
                   </div>
                 </div>
@@ -703,15 +808,10 @@ export default function LandingPage() {
               {/* Body */}
               <div style={{ display: 'flex', height: 380 }}>
                 {/* Sidebar */}
-                <div style={{ width: 200, background: 'rgba(255,255,255,0.03)', borderRight: '1px solid rgba(255,255,255,0.06)', padding: '14px 10px', display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
+                <div style={{ width: 200, background: '#FAFCFB', borderRight: `1px solid ${C.border}`, padding: '14px 10px', display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', marginBottom: 10 }}>
-                    <div style={{ width: 26, height: 26, borderRadius: 7, background: '#21C77A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                        <path d="M3 8.5C3 6 4.5 4 8 4C11.5 4 13 6 13 8.5C13 11 11 13 8 13C5 13 3 11 3 8.5Z" fill="white" opacity="0.9"/>
-                        <rect x="6" y="3" width="4" height="2" rx="1" fill="white"/>
-                      </svg>
-                    </div>
-                    <span style={{ fontSize: 12.5, fontWeight: 700, color: 'rgba(255,255,255,0.9)', letterSpacing: '-0.2px' }}>Sweet Reservation</span>
+                    <LogoMark size={26} />
+                    <span style={{ fontSize: 12.5, fontWeight: 700, color: C.ink, letterSpacing: '-0.2px' }}>Sweet Reservation</span>
                   </div>
                   {[
                     { icon: '🏠', label: t('nav.dashboard'), active: true },
@@ -727,8 +827,8 @@ export default function LandingPage() {
                         display: 'flex', alignItems: 'center', gap: 8,
                         padding: '6px 9px', borderRadius: 8,
                         fontSize: 12, fontWeight: item.active ? 600 : 400,
-                        background: item.active ? 'rgba(33,199,122,0.15)' : 'transparent',
-                        color: item.active ? '#21C77A' : 'rgba(255,255,255,0.35)',
+                        background: item.active ? C.tint : 'transparent',
+                        color: item.active ? C.teal : C.faint,
                       }}
                     >
                       <span style={{ fontSize: 13 }}>{item.icon}</span>
@@ -737,14 +837,14 @@ export default function LandingPage() {
                   ))}
                 </div>
                 {/* Main */}
-                <div style={{ flex: 1, padding: '18px 18px', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: 'rgba(255,255,255,0.85)' }}>Tableau de bord</div>
+                <div style={{ flex: 1, padding: '18px 18px', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 14, background: '#fff' }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: C.ink, textAlign: 'left' }}>Tableau de bord</div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 9 }}>
                     {[
-                      { label: "Occupancy", val: '17/24', sub: '70%', delay: '0s', color: '#21C77A' },
-                      { label: "Revenue", val: '4 320 MAD', sub: '+12%', delay: '0.08s', color: '#5DCAA5' },
-                      { label: 'Check-ins', val: '3', sub: 'pending', delay: '0.16s', color: 'rgba(255,255,255,0.7)' },
-                      { label: 'Check-outs', val: '2', sub: 'before 11h', delay: '0.24s', color: '#FCD34D' },
+                      { label: 'Occupancy', val: '17/24', sub: '70%', delay: '0s', color: C.teal },
+                      { label: 'Revenue', val: '4 320 MAD', sub: '+12%', delay: '0.08s', color: C.mint },
+                      { label: 'Check-ins', val: '3', sub: 'pending', delay: '0.16s', color: C.ink },
+                      { label: 'Check-outs', val: '2', sub: 'before 11h', delay: '0.24s', color: '#B45309' },
                     ].map((c) => (
                       <motion.div
                         key={c.label}
@@ -752,21 +852,21 @@ export default function LandingPage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.9 + parseFloat(c.delay), duration: 0.4 }}
                         style={{
-                          background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)',
-                          borderRadius: 10, padding: '10px 12px',
+                          background: '#FAFCFB', border: `1px solid ${C.border}`,
+                          borderRadius: 10, padding: '10px 12px', textAlign: 'left',
                         }}
                       >
-                        <div style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.3)', marginBottom: 4 }}>{c.label}</div>
+                        <div style={{ fontSize: 9.5, color: C.faint, marginBottom: 4 }}>{c.label}</div>
                         <div style={{ fontSize: 14, fontWeight: 800, color: c.color, lineHeight: 1 }}>{c.val}</div>
-                        <div style={{ fontSize: 8.5, color: 'rgba(255,255,255,0.2)', marginTop: 3 }}>{c.sub}</div>
+                        <div style={{ fontSize: 8.5, color: '#AEBBB6', marginTop: 3 }}>{c.sub}</div>
                       </motion.div>
                     ))}
                   </div>
                   {/* Mini charts */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9, flex: 1 }}>
                     {/* Bar chart */}
-                    <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '10px 12px' }}>
-                      <div style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.3)', marginBottom: 8 }}>Revenue 7 days</div>
+                    <div style={{ background: '#FAFCFB', border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 12px', textAlign: 'left' }}>
+                      <div style={{ fontSize: 9.5, color: C.faint, marginBottom: 8 }}>Revenue 7 days</div>
                       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 52 }}>
                         {[40, 55, 35, 70, 60, 85, 100].map((h, i) => (
                           <motion.div
@@ -776,7 +876,7 @@ export default function LandingPage() {
                             transition={{ delay: 1 + i * 0.07, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                             style={{
                               flex: 1, height: `${h}%`, borderRadius: '2px 2px 0 0',
-                              background: i === 6 ? '#21C77A' : 'rgba(33,199,122,0.25)',
+                              background: i === 6 ? C.mint : 'rgba(22,163,125,0.22)',
                               transformOrigin: 'bottom',
                             }}
                           />
@@ -784,22 +884,22 @@ export default function LandingPage() {
                       </div>
                     </div>
                     {/* Line chart */}
-                    <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '10px 12px', display: 'flex', flexDirection: 'column' }}>
-                      <div style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.3)', marginBottom: 6 }}>Occupancy rate</div>
+                    <div style={{ background: '#FAFCFB', border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 12px', display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+                      <div style={{ fontSize: 9.5, color: C.faint, marginBottom: 6 }}>Occupancy rate</div>
                       <svg style={{ flex: 1 }} viewBox="0 0 200 60" preserveAspectRatio="none">
                         <defs>
                           <linearGradient id="dg1" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#21C77A" stopOpacity="0.3"/>
-                            <stop offset="100%" stopColor="#21C77A" stopOpacity="0"/>
+                            <stop offset="0%" stopColor={C.mint} stopOpacity="0.28"/>
+                            <stop offset="100%" stopColor={C.mint} stopOpacity="0"/>
                           </linearGradient>
                         </defs>
                         <path d="M0,50 C20,44 30,26 50,30 C70,34 80,16 100,14 C120,12 130,24 150,18 C170,12 180,7 200,5 L200,60 L0,60 Z" fill="url(#dg1)"/>
-                        <path d="M0,50 C20,44 30,26 50,30 C70,34 80,16 100,14 C120,12 130,24 150,18 C170,12 180,7 200,5" fill="none" stroke="#21C77A" strokeWidth="2" strokeLinecap="round"/>
+                        <path d="M0,50 C20,44 30,26 50,30 C70,34 80,16 100,14 C120,12 130,24 150,18 C170,12 180,7 200,5" fill="none" stroke={C.mint} strokeWidth="2" strokeLinecap="round"/>
                       </svg>
                     </div>
                     {/* Activity */}
-                    <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '10px 12px' }}>
-                      <div style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.3)', marginBottom: 6 }}>Activity</div>
+                    <div style={{ background: '#FAFCFB', border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 12px', textAlign: 'left' }}>
+                      <div style={{ fontSize: 9.5, color: C.faint, marginBottom: 6 }}>Activity</div>
                       {[
                         { icon: '✅', text: 'Check-in · Karim B.', time: '14:32' },
                         { icon: '💰', text: 'Payment · 650 MAD', time: '14:10' },
@@ -807,25 +907,25 @@ export default function LandingPage() {
                       ].map((a, i) => (
                         <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 }}>
                           <span style={{ fontSize: 10 }}>{a.icon}</span>
-                          <span style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.4)', flex: 1 }}>{a.text}</span>
-                          <span style={{ fontSize: 8.5, color: 'rgba(255,255,255,0.2)' }}>{a.time}</span>
+                          <span style={{ fontSize: 9.5, color: C.muted, flex: 1 }}>{a.text}</span>
+                          <span style={{ fontSize: 8.5, color: '#AEBBB6' }}>{a.time}</span>
                         </div>
                       ))}
                     </div>
                     {/* Donut */}
-                    <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '10px 12px', display: 'flex', flexDirection: 'column' }}>
-                      <div style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.3)', marginBottom: 6 }}>Sources</div>
+                    <div style={{ background: '#FAFCFB', border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 12px', display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+                      <div style={{ fontSize: 9.5, color: C.faint, marginBottom: 6 }}>Sources</div>
                       <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10 }}>
                         <svg width="46" height="46" viewBox="0 0 64 64">
-                          <circle cx="32" cy="32" r="24" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="10"/>
-                          <circle cx="32" cy="32" r="24" fill="none" stroke="#21C77A" strokeWidth="10" strokeDasharray="75.4 75.4" strokeDashoffset="-56.5" strokeLinecap="round" transform="rotate(-90 32 32)"/>
-                          <circle cx="32" cy="32" r="24" fill="none" stroke="#0F6B41" strokeWidth="10" strokeDasharray="37.7 113.1" strokeDashoffset="-131.9" strokeLinecap="round" transform="rotate(-90 32 32)"/>
+                          <circle cx="32" cy="32" r="24" fill="none" stroke="#EAF0ED" strokeWidth="10"/>
+                          <circle cx="32" cy="32" r="24" fill="none" stroke={C.mint} strokeWidth="10" strokeDasharray="75.4 75.4" strokeDashoffset="-56.5" strokeLinecap="round" transform="rotate(-90 32 32)"/>
+                          <circle cx="32" cy="32" r="24" fill="none" stroke={C.teal} strokeWidth="10" strokeDasharray="37.7 113.1" strokeDashoffset="-131.9" strokeLinecap="round" transform="rotate(-90 32 32)"/>
                         </svg>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {[{ c: '#21C77A', l: 'Direct 40%' }, { c: '#0F6B41', l: 'Bk.com 20%' }].map((d) => (
+                          {[{ c: C.mint, l: 'Direct 40%' }, { c: C.teal, l: 'Bk.com 20%' }].map((d) => (
                             <div key={d.l} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 9 }}>
                               <div style={{ width: 7, height: 7, borderRadius: 2, background: d.c }} />
-                              <span style={{ color: 'rgba(255,255,255,0.35)' }}>{d.l}</span>
+                              <span style={{ color: C.muted }}>{d.l}</span>
                             </div>
                           ))}
                         </div>
@@ -859,19 +959,19 @@ export default function LandingPage() {
               variants={fadeUp}
               custom={i}
               className="lp-stat-item"
-              style={{ borderRight: i < 3 ? '1px solid #E8EDEF' : undefined }}
+              style={{ borderRight: i < 3 ? `1px solid ${C.border}` : undefined }}
             >
-              <div style={{ fontSize: 36, fontWeight: 800, letterSpacing: '-0.04em', color: '#0E1A1F', lineHeight: 1, marginBottom: 8 }}>
+              <div className={fraunces.className} style={{ fontSize: 38, fontWeight: 600, letterSpacing: '-0.02em', color: C.ink, lineHeight: 1, marginBottom: 8 }}>
                 <Counter to={s.val} suffix={s.suffix} prefix={s.prefix} />
               </div>
-              <div style={{ fontSize: 13, color: '#8593A0', fontWeight: 500 }}>{s.label}</div>
+              <div style={{ fontSize: 13, color: C.faint, fontWeight: 500 }}>{s.label}</div>
             </motion.div>
           ))}
         </motion.div>
       </section>
 
       {/* ── Features bento ───────────────────────────────────────────────── */}
-      <section id="features" className="lp-section" style={{ background: '#F9FBFA' }}>
+      <section id="features" className="lp-section" style={{ background: C.surface }}>
         <div style={{ maxWidth: 1080, margin: '0 auto' }}>
           <motion.div
             initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-60px' }}
@@ -882,15 +982,14 @@ export default function LandingPage() {
               display: 'inline-flex', alignItems: 'center', gap: 7,
               fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
               padding: '5px 14px', borderRadius: 999,
-              background: 'linear-gradient(90deg, rgba(33,199,122,0.15), rgba(26,174,106,0.08))',
-              color: '#0F6B41', marginBottom: 16,
+              background: C.tint, color: C.teal, marginBottom: 16,
             }}>
               Everything you need
             </motion.span>
-            <motion.h2 variants={fadeUp} style={{ fontSize: 'clamp(28px,4vw,44px)', fontWeight: 800, letterSpacing: '-0.03em', color: '#0E1A1F', marginBottom: 16, lineHeight: 1.1 }}>
-              One app. Zero paper.
+            <motion.h2 variants={fadeUp} className={fraunces.className} style={{ fontSize: 'clamp(30px,4vw,46px)', fontWeight: 500, letterSpacing: '-0.02em', color: C.ink, marginBottom: 16, lineHeight: 1.12 }}>
+              One app. <em style={{ color: C.teal }}>Zero paper.</em>
             </motion.h2>
-            <motion.p variants={fadeUp} style={{ fontSize: 16, color: '#5C6B72', maxWidth: 520, margin: '0 auto', lineHeight: 1.65 }}>
+            <motion.p variants={fadeUp} style={{ fontSize: 16, color: C.muted, maxWidth: 520, margin: '0 auto', lineHeight: 1.65 }}>
               From check-in to police report, payments to WhatsApp — all in one calm interface built for Moroccan hospitality.
             </motion.p>
           </motion.div>
@@ -914,9 +1013,7 @@ export default function LandingPage() {
 
             {/* Night audit card */}
             <BentoCard className="p-5" delay={0.3}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5C6B72', marginBottom: 12 }}>
-                Night Audit
-              </div>
+              <CardLabel>Night Audit</CardLabel>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {[
                   { label: 'Cash in drawer', val: '3 640 MAD', done: true },
@@ -932,8 +1029,8 @@ export default function LandingPage() {
                     transition={{ delay: 0.3 + i * 0.1, duration: 0.4 }}
                     style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}
                   >
-                    <span style={{ color: '#8593A0' }}>{r.label}</span>
-                    <span style={{ fontWeight: 600, color: '#0F6B41' }}>{r.val}</span>
+                    <span style={{ color: C.faint }}>{r.label}</span>
+                    <span style={{ fontWeight: 600, color: C.teal }}>{r.val}</span>
                   </motion.div>
                 ))}
               </div>
@@ -953,12 +1050,12 @@ export default function LandingPage() {
             <motion.span variants={fadeUp} style={{
               display: 'inline-flex', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
               textTransform: 'uppercase', padding: '5px 14px', borderRadius: 999,
-              background: 'rgba(33,199,122,0.1)', color: '#0F6B41', marginBottom: 16,
+              background: C.tint, color: C.teal, marginBottom: 16,
             }}>
               Who it&apos;s for
             </motion.span>
-            <motion.h2 variants={fadeUp} style={{ fontSize: 'clamp(28px,4vw,44px)', fontWeight: 800, letterSpacing: '-0.03em', color: '#0E1A1F', lineHeight: 1.1 }}>
-              Built for every kind of Moroccan host
+            <motion.h2 variants={fadeUp} className={fraunces.className} style={{ fontSize: 'clamp(30px,4vw,46px)', fontWeight: 500, letterSpacing: '-0.02em', color: C.ink, lineHeight: 1.12 }}>
+              Built for every kind of <em style={{ color: C.teal }}>Moroccan host</em>
             </motion.h2>
           </motion.div>
 
@@ -976,18 +1073,19 @@ export default function LandingPage() {
                 key={a.title}
                 variants={fadeUp}
                 custom={i}
-                whileHover={{ y: -4, boxShadow: '0 12px 40px rgba(14,26,31,0.1)', transition: { type: 'spring', stiffness: 300, damping: 22 } }}
+                whileHover={{ y: -4, boxShadow: '0 16px 44px rgba(10,31,28,0.09)', transition: { type: 'spring', stiffness: 300, damping: 22 } }}
                 style={{
-                  background: '#fff', border: '1px solid #DDE4E7', borderRadius: 18,
+                  background: '#fff', border: `1px solid ${C.border}`, borderRadius: 20,
                   padding: '28px 24px', cursor: 'default',
+                  boxShadow: '0 1px 2px rgba(10,31,28,0.03)',
                   transition: 'box-shadow 0.2s',
                 }}
               >
-                <div style={{ width: 44, height: 44, borderRadius: 12, background: '#E2F4EA', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, marginBottom: 16 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: C.tint, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, marginBottom: 16 }}>
                   {a.icon}
                 </div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#0E1A1F', marginBottom: 8 }}>{a.title}</div>
-                <div style={{ fontSize: 13.5, color: '#5C6B72', lineHeight: 1.6 }}>{a.desc}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginBottom: 8 }}>{a.title}</div>
+                <div style={{ fontSize: 13.5, color: C.muted, lineHeight: 1.6 }}>{a.desc}</div>
               </motion.div>
             ))}
           </motion.div>
@@ -995,7 +1093,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Pricing ──────────────────────────────────────────────────────── */}
-      <section id="pricing" className="lp-section" style={{ background: '#F1F9F4' }}>
+      <section id="pricing" className="lp-section" style={{ background: C.surface }}>
         <div style={{ maxWidth: 960, margin: '0 auto', textAlign: 'center' }}>
           <motion.div
             initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-60px' }}
@@ -1004,25 +1102,25 @@ export default function LandingPage() {
             <motion.span variants={fadeUp} style={{
               display: 'inline-flex', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
               textTransform: 'uppercase', padding: '5px 14px', borderRadius: 999,
-              background: 'rgba(33,199,122,0.12)', color: '#0F6B41', marginBottom: 16,
+              background: C.tint, color: C.teal, marginBottom: 16,
             }}>
               Pricing
             </motion.span>
-            <motion.h2 variants={fadeUp} style={{ fontSize: 'clamp(28px,4vw,44px)', fontWeight: 800, letterSpacing: '-0.03em', color: '#0E1A1F', marginBottom: 12, lineHeight: 1.1 }}>
-              Simple pricing, no surprises
+            <motion.h2 variants={fadeUp} className={fraunces.className} style={{ fontSize: 'clamp(30px,4vw,46px)', fontWeight: 500, letterSpacing: '-0.02em', color: C.ink, marginBottom: 12, lineHeight: 1.12 }}>
+              Simple pricing, <em style={{ color: C.teal }}>no surprises</em>
             </motion.h2>
-            <motion.p variants={fadeUp} style={{ fontSize: 16, color: '#5C6B72', marginBottom: 32, lineHeight: 1.65 }}>
+            <motion.p variants={fadeUp} style={{ fontSize: 16, color: C.muted, marginBottom: 32, lineHeight: 1.65 }}>
               All plans include full access to core features. Change or cancel at any time.
             </motion.p>
 
             {/* Annual toggle */}
-            <motion.div variants={fadeUp} style={{ display: 'inline-flex', alignItems: 'center', gap: 12, background: 'rgba(255,255,255,0.8)', borderRadius: 999, padding: '6px 20px', border: '1px solid #DDE4E7', marginBottom: 48 }}>
-              <span style={{ fontSize: 13, fontWeight: 500, color: annual ? '#8593A0' : '#0E1A1F' }}>Monthly</span>
+            <motion.div variants={fadeUp} style={{ display: 'inline-flex', alignItems: 'center', gap: 12, background: '#fff', borderRadius: 999, padding: '6px 20px', border: `1px solid ${C.border}`, marginBottom: 48, boxShadow: '0 1px 4px rgba(10,31,28,0.04)' }}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: annual ? C.faint : C.ink }}>Monthly</span>
               <motion.button
                 onClick={() => setAnnual((p) => !p)}
                 style={{
                   width: 44, height: 24, borderRadius: 999, border: 'none', cursor: 'pointer', padding: 0,
-                  background: annual ? '#21C77A' : '#DDE4E7', position: 'relative',
+                  background: annual ? C.mint : '#DCE5E1', position: 'relative',
                 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 25 }}
               >
@@ -1036,9 +1134,9 @@ export default function LandingPage() {
                   }}
                 />
               </motion.button>
-              <span style={{ fontSize: 13, fontWeight: 500, color: annual ? '#0E1A1F' : '#8593A0' }}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: annual ? C.ink : C.faint }}>
                 Annual
-                <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: '#21C77A', background: '#E2F4EA', padding: '1px 7px', borderRadius: 999 }}>-20%</span>
+                <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: C.teal, background: C.tint, padding: '1px 7px', borderRadius: 999 }}>-20%</span>
               </span>
             </motion.div>
           </motion.div>
@@ -1070,19 +1168,21 @@ export default function LandingPage() {
                 className={plan.featured ? 'lp-pricing-featured' : undefined}
                 style={{
                   background: '#fff',
-                  border: `1.5px solid ${plan.featured ? '#21C77A' : '#DDE4E7'}`,
-                  borderRadius: 20, padding: '28px 24px', textAlign: 'left',
-                  boxShadow: plan.featured ? '0 8px 40px rgba(33,199,122,0.18)' : undefined,
+                  border: `1.5px solid ${plan.featured ? C.mint : C.border}`,
+                  borderRadius: 22, padding: '28px 24px', textAlign: 'left',
+                  boxShadow: plan.featured
+                    ? '0 12px 44px rgba(15,110,86,0.16), 0 0 0 4px rgba(22,163,125,0.08)'
+                    : '0 1px 2px rgba(10,31,28,0.03)',
                   transform: plan.featured ? 'translateY(-8px)' : undefined,
                   position: 'relative',
                 }}
               >
                 {plan.featured && (
-                  <div style={{ display: 'inline-block', fontSize: 10.5, fontWeight: 700, padding: '4px 12px', borderRadius: 999, background: '#21C77A', color: '#fff', marginBottom: 16 }}>
+                  <div style={{ display: 'inline-block', fontSize: 10.5, fontWeight: 700, padding: '4px 12px', borderRadius: 999, background: tealGradient, color: '#fff', marginBottom: 16, boxShadow: '0 2px 8px rgba(15,110,86,0.3)' }}>
                     Most popular
                   </div>
                 )}
-                <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5C6B72', marginBottom: 8 }}>{plan.name}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>{plan.name}</div>
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={annual ? 'annual' : 'monthly'}
@@ -1091,18 +1191,18 @@ export default function LandingPage() {
                     exit={{ opacity: 0, y: -8 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <div style={{ fontSize: 36, fontWeight: 800, letterSpacing: '-0.04em', color: '#0E1A1F', lineHeight: 1, marginBottom: 4 }}>
+                    <div className={fraunces.className} style={{ fontSize: 38, fontWeight: 600, letterSpacing: '-0.02em', color: C.ink, lineHeight: 1, marginBottom: 4 }}>
                       {annual ? Math.round(plan.monthly * 0.8) : plan.monthly}
-                      <span style={{ fontSize: 16, fontWeight: 600, color: '#8593A0' }}> USD</span>
+                      <span className={jakarta.className} style={{ fontSize: 16, fontWeight: 600, color: C.faint }}> USD</span>
                     </div>
                   </motion.div>
                 </AnimatePresence>
-                <div style={{ fontSize: 13, color: '#8593A0', marginBottom: 24 }}>per month{annual ? ', billed annually' : ''}</div>
+                <div style={{ fontSize: 13, color: C.faint, marginBottom: 24 }}>per month{annual ? ', billed annually' : ''}</div>
                 <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
                   {plan.features.map((f) => (
-                    <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13.5, color: '#1F2D33' }}>
-                      <div style={{ width: 18, height: 18, borderRadius: '50%', background: plan.featured ? '#21C77A' : '#E2F4EA', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={plan.featured ? '#fff' : '#21C77A'} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13.5, color: C.body }}>
+                      <div style={{ width: 18, height: 18, borderRadius: '50%', background: plan.featured ? tealGradient : C.tint, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={plan.featured ? '#fff' : C.teal} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="20 6 9 17 4 12"/>
                         </svg>
                       </div>
@@ -1116,13 +1216,13 @@ export default function LandingPage() {
                     style={{
                       display: 'block', textAlign: 'center', fontSize: 14, fontWeight: 700,
                       padding: '12px 20px', borderRadius: 12, textDecoration: 'none',
-                      background: plan.featured ? '#21C77A' : 'transparent',
-                      color: plan.featured ? '#fff' : '#0F6B41',
-                      border: plan.featured ? undefined : '1.5px solid #C9EBD7',
-                      boxShadow: plan.featured ? '0 4px 16px rgba(33,199,122,0.35)' : undefined,
+                      background: plan.featured ? tealGradient : 'transparent',
+                      color: plan.featured ? '#fff' : C.teal,
+                      border: plan.featured ? undefined : `1.5px solid rgba(15,110,86,0.25)`,
+                      boxShadow: plan.featured ? '0 4px 16px rgba(15,110,86,0.3), inset 0 1px 0 rgba(255,255,255,0.2)' : undefined,
                     }}
                   >
-                    {plan.planKey === 'enterprise' ? 'Contact us' : plan.planKey === 'starter' ? 'Start 30-day free trial' : 'Get started'}
+                    {plan.planKey === 'enterprise' ? 'Contact us' : plan.planKey === 'starter' ? 'Start 14-day free trial' : 'Get started'}
                   </Link>
                 </motion.div>
               </motion.div>
@@ -1132,61 +1232,112 @@ export default function LandingPage() {
       </section>
 
       {/* ── Testimonial ──────────────────────────────────────────────────── */}
-      <section className="lp-section" style={{ background: '#0E1A1F', textAlign: 'center' }}>
+      <section className="lp-section" style={{ background: '#fff', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+        <GlowBlob className="left-[6%] top-[10%]" w={420} h={220} color="rgba(22,163,125,0.09)" delay={0.2} />
         <motion.div
           initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-60px' }}
           variants={staggerContainer}
-          style={{ maxWidth: 680, margin: '0 auto' }}
+          style={{ maxWidth: 720, margin: '0 auto', position: 'relative' }}
         >
-          <motion.div variants={fadeUp} style={{ fontSize: 52, opacity: 0.35, color: '#21C77A', marginBottom: 20, lineHeight: 1 }}>&ldquo;</motion.div>
+          <motion.div variants={fadeUp} className={fraunces.className} style={{ fontSize: 64, color: C.mint, opacity: 0.4, marginBottom: 8, lineHeight: 1 }}>&ldquo;</motion.div>
           <motion.p
             variants={fadeUp}
-            style={{ fontSize: 'clamp(20px,3.5vw,26px)', fontWeight: 600, lineHeight: 1.5, color: 'rgba(255,255,255,0.82)', marginBottom: 36 }}
+            className={fraunces.className}
+            style={{ fontSize: 'clamp(22px,3.5vw,30px)', fontWeight: 500, lineHeight: 1.45, color: C.ink, marginBottom: 36, letterSpacing: '-0.01em' }}
           >
             Before Sweet Reservation, I was spending{' '}
-            <em style={{ fontStyle: 'normal', color: '#21C77A' }}>two hours every night</em>{' '}
+            <em style={{ color: C.teal }}>two hours every night</em>{' '}
             writing spreadsheets and filling forms by hand. Now I run the whole hostel from my phone.
           </motion.p>
           <motion.div variants={fadeUp} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
-            <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg, #21C77A, #0F6B41)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 800, color: '#fff' }}>Y</div>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', background: tealGradient, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 800, color: '#fff', boxShadow: '0 4px 14px rgba(15,110,86,0.3)' }}>Y</div>
             <div style={{ textAlign: 'left' }}>
-              <div style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>Youssef Benali</div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>Owner, Auberge Atlas · Agadir</div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: C.ink }}>Youssef Benali</div>
+              <div style={{ fontSize: 12, color: C.faint }}>Owner, Auberge Atlas · Agadir</div>
             </div>
           </motion.div>
         </motion.div>
       </section>
 
+      {/* ── FAQ ──────────────────────────────────────────────────────────── */}
+      <section id="faq" className="lp-section" style={{ background: C.surface }}>
+        <div style={{ maxWidth: 760, margin: '0 auto' }}>
+          <motion.div
+            initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-60px' }}
+            variants={staggerContainer}
+            style={{ textAlign: 'center', marginBottom: 48 }}
+          >
+            <motion.span variants={fadeUp} style={{
+              display: 'inline-flex', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
+              textTransform: 'uppercase', padding: '5px 14px', borderRadius: 999,
+              background: C.tint, color: C.teal, marginBottom: 16,
+            }}>
+              FAQ
+            </motion.span>
+            <motion.h2 variants={fadeUp} className={fraunces.className} style={{ fontSize: 'clamp(30px,4vw,46px)', fontWeight: 500, letterSpacing: '-0.02em', color: C.ink, marginBottom: 12, lineHeight: 1.12 }}>
+              Questions <em style={{ color: C.teal }}>fréquentes</em>
+            </motion.h2>
+            <motion.p variants={fadeUp} style={{ fontSize: 16, color: C.muted, lineHeight: 1.65 }}>
+              Tout ce qu&apos;il faut savoir avant de commencer.
+            </motion.p>
+          </motion.div>
+
+          <motion.div
+            initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-40px' }}
+            variants={staggerContainer}
+            style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+          >
+            {FAQ_ITEMS.map((item, i) => (
+              <motion.div key={item.q} variants={fadeUp} custom={i}>
+                <FAQRow
+                  q={item.q}
+                  a={item.a}
+                  open={openFaq === i}
+                  onToggle={() => setOpenFaq(openFaq === i ? null : i)}
+                />
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
       {/* ── CTA ──────────────────────────────────────────────────────────── */}
-      <section style={{ padding: '80px 24px', background: '#fff' }}>
+      <section style={{ padding: '80px 24px 100px', background: '#fff' }}>
         <motion.div
           initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-60px' }}
           variants={staggerContainer}
           className="lp-cta-box"
           style={{
-            maxWidth: 700, margin: '0 auto',
-            background: 'linear-gradient(135deg, #0a1f1c 0%, #0d2b26 50%, #0E1A1F 100%)',
-            borderRadius: 28, padding: '56px 48px', textAlign: 'center',
-            border: '1px solid rgba(33,199,122,0.2)',
-            boxShadow: '0 24px 60px rgba(14,26,31,0.2), inset 0 1px 0 rgba(33,199,122,0.1)',
+            maxWidth: 760, margin: '0 auto',
+            background: `linear-gradient(135deg, ${C.teal} 0%, #0C5B47 55%, ${C.tealDeep} 100%)`,
+            borderRadius: 28, padding: '60px 48px', textAlign: 'center',
+            boxShadow: '0 24px 64px rgba(15,110,86,0.28), inset 0 1px 0 rgba(255,255,255,0.15)',
             position: 'relative', overflow: 'hidden',
           }}
         >
-          {/* Glow */}
-          <div style={{ position: 'absolute', top: '-30%', left: '50%', transform: 'translateX(-50%)', width: 400, height: 200, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(33,199,122,0.2) 0%, transparent 70%)', pointerEvents: 'none' }} />
-          <motion.h3 variants={fadeUp} style={{ fontSize: 28, fontWeight: 800, color: '#fff', marginBottom: 12, letterSpacing: '-0.025em', position: 'relative' }}>
-            Ready to run your hostel from your phone?
+          {/* Glow + dots */}
+          <div style={{ position: 'absolute', top: '-30%', left: '50%', transform: 'translateX(-50%)', width: 460, height: 240, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(255,255,255,0.16) 0%, transparent 70%)', pointerEvents: 'none' }} />
+          <div style={{
+            position: 'absolute', inset: 0,
+            backgroundImage: 'radial-gradient(rgba(255,255,255,0.10) 1px, transparent 1px)',
+            backgroundSize: '26px 26px',
+            maskImage: 'radial-gradient(ellipse 90% 80% at 50% 0%, #000 20%, transparent 100%)',
+            WebkitMaskImage: 'radial-gradient(ellipse 90% 80% at 50% 0%, #000 20%, transparent 100%)',
+            pointerEvents: 'none',
+          }} />
+          <motion.h3 variants={fadeUp} className={fraunces.className} style={{ fontSize: 'clamp(26px,3.5vw,34px)', fontWeight: 500, color: '#fff', marginBottom: 12, letterSpacing: '-0.015em', position: 'relative', lineHeight: 1.2 }}>
+            Ready to run your hostel <em>from your phone?</em>
           </motion.h3>
-          <motion.p variants={fadeUp} style={{ fontSize: 15, color: 'rgba(255,255,255,0.45)', marginBottom: 32, lineHeight: 1.65, position: 'relative' }}>
+          <motion.p variants={fadeUp} style={{ fontSize: 15, color: 'rgba(255,255,255,0.72)', marginBottom: 32, lineHeight: 1.65, position: 'relative' }}>
             Join 200+ Moroccan properties on Sweet Reservation. 14-day free trial, no credit card required.
           </motion.p>
           <motion.div variants={fadeUp} style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', position: 'relative' }}>
             <motion.div whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.97 }}>
-              <Link href="/register" style={{
+              <Link href="/register?plan=starter" style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
-                fontSize: 15, fontWeight: 700, color: '#fff', textDecoration: 'none',
-                padding: '14px 28px', borderRadius: 14, background: '#21C77A',
-                boxShadow: '0 6px 28px rgba(33,199,122,0.45)',
+                fontSize: 15, fontWeight: 700, color: C.teal, textDecoration: 'none',
+                padding: '14px 28px', borderRadius: 14, background: '#fff',
+                boxShadow: '0 8px 28px rgba(4,26,20,0.3)',
               }}>
                 Start free trial
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1197,9 +1348,9 @@ export default function LandingPage() {
             <motion.div whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.97 }}>
               <Link href="/login" style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
-                fontSize: 15, fontWeight: 600, color: 'rgba(255,255,255,0.65)', textDecoration: 'none',
+                fontSize: 15, fontWeight: 600, color: 'rgba(255,255,255,0.9)', textDecoration: 'none',
                 padding: '14px 24px', borderRadius: 14,
-                border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.28)', background: 'rgba(255,255,255,0.08)',
               }}>
                 Sign in
               </Link>
@@ -1209,20 +1360,15 @@ export default function LandingPage() {
       </section>
 
       {/* ── Footer ───────────────────────────────────────────────────────── */}
-      <footer style={{ background: '#0E1A1F', padding: '64px 24px 32px' }}>
+      <footer style={{ background: '#FAFCFB', borderTop: `1px solid ${C.border}`, padding: '64px 24px 32px' }}>
         <div style={{ maxWidth: 1080, margin: '0 auto' }}>
-          <div className="lp-footer-grid">
+          <div className="lp-footer-grid" style={{ borderBottom: `1px solid ${C.border}` }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                <div style={{ width: 30, height: 30, background: '#21C77A', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path d="M3 8.5C3 6 4.5 4 8 4C11.5 4 13 6 13 8.5C13 11 11 13 8 13C5 13 3 11 3 8.5Z" fill="white" opacity="0.9"/>
-                    <rect x="6" y="3" width="4" height="2" rx="1" fill="white"/>
-                  </svg>
-                </div>
-                <span style={{ fontSize: 15, fontWeight: 700, color: '#fff', letterSpacing: '-0.3px' }}>Sweet Reservation</span>
+                <LogoMark />
+                <span style={{ fontSize: 15, fontWeight: 700, color: C.ink, letterSpacing: '-0.3px' }}>Sweet Reservation</span>
               </div>
-              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', lineHeight: 1.7, marginTop: 14, marginBottom: 18 }}>
+              <p style={{ fontSize: 13, color: C.faint, lineHeight: 1.7, marginTop: 14, marginBottom: 18 }}>
                 The all-in-one management platform for hostels, riads, and guesthouses across Morocco and North Africa.
               </p>
             </div>
@@ -1233,7 +1379,7 @@ export default function LandingPage() {
                   { label: 'Fonctionnalités', href: '#features' },
                   { label: 'Tarifs', href: '#pricing' },
                   { label: 'Connexion', href: '/login' },
-                  { label: 'Essai gratuit', href: '/register' },
+                  { label: 'Essai gratuit', href: '/register?plan=starter' },
                 ],
               },
               {
@@ -1258,20 +1404,20 @@ export default function LandingPage() {
               },
             ].map((col) => (
               <div key={col.title}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: 18 }}>{col.title}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.faint, marginBottom: 18 }}>{col.title}</div>
                 <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {col.links.map((l) => (
-                    <li key={l.label}><Link href={l.href} style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}>{l.label}</Link></li>
+                    <li key={l.label}><Link href={l.href} style={{ fontSize: 13.5, color: C.muted, textDecoration: 'none' }}>{l.label}</Link></li>
                   ))}
                 </ul>
               </div>
             ))}
           </div>
           <div style={{ paddingTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)' }}>© {new Date().getFullYear()} Sweet Reservation. All rights reserved.</span>
+            <span style={{ fontSize: 12, color: '#A5B3AE' }}>© {new Date().getFullYear()} Sweet Reservation. All rights reserved.</span>
             <div style={{ display: 'flex', gap: 20 }}>
               {['Privacy', 'Terms', 'Cookies'].map((l) => (
-                <a key={l} href="#" style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)', textDecoration: 'none' }}>{l}</a>
+                <a key={l} href="#" style={{ fontSize: 12, color: '#A5B3AE', textDecoration: 'none' }}>{l}</a>
               ))}
             </div>
           </div>

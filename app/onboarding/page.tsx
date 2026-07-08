@@ -119,9 +119,9 @@ export default function OnboardingPage() {
         is_active: true
       })
 
-      // Create 30-day free trial — gives immediate access without requiring checkout
+      // Create 14-day free trial — gives immediate access without requiring checkout
       const trialEnd = new Date()
-      trialEnd.setDate(trialEnd.getDate() + 30)
+      trialEnd.setDate(trialEnd.getDate() + 14)
       await supabase.from('subscriptions').upsert({
         property_id: prop.id,
         status: 'trialing',
