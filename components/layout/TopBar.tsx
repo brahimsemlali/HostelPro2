@@ -1,6 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
+import { Search } from 'lucide-react'
 import { useAppStore } from '@/stores/app.store'
 import { useSession } from '@/app/context/SessionContext'
 import { useT } from '@/app/context/LanguageContext'
@@ -41,6 +42,23 @@ const roleGradient: Record<StaffRole, string> = {
 
 function getInitials(name: string): string {
   return name.trim().split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase()
+}
+
+function SearchTrigger() {
+  const t = useT()
+  const setCommandOpen = useAppStore((s) => s.setCommandOpen)
+  return (
+    <button
+      onClick={() => setCommandOpen(true)}
+      className="flex items-center gap-2 h-8 rounded-full px-2.5 hover:bg-black/[0.06] active:bg-black/[0.10] transition-colors"
+      aria-label={t('common.search')}
+    >
+      <Search className="w-[15px] h-[15px] text-[oklch(0.42_0_0)]" />
+      <kbd className="hidden md:flex items-center gap-0.5 text-[10px] font-medium text-[oklch(0.55_0_0)] border border-black/[0.08] bg-black/[0.03] rounded-md px-1.5 py-0.5 leading-none font-sans select-none">
+        ⌘K
+      </kbd>
+    </button>
+  )
 }
 
 function LiveIndicator() {
@@ -100,6 +118,7 @@ export function TopBar() {
 
         <div className="w-px h-4 bg-black/[0.09] flex-shrink-0" />
 
+        <SearchTrigger />
         <NotificationBell />
 
         <div className="flex items-center gap-2 pl-0.5">

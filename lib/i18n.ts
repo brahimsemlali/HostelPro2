@@ -98,6 +98,13 @@ const fr = {
   'notifications.title': 'Notifications',
   'notifications.empty': 'Aucune notification',
   'notifications.emptyDesc': 'Les nouveaux événements apparaîtront ici',
+
+  // Command palette
+  'palette.placeholder': 'Rechercher un client, une réservation, une page…',
+  'palette.pages': 'Pages',
+  'palette.noResults': 'Aucun résultat',
+  'palette.hint': 'pour naviguer',
+  'palette.hintSelect': 'pour ouvrir',
   'topbar.title./dashboard': 'Tableau de bord',
   'topbar.title./beds': 'Plan des lits',
   'topbar.title./guests': 'Clients',
@@ -1271,6 +1278,13 @@ const en = {
   'notifications.title': 'Notifications',
   'notifications.empty': 'No notifications',
   'notifications.emptyDesc': 'New events will show up here',
+
+  // Command palette
+  'palette.placeholder': 'Search guests, bookings, pages…',
+  'palette.pages': 'Pages',
+  'palette.noResults': 'No results',
+  'palette.hint': 'to navigate',
+  'palette.hintSelect': 'to open',
   'topbar.title./dashboard': 'Dashboard',
   'topbar.title./beds': 'Bed Map',
   'topbar.title./guests': 'Guests',
