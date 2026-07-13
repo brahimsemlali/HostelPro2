@@ -454,8 +454,9 @@ const CreateActivityModal = dynamic(() => import('./CreateActivityModal').then(m
 ## WHAT STILL NEEDS EXTERNAL SETUP
 
 - **Run migration `019_pre_checkin_security.sql` in the Supabase SQL editor** — drops the insecure public RLS policies on bookings from migration 004 (they exposed every booking to the anon key).
-- **Run migration `022_booking_overlap_protection.sql` in the Supabase SQL editor** — prevents two concurrent users from double-booking the same bed. Run the pre-flight diagnostic queries in the file first; the ALTER fails if existing overlaps exist.
 - Rate limiting (`lib/rate-limit.ts`) is in-memory per serverless instance — fine at current scale, swap for Upstash Redis before heavy load.
+
+Migration `022_booking_overlap_protection.sql` (double-booking constraint) was applied in production on 2026-07-13.
 - Enable Web Analytics in the Vercel dashboard (code already ships `@vercel/analytics`).
 - LemonSqueezy store verification — pending (1–3 business days). Live checkouts only after approval.
 - Error monitoring: Sentry.io (deliberately deferred)
