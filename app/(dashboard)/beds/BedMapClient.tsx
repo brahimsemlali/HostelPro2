@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { todayISO } from '@/lib/utils'
 import { useAppStore } from '@/stores/app.store'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { BedCard } from '@/components/beds/BedCard'
@@ -48,7 +49,7 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
     {
       value: 'available',
       label: t('beds.available'),
-      description: 'Prêt à accueillir',
+      description: t('beds.statusDesc.available'),
       icon: BedIcon,
       activeBg: 'bg-emerald-50 border-emerald-300',
       activeText: 'text-emerald-700',
@@ -62,7 +63,7 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
     {
       value: 'dirty',
       label: t('beds.dirty'),
-      description: 'Nettoyage requis',
+      description: t('beds.statusDesc.dirty'),
       icon: Wind,
       activeBg: 'bg-amber-50 border-amber-300',
       activeText: 'text-amber-800',
@@ -76,7 +77,7 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
     {
       value: 'maintenance',
       label: t('beds.maintenance'),
-      description: 'Hors service',
+      description: t('beds.statusDesc.maintenance'),
       icon: Wrench,
       activeBg: 'bg-red-50 border-red-300',
       activeText: 'text-red-700',
@@ -90,7 +91,7 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
     {
       value: 'blocked',
       label: t('beds.blocked'),
-      description: 'Non disponible',
+      description: t('beds.statusDesc.blocked'),
       icon: Ban,
       activeBg: 'bg-slate-100 border-slate-400',
       activeText: 'text-slate-700',
@@ -120,14 +121,14 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
     const supabase = createClient()
     const { data } = await supabase
       .from('beds')
-      .select('*')
+      .select('id, name, room_id, bunk_position, base_price, status, notes, property_id, created_at')
       .eq('property_id', propertyId)
       .order('name')
     if (data) setBeds(data as Bed[])
   }, [propertyId])
 
   const refreshBookings = useCallback(async () => {
-    const today = new Date().toISOString().split('T')[0]
+    const today = todayISO()
     const supabase = createClient()
     const { data } = await supabase
       .from('bookings')
@@ -208,7 +209,8 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
 
     return () => {
       supabase.removeChannel(channel)
-      setRealtimeConnected(false)
+      // null = no active subscription — avoids a stuck "Reconnexion…" indicator
+      setRealtimeConnected(null)
     }
   }, [propertyId, setRealtimeConnected, refreshBeds, refreshBookings])
 

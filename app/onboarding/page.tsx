@@ -308,6 +308,7 @@ export default function OnboardingPage() {
                         className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
                         onClick={() => removeRoom(room.id)}
                         disabled={rooms.length === 1}
+                        aria-label={t('common.delete')}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>

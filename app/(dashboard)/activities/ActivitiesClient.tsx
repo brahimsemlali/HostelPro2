@@ -6,6 +6,14 @@ import { Plus, Calendar, Clock, MapPin, Trash2, MessageCircle, PhoneForwarded } 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
 const CreateActivityModal = dynamic(
   () => import('./CreateActivityModal').then((m) => ({ default: m.CreateActivityModal })),
   { ssr: false },
@@ -30,6 +38,7 @@ export function ActivitiesClient({ propertyId, currency, initialActivities }: Pr
   const [activities, setActivities] = useState<Activity[]>(initialActivities)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Activity | null>(null)
 
   // WhatsApp Queue State (reused from Modal logic for existing activities)
   const [queue, setQueue] = useState<{ phones: string[]; message: string; activityId: string } | null>(null)
@@ -46,12 +55,14 @@ export function ActivitiesClient({ propertyId, currency, initialActivities }: Pr
     router.refresh()
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm(t('activities.deleteConfirm'))) return
-    
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    const id = deleteTarget.id
+
     setIsDeleting(id)
     const result = await deleteActivityAction(id)
     setIsDeleting(null)
+    setDeleteTarget(null)
 
     if (result.error) {
       toast.error(result.error)
@@ -238,8 +249,9 @@ export function ActivitiesClient({ propertyId, currency, initialActivities }: Pr
                     variant="ghost"
                     size="icon"
                     className="h-10 w-10 rounded-[10px] text-[#94A3B8] hover:text-red-500 hover:bg-red-50 transition-colors shrink-0 border border-[#E8ECF0]"
-                    onClick={() => handleDelete(activity.id)}
+                    onClick={() => setDeleteTarget(activity)}
                     disabled={isDeleting === activity.id}
+                    aria-label={t('common.delete')}
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
@@ -250,7 +262,39 @@ export function ActivitiesClient({ propertyId, currency, initialActivities }: Pr
         )}
       </div>
 
-      <CreateActivityModal 
+      {/* ── Delete confirmation ── */}
+      <Dialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <DialogContent className="max-w-sm rounded-[24px]">
+          <DialogHeader>
+            <DialogTitle>{t('activities.deleteTitle')}</DialogTitle>
+            <DialogDescription>
+              {deleteTarget?.title && (
+                <span className="block font-semibold text-[#0A1F1C] mb-1">{deleteTarget.title}</span>
+              )}
+              {t('activities.deleteDesc')}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              className="rounded-xl font-semibold"
+              onClick={() => setDeleteTarget(null)}
+              disabled={isDeleting !== null}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              className="rounded-xl font-semibold bg-red-500 hover:bg-red-600 text-white"
+              onClick={handleDelete}
+              disabled={isDeleting !== null}
+            >
+              {isDeleting !== null ? '…' : t('common.delete')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <CreateActivityModal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
         onSuccess={handleCreateSuccess}

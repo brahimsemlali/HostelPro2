@@ -56,7 +56,7 @@ function MoreDrawer({ open, onClose, pathname }: { open: boolean; onClose: () =>
         </div>
 
         <SheetHeader className="flex flex-row items-center justify-between mb-5 px-1">
-          <SheetTitle className="text-[16px] font-semibold tracking-tight">Navigation</SheetTitle>
+          <SheetTitle className="text-[16px] font-semibold tracking-tight">{t('nav.menuTitle')}</SheetTitle>
           <button
             onClick={onClose}
             className="w-7 h-7 flex items-center justify-center rounded-full bg-black/[0.07] text-[oklch(0.42_0_0)] hover:bg-black/[0.12] transition-colors active:scale-95"
@@ -192,7 +192,7 @@ export function MobileNav() {
             >
               <Plus className="w-[22px] h-[22px] text-white" strokeWidth={2.5} />
             </div>
-            <span className="text-[10px] font-medium text-[oklch(0.55_0_0)] leading-none">Check-in</span>
+            <span className="text-[10px] font-medium text-[oklch(0.55_0_0)] leading-none">{t('nav.checkin')}</span>
           </Link>
 
           <Tab href="/payments" label={t('nav.payments')} icon={DollarSign} active={pathname.startsWith('/payments')} />

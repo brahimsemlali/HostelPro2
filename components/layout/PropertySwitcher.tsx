@@ -4,10 +4,12 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Check, ChevronDown, Building2 } from 'lucide-react'
 import { useSession } from '@/app/context/SessionContext'
+import { useT } from '@/app/context/LanguageContext'
 import { cn } from '@/lib/utils'
 
 export function PropertySwitcher() {
   const session = useSession()
+  const t = useT()
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [switching, setSwitching] = useState(false)
@@ -65,7 +67,7 @@ export function PropertySwitcher() {
             role="listbox"
           >
             <div className="px-3 py-2 border-b border-black/[0.06]">
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Propriétés</p>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{t('topbar.properties')}</p>
             </div>
             {session.allProperties.map((p) => (
               <button

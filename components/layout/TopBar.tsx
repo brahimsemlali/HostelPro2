@@ -1,12 +1,12 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { Bell } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/stores/app.store'
 import { useSession } from '@/app/context/SessionContext'
 import { useT } from '@/app/context/LanguageContext'
 import { PropertySwitcher } from '@/components/layout/PropertySwitcher'
+import { NotificationBell } from '@/components/layout/NotificationBell'
+import { LanguageSwitcher } from '@/components/shared/LanguageSwitcher'
 import type { StaffRole } from '@/types'
 
 const routeKeys: [string, string][] = [
@@ -96,17 +96,11 @@ export function TopBar() {
       <div className="flex items-center gap-3">
         <PropertySwitcher />
         <LiveIndicator />
+        <LanguageSwitcher variant="subtle" className="hidden sm:flex" />
 
         <div className="w-px h-4 bg-black/[0.09] flex-shrink-0" />
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative w-8 h-8 rounded-full hover:bg-black/[0.06] active:bg-black/[0.10]"
-          aria-label="Notifications"
-        >
-          <Bell className="w-[15px] h-[15px] text-[oklch(0.42_0_0)]" />
-        </Button>
+        <NotificationBell />
 
         <div className="flex items-center gap-2 pl-0.5">
           <div className="hidden sm:flex flex-col items-end leading-none gap-[3px]">

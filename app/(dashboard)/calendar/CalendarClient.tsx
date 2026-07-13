@@ -287,7 +287,7 @@ export function CalendarClient({ propertyId, rooms, beds: initialBeds, bookings:
       .on('postgres_changes', { event: '*', schema: 'public', table: 'beds', filter: `property_id=eq.${propertyId}` }, () => refreshBeds())
       .subscribe((status) => setRealtimeConnected(status === 'SUBSCRIBED'))
 
-    return () => { supabase.removeChannel(channel); setRealtimeConnected(false) }
+    return () => { supabase.removeChannel(channel); setRealtimeConnected(null) }
   }, [propertyId, refreshBookings, refreshBeds, setRealtimeConnected])
 
   const currentDays = daysBetween(startDate, endDate) + 1
@@ -303,13 +303,13 @@ export function CalendarClient({ propertyId, rooms, beds: initialBeds, bookings:
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-black text-[#0A1F1C] tracking-tight">{t('nav.calendar')}</h1>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl hover:bg-muted/50" onClick={() => navigate('prev')}><ChevronLeft className="w-4 h-4" /></Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl hover:bg-muted/50" onClick={() => navigate('prev')} aria-label={t('calendar.prevPeriod')}><ChevronLeft className="w-4 h-4" /></Button>
             <span className="text-[13px] font-black uppercase tracking-widest text-muted-foreground">
               {new Date(startDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
               {' — '}
               {new Date(endDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
             </span>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl hover:bg-muted/50" onClick={() => navigate('next')}><ChevronRight className="w-4 h-4" /></Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl hover:bg-muted/50" onClick={() => navigate('next')} aria-label={t('calendar.nextPeriod')}><ChevronRight className="w-4 h-4" /></Button>
             
             <Select value={String(currentDays)} onValueChange={(v) => router.push(`/calendar?from=${startDate}&days=${v}`)}>
               <SelectTrigger className="h-8 w-[110px] text-[11px] font-bold uppercase tracking-wider ml-2 bg-[#F8FAFC] border-muted/40">
