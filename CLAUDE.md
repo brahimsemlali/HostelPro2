@@ -203,6 +203,8 @@ This redirect is applied in `app/(dashboard)/dashboard/page.tsx` after `getUserS
 | `016_payments_performance_index.sql` | Composite index on `payments(property_id, status, type, payment_date DESC)` |
 | `017_fix_view_security.sql` | Security fix for views |
 | `018_subscriptions_updated_at.sql` | Adds `updated_at TIMESTAMPTZ` to `subscriptions` table (needed by LS webhook upsert) |
+| `019_pre_checkin_security.sql` | Drops insecure public pre-checkin RLS policies from 004 (anon key could read/update ALL bookings) |
+| `022_booking_overlap_protection.sql` | btree_gist exclusion constraint `bookings_no_bed_overlap` — DB-level rejection of overlapping active bookings per bed (error 23P01, surfaced via `isBedConflictError()` in `lib/utils.ts`). Run the pre-flight queries in the file first. |
 
 ### `subscriptions` table
 Added for LemonSqueezy billing. Key columns:
@@ -430,27 +432,34 @@ const CreateActivityModal = dynamic(() => import('./CreateActivityModal').then(m
 ## WHAT STILL NEEDS TO BE BUILT
 
 ### HIGH PRIORITY
-1. **Pre-arrival digital check-in flow** — Schema is ready (`bookings.pre_checkin_token`, `bookings.pre_checkin_completed`). Need a public page at `/checkin/[token]` where guests fill in their own data before arriving.
+1. **Channex OTA sync** — the Business plan advertises OTA sync as "bientôt disponible". Feasibility notes exist; the integration itself is not started.
 
 ### MEDIUM PRIORITY
-2. **Inventory low-stock alerts** — `inventory_items.reorder_level` exists but no alert UI yet.
-3. **Guest blacklist enforcement** — `guests.is_flagged` exists; warning shown during check-in step 1 (`flagWarningGuest` state), but the UI for confirming and overriding the block needs review.
-4. **Push notifications** — Supabase Realtime to notify receptionist when new booking comes in.
+2. **Guest blacklist enforcement** — `guests.is_flagged` exists; warning shown during check-in step 1 (`flagWarningGuest` state), but the UI for confirming and overriding the block needs review.
 
 ### NICE TO HAVE
-5. **Dark mode** — CSS variables are set up, just needs a toggle + `dark:` Tailwind classes.
-6. **Arabic RTL support** — Foundation exists (locale constant), just not wired up.
-7. **Multi-property** — Schema supports it (`property_id` on everything), UI doesn't yet.
+3. **Dark mode** — CSS variables are set up, just needs a toggle + `dark:` Tailwind classes.
+4. **Arabic RTL support** — Foundation exists (locale constant), just not wired up.
+5. **Multi-property** — Schema supports it (`property_id` on everything), UI doesn't yet.
+
+### DONE (July 2026)
+- ✅ Pre-arrival digital check-in — public page `app/checkin/[token]/page.tsx`, API `app/api/checkin/[token]/route.ts` (GET lookup + POST submit, both service-role + rate-limited). Requires migration 019.
+- ✅ Inventory low-stock alerts — dashboard banner (`lowStockItems` prop) linking to `/expenses?tab=inventory`.
+- ✅ New-booking notification — `components/shared/BookingNotifications.tsx`, layout-level Realtime toast (excludes housekeeping).
+- ✅ GDPR export + anonymization — `app/api/guests/[id]/gdpr/route.ts` (GET export JSON, POST anonymize), owner-only UI card in `GuestDetailClient`.
+- ✅ CI — `.github/workflows/ci.yml` (tsc, eslint, vitest, build). Billing money paths unit-tested in `tests/billing.test.ts` against `lib/billing.ts`.
 
 ---
 
 ## WHAT STILL NEEDS EXTERNAL SETUP
 
+- **Run migration `019_pre_checkin_security.sql` in the Supabase SQL editor** — drops the insecure public RLS policies on bookings from migration 004 (they exposed every booking to the anon key).
+- **Run migration `022_booking_overlap_protection.sql` in the Supabase SQL editor** — prevents two concurrent users from double-booking the same bed. Run the pre-flight diagnostic queries in the file first; the ALTER fails if existing overlaps exist.
+- Rate limiting (`lib/rate-limit.ts`) is in-memory per serverless instance — fine at current scale, swap for Upstash Redis before heavy load.
+- Enable Web Analytics in the Vercel dashboard (code already ships `@vercel/analytics`).
 - LemonSqueezy store verification — pending (1–3 business days). Live checkouts only after approval.
-- Error monitoring: Sentry.io
-- CI/CD: GitHub Actions → Vercel deployment pipeline
+- Error monitoring: Sentry.io (deliberately deferred)
 - Staging environment
-- GDPR: data export + deletion flow
 
 ---
 

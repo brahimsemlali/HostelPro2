@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient, getUserSession } from '@/lib/supabase/server'
+import { todayISO } from '@/lib/utils'
 import { HousekeepingClient } from './HousekeepingClient'
 
 export default async function HousekeepingPage() {
@@ -18,14 +19,17 @@ export default async function HousekeepingPage() {
     else redirect('/login?error=service_unavailable')
   }
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayISO()
 
   // Build tasks query — housekeeping only sees their own tasks
+  // Explicit columns + limit: completed tasks accumulate daily and this
+  // list would otherwise grow without bound.
   let tasksQuery = supabase
     .from('housekeeping_tasks')
-    .select('*, assigned_to:assigned_to_staff_id(id, name, role), bed:bed_id(id, name), room:room_id(id, name)')
+    .select('id, property_id, title, description, room_id, bed_id, priority, status, assigned_to_staff_id, created_by, due_date, notes, completed_at, created_at, assigned_to:assigned_to_staff_id(id, name, role), bed:bed_id(id, name), room:room_id(id, name)')
     .eq('property_id', property.id)
     .order('created_at', { ascending: false })
+    .limit(200)
 
   if (session.role === 'housekeeping' && session.staffId) {
     tasksQuery = tasksQuery.eq('assigned_to_staff_id', session.staffId)
@@ -112,7 +116,7 @@ export default async function HousekeepingPage() {
       propertyId={property.id}
       checkInTime={property.check_in_time ?? '14:00'}
       initialBeds={cleaningBeds}
-      initialTasks={(tasksRes.data ?? []) as Parameters<typeof HousekeepingClient>[0]['initialTasks']}
+      initialTasks={(tasksRes.data ?? []) as unknown as Parameters<typeof HousekeepingClient>[0]['initialTasks']}
       staffList={staffRes.data ?? []}
       roomList={roomsRes.data ?? []}
       session={session}

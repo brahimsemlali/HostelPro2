@@ -43,12 +43,27 @@ export function daysBetween(from: string, to: string): number {
   return Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24))
 }
 
+function toLocalISODate(d: Date): string {
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${m}-${day}`
+}
+
 export function todayISO(): string {
-  return new Date().toISOString().split('T')[0]
+  // Local date, not UTC — Morocco is UTC+1, so toISOString() would return
+  // yesterday's date between 00:00 and 01:00 local time.
+  return toLocalISODate(new Date())
 }
 
 export function tomorrowISO(): string {
   const d = new Date()
   d.setDate(d.getDate() + 1)
-  return d.toISOString().split('T')[0]
+  return toLocalISODate(d)
+}
+
+/** True when a Postgres error is an exclusion-constraint violation (23P01) —
+ *  in this schema that means the bookings_no_bed_overlap constraint rejected
+ *  a booking because the bed is already taken on overlapping dates. */
+export function isBedConflictError(err: unknown): boolean {
+  return typeof err === 'object' && err !== null && (err as { code?: string }).code === '23P01'
 }

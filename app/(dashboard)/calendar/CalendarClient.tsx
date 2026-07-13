@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useAppStore } from '@/stores/app.store'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, isBedConflictError, todayISO } from '@/lib/utils'
 import { toast } from 'sonner'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useT } from '@/app/context/LanguageContext'
@@ -88,7 +88,7 @@ export function CalendarClient({ propertyId, rooms, beds: initialBeds, bookings:
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null)
 
   const dates = getDates(startDate, endDate)
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayISO()
 
   // Flatten beds to assign deterministic Y indexes and insert room headers
   const flatBeds = useMemo(() => {
@@ -261,7 +261,7 @@ export function CalendarClient({ propertyId, rooms, beds: initialBeds, bookings:
         const { error } = await supabase.from('bookings').update(updatePayload).eq('id', dragState.id)
 
         if (error) {
-          toast.error(t('calendar.updateError'))
+          toast.error(isBedConflictError(error) ? t('calendar.slotOccupied') : t('calendar.updateError'))
           refreshBookings() // Rollback
         } else {
           const priceInfo = bedPrice > 0 ? ` · ${newNights} ${newNights > 1 ? t('common.nights') : t('common.night')} = ${newTotalPrice} MAD` : ''

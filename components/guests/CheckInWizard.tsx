@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { cn, formatCurrency, formatDateShort, daysBetween, todayISO, tomorrowISO } from '@/lib/utils'
+import { cn, formatCurrency, formatDateShort, daysBetween, todayISO, tomorrowISO, isBedConflictError } from '@/lib/utils'
 import { generateFicheDePolice } from '@/lib/pdf/fiche-police'
 import { buildWhatsAppLink, WHATSAPP_TEMPLATES } from '@/lib/whatsapp/templates'
 import { NATIONALITIES, COUNTRIES, BOOKING_SOURCES, PAYMENT_METHODS } from '@/lib/constants'
@@ -273,7 +273,10 @@ export function CheckInWizard({ property, beds, preselectedBedId }: Props) {
         })
         .select()
         .single()
-      if (bookingErr) throw bookingErr
+      if (bookingErr) {
+        if (isBedConflictError(bookingErr)) throw new Error(t('checkin.bedConflict'))
+        throw bookingErr
+      }
 
       if (bookingForm.bed_id) {
         await supabase

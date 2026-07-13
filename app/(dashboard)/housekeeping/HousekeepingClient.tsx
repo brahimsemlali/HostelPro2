@@ -21,7 +21,7 @@ import {
   CheckCircle2, BedDouble, Clock, Plus, Trash2,
   ClipboardList, ChevronDown, ChevronRight,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, todayISO } from '@/lib/utils'
 import { format, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import type { HousekeepingTask, TaskStatus, TaskPriority, UserSession } from '@/types'
@@ -421,7 +421,7 @@ export function HousekeepingClient({
   // ── Re-fetch beds ────────────────────────────────────────────────────────
   const refreshBeds = useCallback(async () => {
     const supabase = createClient()
-    const today = new Date().toISOString().split('T')[0]
+    const today = todayISO()
 
     const [bedsRes, checkoutsRes, arrivalsRes] = await Promise.all([
       supabase.from('beds').select('id, name, status, room_id').eq('property_id', propertyId).order('name'),
@@ -472,7 +472,8 @@ export function HousekeepingClient({
 
     return () => {
       supabase.removeChannel(channel)
-      setRealtimeConnected(false)
+      // null = no active subscription — avoids a stuck "Reconnexion…" indicator
+      setRealtimeConnected(null)
     }
   }, [propertyId, refreshBeds, setRealtimeConnected])
 

@@ -16,7 +16,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
-import { formatCurrency, formatDateShort } from '@/lib/utils'
+import { formatCurrency, formatDateShort, isBedConflictError } from '@/lib/utils'
 import { BOOKING_SOURCES } from '@/lib/constants'
 import { generateFicheDePolice } from '@/lib/pdf/fiche-police'
 import { generateInvoice } from '@/lib/pdf/invoice'
@@ -150,7 +150,15 @@ export function BookingDetailClient({ booking, payments, extras, property, total
     setLoading(true)
     try {
       const supabase = createClient()
-      await supabase.from('bookings').update({ status }).eq('id', booking.id)
+      const { error: statusErr } = await supabase.from('bookings').update({ status }).eq('id', booking.id)
+      if (statusErr) {
+        // e.g. reactivating a booking whose bed has since been rebooked
+        if (isBedConflictError(statusErr)) {
+          toast.error(t('checkin.bedConflict'))
+          return
+        }
+        throw statusErr
+      }
       // update bed status accordingly
       if (booking.bed_id) {
         if (status === 'checked_in') {

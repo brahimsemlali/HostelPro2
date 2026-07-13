@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { cn } from '@/lib/utils'
+import { cn, isBedConflictError } from '@/lib/utils'
 import { BOOKING_SOURCES, NATIONALITIES } from '@/lib/constants'
 import { toast } from 'sonner'
 import { logActivity } from '@/lib/activity'
@@ -93,7 +93,7 @@ export function AddArrivalModal({
   // ── Reset on open ──────────────────────────────────────────────────────
   useEffect(() => {
     if (open) {
-      const today = new Date().toISOString().split('T')[0]
+      const today = new Date().toLocaleDateString('en-CA')
       const tomorrow = new Date()
       tomorrow.setDate(tomorrow.getDate() + 1)
       setFirstName('')
@@ -104,7 +104,7 @@ export function AddArrivalModal({
       setSelectedRoomId('')
       setSelectedBedId('')
       setCheckInDate(today)
-      setCheckOutDate(tomorrow.toISOString().split('T')[0])
+      setCheckOutDate(tomorrow.toLocaleDateString('en-CA'))
       setTotalPrice('')
       setArrivalNotes('')
       setExpectedTime('')
@@ -131,6 +131,7 @@ export function AddArrivalModal({
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault()
+      if (saving) return
       if (!firstName.trim() || !lastName.trim()) {
         toast.error(t('arrival.error.nameRequired'))
         return
@@ -210,13 +211,14 @@ export function AddArrivalModal({
 
         onSuccess()
         onClose()
-      } catch {
-        toast.error(t('arrival.toast.error'))
+      } catch (err) {
+        toast.error(isBedConflictError(err) ? t('checkin.bedConflict') : t('arrival.toast.error'))
       } finally {
         setSaving(false)
       }
     },
     [
+      saving,
       firstName,
       lastName,
       phone,
