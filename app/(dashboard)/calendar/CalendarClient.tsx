@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -279,16 +280,32 @@ export function CalendarClient({ propertyId, rooms, beds: initialBeds, bookings:
     }
   }, [dragState, delta, flatBeds, bookings, refreshBookings])
 
+  // Debounced so event bursts coalesce into one window refetch, not one per event.
+  const debouncedRefreshBookings = useDebouncedCallback(refreshBookings)
+  const debouncedRefreshBeds = useDebouncedCallback(refreshBeds)
+  const calWasDisconnectedRef = useRef(false)
+
   useEffect(() => {
     const supabase = createClient()
     const channel = supabase
       .channel(`calendar-live-${propertyId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings', filter: `property_id=eq.${propertyId}` }, () => refreshBookings())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'beds', filter: `property_id=eq.${propertyId}` }, () => refreshBeds())
-      .subscribe((status) => setRealtimeConnected(status === 'SUBSCRIBED'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings', filter: `property_id=eq.${propertyId}` }, () => debouncedRefreshBookings())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'beds', filter: `property_id=eq.${propertyId}` }, () => debouncedRefreshBeds())
+      .subscribe((status) => {
+        const connected = status === 'SUBSCRIBED'
+        if (connected && calWasDisconnectedRef.current) {
+          // Realtime never replays missed events — refetch after a reconnect
+          calWasDisconnectedRef.current = false
+          refreshBookings()
+          refreshBeds()
+        } else if (!connected) {
+          calWasDisconnectedRef.current = true
+        }
+        setRealtimeConnected(connected)
+      })
 
     return () => { supabase.removeChannel(channel); setRealtimeConnected(null) }
-  }, [propertyId, refreshBookings, refreshBeds, setRealtimeConnected])
+  }, [propertyId, refreshBookings, refreshBeds, debouncedRefreshBookings, debouncedRefreshBeds, setRealtimeConnected])
 
   const currentDays = daysBetween(startDate, endDate) + 1
   function navigate(direction: 'prev' | 'next') {

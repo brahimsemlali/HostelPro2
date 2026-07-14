@@ -242,7 +242,7 @@ export function BookingDetailClient({ booking, payments, extras, property, total
       const isRefund = dynamicBalance < 0
       const paymentType = isRefund ? 'refund' : (amount < dynamicBalance ? 'deposit' : 'payment')
 
-      await supabase.from('payments').insert({
+      const { error } = await supabase.from('payments').insert({
         property_id: booking.property_id,
         booking_id: booking.id,
         guest_id: booking.guest_id,
@@ -254,6 +254,7 @@ export function BookingDetailClient({ booking, payments, extras, property, total
         notes: payForm.notes || null,
         payment_date: new Date().toISOString(),
       })
+      if (error) throw error
       const guestName = guest ? `${guest.first_name} ${guest.last_name}` : 'Client inconnu'
       logActivity({
         propertyId: booking.property_id,

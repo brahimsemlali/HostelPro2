@@ -65,7 +65,7 @@ export function NightAuditClient({
     setSaving(true)
     try {
       const supabase = createClient()
-      await supabase.from('night_audits').insert({
+      const { error } = await supabase.from('night_audits').insert({
         property_id: property.id,
         audit_date: today,
         performed_by: userId,
@@ -76,6 +76,16 @@ export function NightAuditClient({
         notes: notes || null,
         police_report_sent: policeReportSent,
       })
+      if (error) {
+        // 23505 on night_audits_property_date_key: a colleague finalized
+        // today's audit while this screen was open — not a failure.
+        if (error.code === '23505') {
+          setDone(true)
+          toast.info(t('nightAudit.alreadyDone'))
+          return
+        }
+        throw error
+      }
       setDone(true)
       toast.success(t('nightAudit.done'))
     } catch (err) {

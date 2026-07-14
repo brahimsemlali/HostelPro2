@@ -1,7 +1,23 @@
 'use server'
 
 import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
+import { rateLimit } from '@/lib/rate-limit'
+
+const RATE_LIMITED_MSG = 'Trop de tentatives. Réessayez dans quelques minutes.'
+
+// Same header precedence as getClientIp() in lib/rate-limit.ts: Vercel
+// sanitizes x-forwarded-for / x-real-ip; cf-connecting-ip is spoofable
+// and only a last resort.
+async function isRateLimited(route: string, limit: number, windowSeconds: number): Promise<boolean> {
+  const h = await headers()
+  const ip =
+    h.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    h.get('x-real-ip') ||
+    h.get('cf-connecting-ip') ||
+    'unknown'
+  return !rateLimit({ key: `${route}:${ip}`, limit, windowSeconds }).allowed
+}
 
 async function getSupabase() {
   const cookieStore = await cookies()
@@ -22,6 +38,8 @@ async function getSupabase() {
 }
 
 export async function loginAction(formData: FormData) {
+  if (await isRateLimited('login', 10, 900)) return { error: RATE_LIMITED_MSG }
+
   const email = formData.get('email') as string
   const password = formData.get('password') as string
 
@@ -49,6 +67,8 @@ export async function loginAction(formData: FormData) {
 }
 
 export async function registerAction(formData: FormData) {
+  if (await isRateLimited('register', 5, 3600)) return { error: RATE_LIMITED_MSG }
+
   const email = formData.get('email') as string
   const password = formData.get('password') as string
 
@@ -78,6 +98,8 @@ export async function logoutAction() {
 }
 
 export async function forgotPasswordAction(formData: FormData) {
+  if (await isRateLimited('forgot-password', 5, 3600)) return { error: RATE_LIMITED_MSG }
+
   const email = formData.get('email') as string
   if (!email) return { error: 'Email requis' }
 
@@ -95,6 +117,8 @@ export async function forgotPasswordAction(formData: FormData) {
 }
 
 export async function resetPasswordAction(formData: FormData) {
+  if (await isRateLimited('reset-password', 10, 3600)) return { error: RATE_LIMITED_MSG }
+
   const password = formData.get('password') as string
   if (!password || password.length < 8) {
     return { error: 'Le mot de passe doit contenir au moins 8 caractères' }

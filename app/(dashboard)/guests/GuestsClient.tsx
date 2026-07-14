@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
@@ -41,6 +41,8 @@ interface Props {
   page: number
   totalPages: number
   totalCount: number
+  initialQuery: string
+  stats: { total: number; staying: number; loyal: number; flagged: number }
 }
 
 // ── Nationality flags ─────────────────────────────────────────────────────────
@@ -78,7 +80,7 @@ type StatusFilter = 'all' | 'staying' | 'loyal' | 'flagged'
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export function GuestsClient({ guests, checkedInGuestIds, page, totalPages, totalCount }: Props) {
+export function GuestsClient({ guests, checkedInGuestIds, page, totalPages, totalCount, initialQuery, stats }: Props) {
   const router = useRouter()
   const t = useT()
   const checkedInSet = useMemo(() => new Set(checkedInGuestIds), [checkedInGuestIds])
@@ -90,18 +92,22 @@ export function GuestsClient({ guests, checkedInGuestIds, page, totalPages, tota
     alpha:  'A → Z',
   }
 
-  const [query, setQuery]             = useState('')
+  const [query, setQuery]             = useState(initialQuery)
   const [statusFilter, setStatus]     = useState<StatusFilter>('all')
   const [sort, setSort]               = useState<SortKey>('recent')
   const [selectedNat, setSelectedNat] = useState<string | null>(null)
 
-  // ── Stats ──────────────────────────────────────────────────────────────
-  const stats = useMemo(() => ({
-    total:   guests.length,
-    staying: guests.filter((g) => checkedInSet.has(g.id)).length,
-    loyal:   guests.filter((g) => g.total_stays >= 3 && !g.is_flagged).length,
-    flagged: guests.filter((g) => g.is_flagged).length,
-  }), [guests, checkedInSet])
+  // ── Server-side search ─────────────────────────────────────────────────
+  // The search must hit the DB: filtering the loaded page only finds guests
+  // who happen to be on it. Debounced URL update re-runs the server query.
+  useEffect(() => {
+    const q = query.trim()
+    if (q === initialQuery) return
+    const timer = setTimeout(() => {
+      router.replace(q ? `/guests?q=${encodeURIComponent(q)}` : '/guests')
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [query, initialQuery, router])
 
   // ── Nationality list (top 8 by count) ─────────────────────────────────
   const existingNats = useMemo(() => {
@@ -110,17 +116,9 @@ export function GuestsClient({ guests, checkedInGuestIds, page, totalPages, tota
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([n]) => n)
   }, [guests])
 
-  // ── Filtered + sorted list ─────────────────────────────────────────────
+  // ── Filtered + sorted list (text search is server-side via ?q=) ────────
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
     let list = guests.filter((g) => {
-      if (q) {
-        const name = `${g.first_name} ${g.last_name}`.toLowerCase()
-        const doc = (g.document_number ?? '').toLowerCase()
-        const phone = (g.phone ?? '').replace(/\D/g, '')
-        const sq = q.replace(/\D/g, '')
-        if (!name.includes(q) && !doc.includes(q) && !(sq && phone.includes(sq))) return false
-      }
       if (selectedNat && g.nationality !== selectedNat) return false
       if (statusFilter === 'staying' && !checkedInSet.has(g.id)) return false
       if (statusFilter === 'loyal'   && (g.total_stays < 3 || g.is_flagged)) return false
@@ -140,7 +138,7 @@ export function GuestsClient({ guests, checkedInGuestIds, page, totalPages, tota
     })
 
     return list
-  }, [guests, query, selectedNat, statusFilter, sort, checkedInSet])
+  }, [guests, selectedNat, statusFilter, sort, checkedInSet])
 
   const STATUS_TABS: { key: StatusFilter; label: string; count: number }[] = [
     { key: 'all',     label: t('common.all'),          count: stats.total },
@@ -294,7 +292,7 @@ export function GuestsClient({ guests, checkedInGuestIds, page, totalPages, tota
       </p>
 
       {/* ── Guest list ── */}
-      {guests.length === 0 ? (
+      {guests.length === 0 && !initialQuery ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <Users className="w-12 h-12 text-muted-foreground/40 mb-4" />
           <p className="font-medium">{t('guests.noGuests')}</p>
@@ -454,7 +452,7 @@ export function GuestsClient({ guests, checkedInGuestIds, page, totalPages, tota
               variant="outline"
               size="sm"
               disabled={page <= 1}
-              onClick={() => router.push(`/guests?page=${page - 1}`)}
+              onClick={() => router.push(`/guests?page=${page - 1}${initialQuery ? `&q=${encodeURIComponent(initialQuery)}` : ''}`)}
             >
               {t('common.previous')}
             </Button>
@@ -462,7 +460,7 @@ export function GuestsClient({ guests, checkedInGuestIds, page, totalPages, tota
               variant="outline"
               size="sm"
               disabled={page >= totalPages}
-              onClick={() => router.push(`/guests?page=${page + 1}`)}
+              onClick={() => router.push(`/guests?page=${page + 1}${initialQuery ? `&q=${encodeURIComponent(initialQuery)}` : ''}`)}
             >
               {t('common.next')}
             </Button>

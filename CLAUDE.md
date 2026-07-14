@@ -205,6 +205,7 @@ This redirect is applied in `app/(dashboard)/dashboard/page.tsx` after `getUserS
 | `018_subscriptions_updated_at.sql` | Adds `updated_at TIMESTAMPTZ` to `subscriptions` table (needed by LS webhook upsert) |
 | `019_pre_checkin_security.sql` | Drops insecure public pre-checkin RLS policies from 004 (anon key could read/update ALL bookings) |
 | `022_booking_overlap_protection.sql` | btree_gist exclusion constraint `bookings_no_bed_overlap` — DB-level rejection of overlapping active bookings per bed (error 23P01, surfaced via `isBedConflictError()` in `lib/utils.ts`). Run the pre-flight queries in the file first. |
+| `023_scale_hardening.sql` | Heavy-use hardening: unique index on `bookings.pre_checkin_token` (public endpoint was seq-scanning all tenants); pg_trgm indexes for guest search; missing hot-path indexes (properties.owner_id, checkout date, booking_extras, payments.guest_id, whatsapp_messages, expenses, maintenance); `UNIQUE night_audits(property_id, audit_date)` (client treats 23505 as "colleague already finalized"); partial unique index deduping iCal imports; all staff RLS policies rewritten to `(SELECT get_my_property_id())` (per-query InitPlan instead of per-row); `swap_booking_beds()` RPC (atomic bed swap via NULL hop — the old two-UPDATE client swap violated 022); staff read/insert/delete policies on `booking_extras` (were owner-only, receptionist extras writes failed RLS). Run the pre-flight queries in the file first. |
 
 ### `subscriptions` table
 Added for LemonSqueezy billing. Key columns:
@@ -455,7 +456,7 @@ const CreateActivityModal = dynamic(() => import('./CreateActivityModal').then(m
 
 - Rate limiting (`lib/rate-limit.ts`) is in-memory per serverless instance — fine at current scale, swap for Upstash Redis before heavy load.
 
-All migrations through `022_booking_overlap_protection.sql` were applied in production on 2026-07-13 — no migrations are pending.
+All migrations through `022_booking_overlap_protection.sql` were applied in production on 2026-07-13. **`023_scale_hardening.sql` is NOT yet applied — run its pre-flight queries, then apply it.** The bed-swap UI (`BedMapClient`) now calls the `swap_booking_beds` RPC from 023, so swaps will error until 023 is applied.
 - Enable Web Analytics in the Vercel dashboard (code already ships `@vercel/analytics`).
 - LemonSqueezy store verification — pending (1–3 business days). Live checkouts only after approval.
 - Error monitoring: Sentry.io (deliberately deferred)

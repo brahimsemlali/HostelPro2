@@ -383,6 +383,7 @@ const fr = {
   'payments.markPaid': 'Marquer payé',
   'payments.reminder': 'Rappel WhatsApp',
   'payments.selectBooking': 'Sélectionner une réservation',
+  'payments.searchBookingPlaceholder': 'Rechercher par nom du client…',
   'payments.amount': 'Montant',
   'payments.notes': 'Notes',
   'payments.saved': 'Paiement enregistré',
@@ -429,6 +430,7 @@ const fr = {
   // Night Audit
   'nightAudit.title': 'Audit de nuit',
   'nightAudit.done': 'Audit terminé!',
+  'nightAudit.alreadyDone': 'L\'audit du jour a déjà été finalisé par un collègue.',
   'nightAudit.doneSubtitle': 'Bonne nuit.',
   'nightAudit.returnDashboard': 'Retour au tableau de bord',
   'nightAudit.step1.title': 'Résumé de la journée',
@@ -1564,6 +1566,7 @@ const en = {
   'payments.markPaid': 'Mark as paid',
   'payments.reminder': 'WhatsApp reminder',
   'payments.selectBooking': 'Select a booking',
+  'payments.searchBookingPlaceholder': 'Search by guest name…',
   'payments.amount': 'Amount',
   'payments.notes': 'Notes',
   'payments.saved': 'Payment saved',
@@ -1610,6 +1613,7 @@ const en = {
   // Night Audit
   'nightAudit.title': 'Night Audit',
   'nightAudit.done': 'Audit complete!',
+  'nightAudit.alreadyDone': 'Today\'s audit was already finalized by a colleague.',
   'nightAudit.doneSubtitle': 'Good night.',
   'nightAudit.returnDashboard': 'Return to dashboard',
   'nightAudit.step1.title': 'Day summary',

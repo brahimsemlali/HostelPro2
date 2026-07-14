@@ -170,7 +170,7 @@ export function IntegrationsClient({ propertyId, savedIcalUrl, lastSync, importe
         if (!guest) continue
 
         // Create booking
-        await supabase.from('bookings').insert({
+        const { error: bookingError } = await supabase.from('bookings').insert({
           property_id: propertyId,
           guest_id: guest.id,
           bed_id: null,           // to be assigned at check-in
@@ -183,6 +183,11 @@ export function IntegrationsClient({ propertyId, savedIcalUrl, lastSync, importe
           total_price: 0,         // to be filled by staff
           commission_rate: 15,    // Booking.com default
         })
+        if (bookingError) {
+          // 23505 = already imported by a concurrent sync (bookings_external_import_unique)
+          await supabase.from('guests').delete().eq('id', guest.id)
+          continue
+        }
         count++
       }
 

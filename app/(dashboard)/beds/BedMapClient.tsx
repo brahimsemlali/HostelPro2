@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { todayISO } from '@/lib/utils'
+import { todayISO, isBedConflictError } from '@/lib/utils'
 import { useAppStore } from '@/stores/app.store'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
 import { BedCard } from '@/components/beds/BedCard'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -145,14 +146,16 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
     setSwapping(true)
     const supabase = createClient()
 
-    const [r1, r2] = await Promise.all([
-      supabase.from('bookings').update({ bed_id: swapTarget.id }).eq('id', swapSource.booking.id),
-      supabase.from('bookings').update({ bed_id: swapSource.id }).eq('id', swapTarget.booking.id),
-    ])
+    // Single transaction: two separate updates would each violate the
+    // bookings_no_bed_overlap constraint and could persist a half-swap.
+    const { error } = await supabase.rpc('swap_booking_beds', {
+      p_booking_a: swapSource.booking.id,
+      p_booking_b: swapTarget.booking.id,
+    })
 
     setSwapping(false)
-    if (r1.error || r2.error) {
-      toast.error(t('beds.swapError'))
+    if (error) {
+      toast.error(isBedConflictError(error) ? t('checkin.bedConflict') : t('beds.swapError'))
     } else {
       toast.success(`${t('beds.swapSuccess')}: ${swapSource.name} - ${swapTarget.name}`)
       await Promise.all([refreshBeds(), refreshBookings()])
@@ -185,6 +188,15 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
 
   // ── Realtime subscription on beds + bookings ──
 
+  // Debounced so event bursts coalesce into one refetch instead of one per event.
+  const refreshAll = useCallback(() => {
+    refreshBeds()
+    refreshBookings()
+  }, [refreshBeds, refreshBookings])
+  const debouncedRefreshBeds = useDebouncedCallback(refreshBeds)
+  const debouncedRefreshAll = useDebouncedCallback(refreshAll)
+  const wasDisconnectedRef = useRef(false)
+
   useEffect(() => {
     const supabase = createClient()
 
@@ -193,18 +205,23 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'beds', filter: `property_id=eq.${propertyId}` },
-        () => refreshBeds(),
+        () => debouncedRefreshBeds(),
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'bookings', filter: `property_id=eq.${propertyId}` },
-        () => {
-          refreshBeds()
-          refreshBookings()
-        },
+        () => debouncedRefreshAll(),
       )
       .subscribe((status) => {
-        setRealtimeConnected(status === 'SUBSCRIBED')
+        const connected = status === 'SUBSCRIBED'
+        if (connected && wasDisconnectedRef.current) {
+          // Realtime never replays missed events — refetch after a reconnect
+          wasDisconnectedRef.current = false
+          refreshAll()
+        } else if (!connected) {
+          wasDisconnectedRef.current = true
+        }
+        setRealtimeConnected(connected)
       })
 
     return () => {
@@ -212,7 +229,7 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
       // null = no active subscription — avoids a stuck "Reconnexion…" indicator
       setRealtimeConnected(null)
     }
-  }, [propertyId, setRealtimeConnected, refreshBeds, refreshBookings])
+  }, [propertyId, setRealtimeConnected, refreshAll, debouncedRefreshBeds, debouncedRefreshAll])
 
   // Map beds to include booking and room
   const bedsWithDetails: BedWithBooking[] = beds.map((bed) => {

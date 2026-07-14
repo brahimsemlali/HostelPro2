@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -15,13 +15,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { formatCurrency, formatTime } from '@/lib/utils'
 import { PAYMENT_METHODS } from '@/lib/constants'
 import { buildWhatsAppLink, WHATSAPP_TEMPLATES } from '@/lib/whatsapp/templates'
@@ -59,16 +52,23 @@ type CatalogItem = {
   default_price: number
 }
 
+type ModalBooking = {
+  id: string
+  check_in_date: string
+  check_out_date: string
+  total_price: number
+  guest: { first_name: string; last_name: string } | null
+}
+
 interface Props {
   propertyId: string
   todayPayments: (Payment & { guest?: Guest | null; booking?: Booking | null })[]
   pendingBookings: PendingBooking[]
-  bookingsForModal: { id: string; check_in_date: string; check_out_date: string; total_price: number; guest: { first_name: string; last_name: string } | null }[]
   currentGuests: CurrentGuestBooking[]
   catalog: CatalogItem[]
 }
 
-export function PaymentsClient({ propertyId, todayPayments, pendingBookings, bookingsForModal, currentGuests: initialCurrentGuests, catalog }: Props) {
+export function PaymentsClient({ propertyId, todayPayments, pendingBookings, currentGuests: initialCurrentGuests, catalog }: Props) {
   const router = useRouter()
   const t = useT()
   const session = useSession()
@@ -158,6 +158,45 @@ export function PaymentsClient({ propertyId, todayPayments, pendingBookings, boo
     notes: '',
   })
 
+  // Booking picker: server-side search — a preloaded list caps out and
+  // silently hides bookings once a property has >100 active reservations.
+  const [bookingQuery, setBookingQuery] = useState('')
+  const [bookingResults, setBookingResults] = useState<ModalBooking[]>([])
+  const [selectedBooking, setSelectedBooking] = useState<ModalBooking | null>(null)
+
+  useEffect(() => {
+    if (!dialogOpen || selectedBooking) return
+    const q = bookingQuery.trim().replace(/[,%()]/g, '')
+
+    const timer = setTimeout(async () => {
+      const supabase = createClient()
+      try {
+        let query = supabase
+          .from('bookings')
+          .select('id, check_in_date, check_out_date, total_price, guest:guest_id!inner(first_name, last_name)')
+          .eq('property_id', propertyId)
+          .in('status', ['confirmed', 'checked_in'])
+          .order('check_in_date', { ascending: false })
+          .limit(20)
+        if (q.length >= 2) {
+          query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%`, { referencedTable: 'guest' })
+        }
+        const { data } = await query
+        setBookingResults((data as unknown as ModalBooking[]) ?? [])
+      } catch {
+        setBookingResults([])
+      }
+    }, q.length >= 2 ? 250 : 0)
+
+    return () => clearTimeout(timer)
+  }, [bookingQuery, dialogOpen, selectedBooking, propertyId])
+
+  function resetPaymentDialog() {
+    setForm({ booking_id: '', amount: '', method: 'cash', reference: '', notes: '' })
+    setBookingQuery('')
+    setSelectedBooking(null)
+  }
+
   const totalToday = todayPayments.reduce((s, p) => s + (p.type === 'refund' ? -p.amount : p.amount), 0)
   const cashToday = todayPayments
     .filter((p) => p.method === 'cash')
@@ -176,7 +215,7 @@ export function PaymentsClient({ propertyId, todayPayments, pendingBookings, boo
     setLoading(true)
     try {
       const supabase = createClient()
-      await supabase.from('payments').insert({
+      const { error } = await supabase.from('payments').insert({
         property_id: propertyId,
         booking_id: form.booking_id || null,
         guest_id: null,
@@ -188,8 +227,8 @@ export function PaymentsClient({ propertyId, todayPayments, pendingBookings, boo
         notes: form.notes || null,
         payment_date: new Date().toISOString(),
       })
-      const bk = bookingsForModal.find((b) => b.id === form.booking_id)
-      const guestName = bk?.guest ? `${bk.guest.first_name} ${bk.guest.last_name}` : null
+      if (error) throw error
+      const guestName = selectedBooking?.guest ? `${selectedBooking.guest.first_name} ${selectedBooking.guest.last_name}` : null
       logActivity({
         propertyId,
         userId: session?.userId ?? null,
@@ -201,7 +240,7 @@ export function PaymentsClient({ propertyId, todayPayments, pendingBookings, boo
       })
       toast.success(t('payments.saved'))
       setDialogOpen(false)
-      setForm({ booking_id: '', amount: '', method: 'cash', reference: '', notes: '' })
+      resetPaymentDialog()
       router.refresh()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('common.error'))
@@ -242,22 +281,48 @@ export function PaymentsClient({ propertyId, todayPayments, pendingBookings, boo
             <div className="space-y-4 pt-2">
               <div className="space-y-1.5">
                 <Label>{t('payments.bookingOptional')}</Label>
-                <Select value={form.booking_id} onValueChange={(v) => setForm((p) => ({ ...p, booking_id: v ?? '' }))}>
-                  <SelectTrigger>
-                    <span className={form.booking_id ? 'text-sm truncate' : 'text-sm text-muted-foreground'}>
-                      {form.booking_id
-                        ? (() => { const b = bookingsForModal.find(b => b.id === form.booking_id); return b ? `${b.guest?.first_name ?? ''} ${b.guest?.last_name ?? ''} — ${b.check_in_date}` : t('common.selectDots') })()
-                        : t('payments.selectBooking')}
+                {selectedBooking ? (
+                  <div className="flex items-center justify-between gap-2 rounded-lg border border-[#0F6E56]/30 bg-[#0F6E56]/5 px-3 py-2">
+                    <span className="text-sm truncate">
+                      {selectedBooking.guest?.first_name} {selectedBooking.guest?.last_name} — {selectedBooking.check_in_date} → {selectedBooking.check_out_date}
                     </span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {bookingsForModal.map((b) => (
-                      <SelectItem key={b.id} value={b.id}>
-                        {b.guest?.first_name} {b.guest?.last_name} — {b.check_in_date} → {b.check_out_date}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                    <button
+                      type="button"
+                      className="shrink-0 text-[#94A3B8] hover:text-[#0A1F1C] transition-colors"
+                      onClick={() => {
+                        setSelectedBooking(null)
+                        setForm((p) => ({ ...p, booking_id: '' }))
+                      }}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <Input
+                      value={bookingQuery}
+                      onChange={(e) => setBookingQuery(e.target.value)}
+                      placeholder={t('payments.searchBookingPlaceholder')}
+                    />
+                    {bookingResults.length > 0 && (
+                      <div className="max-h-44 overflow-y-auto rounded-lg border border-[#E8ECF0] divide-y divide-[#E8ECF0]">
+                        {bookingResults.map((b) => (
+                          <button
+                            key={b.id}
+                            type="button"
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-[#0F6E56]/5 transition-colors"
+                            onClick={() => {
+                              setSelectedBooking(b)
+                              setForm((p) => ({ ...p, booking_id: b.id }))
+                            }}
+                          >
+                            {b.guest?.first_name} {b.guest?.last_name} — {b.check_in_date} → {b.check_out_date}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label>{t('payments.amountMad')} *</Label>
