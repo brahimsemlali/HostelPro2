@@ -35,9 +35,7 @@ function generatePassword(): string {
 }
 
 interface Props {
-  propertyId: string
   staff: StaffRow[]
-  pendingInvitations: unknown[]  // kept for page.tsx compat — no longer displayed
 }
 
 type CreatedCredentials = { name: string; email: string; password: string; phone: string }

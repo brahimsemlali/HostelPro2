@@ -5,6 +5,7 @@ import { PaymentsClient, CurrentGuestBooking } from './PaymentsClient'
 export default async function PaymentsPage() {
   const session = await getUserSession()
   if (!session) redirect('/login')
+  if (session.role === 'housekeeping') redirect('/beds')
 
   const supabase = await createClient()
 

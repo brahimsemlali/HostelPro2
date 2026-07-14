@@ -25,7 +25,7 @@ export async function generateInvoice(
 
   const extrasTotal = extras?.reduce((s, e) => s + e.quantity * e.unit_price, 0) ?? 0
   const grandTotal = booking.total_price + extrasTotal
-  const totalPaid = payments.filter(p => p.type !== 'refund').reduce((s, p) => s + p.amount, 0)
+  const totalPaid = payments.reduce((s, p) => s + (p.type === 'refund' ? -p.amount : p.amount), 0)
   const balance = grandTotal - totalPaid
   const invoiceNum = invoiceNumber ?? `INV-${new Date().getFullYear()}-${booking.id.slice(0, 6).toUpperCase()}`
 
@@ -198,14 +198,15 @@ export async function generateInvoice(
       cash: 'Espèces', virement: 'Virement bancaire', cmi: 'CMI / TPE', wave: 'Wave', other: 'Autre'
     }
 
-    payments.filter(p => p.type !== 'refund').forEach((p) => {
+    payments.forEach((p) => {
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(80, 80, 80)
       doc.setFontSize(8.5)
       const dateStr = fmtDate(p.payment_date)
       const ref = p.reference ? ` (Réf: ${p.reference})` : ''
-      doc.text(`${methodLabels[p.method] ?? p.method}${ref} — ${dateStr}`, margin + 3, y)
-      doc.text(formatMAD(p.amount), rightCol - 2, y, { align: 'right' })
+      const label = p.type === 'refund' ? 'Remboursement — ' : ''
+      doc.text(`${label}${methodLabels[p.method] ?? p.method}${ref} — ${dateStr}`, margin + 3, y)
+      doc.text(`${p.type === 'refund' ? '−' : ''}${formatMAD(p.amount)}`, rightCol - 2, y, { align: 'right' })
       y += 5
     })
   }

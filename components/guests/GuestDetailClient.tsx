@@ -17,10 +17,11 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
-  MessageSquare, Phone, Copy, Mail, ArrowLeft, Star, Flag, ShieldAlert,
+  MessageSquare, Phone, Copy, Mail, ArrowLeft, Star, Flag, ShieldAlert, Download, ShieldOff,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useT } from '@/app/context/LanguageContext'
+import { useSession } from '@/app/context/SessionContext'
 
 // ── Nationality → flag emoji ─────────────────────────────────────────────────
 const NATIONALITY_FLAGS: Record<string, string> = {
@@ -115,6 +116,43 @@ export function GuestDetailClient({ guest, bookings, amountPaidByBooking, totalP
   const [flagDialog, setFlagDialog] = useState(false)
   const [flagInput, setFlagInput] = useState('')
   const [flagging, setFlagging] = useState(false)
+  const [gdprDialog, setGdprDialog] = useState(false)
+  const [anonymizing, setAnonymizing] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const session = useSession()
+  const isOwner = session?.isOwner ?? false
+
+  async function handleExport() {
+    setExporting(true)
+    try {
+      const res = await fetch(`/api/guests/${guest.id}/gdpr`)
+      if (!res.ok) throw new Error()
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `export-${guest.last_name.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error(t('guest.exportError'))
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  async function handleAnonymize() {
+    setAnonymizing(true)
+    try {
+      const res = await fetch(`/api/guests/${guest.id}/gdpr`, { method: 'POST' })
+      if (!res.ok) throw new Error()
+      toast.success(t('guest.anonymized'))
+      window.location.href = '/guests'
+    } catch {
+      toast.error(t('guest.anonymizeError'))
+      setAnonymizing(false)
+    }
+  }
 
   async function handleFlag() {
     setFlagging(true)
@@ -160,10 +198,11 @@ export function GuestDetailClient({ guest, bookings, amountPaidByBooking, totalP
     setSavingNotes(true)
     try {
       const supabase = createClient()
-      await supabase
+      const { error } = await supabase
         .from('guests')
         .update({ notes: notes || null })
         .eq('id', guest.id)
+      if (error) throw error
       toast.success(t('guest.notesSaved'))
     } catch {
       toast.error(t('guest.notesSaveError'))
@@ -453,6 +492,53 @@ export function GuestDetailClient({ guest, bookings, amountPaidByBooking, totalP
           <p className="text-xs text-muted-foreground mt-2">{t('guest.autosave')}</p>
         </CardContent>
       </Card>
+
+      {/* ── GDPR / Privacy (owner only) ── */}
+      {isOwner && (
+        <Card className="bg-white border border-[#E8ECF0] rounded-[16px] shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-[#94A3B8]">{t('guest.gdprTitle')}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground leading-relaxed">{t('guest.gdprDesc')}</p>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
+                <Download className="w-3.5 h-3.5 mr-1.5" />
+                {exporting ? t('guest.exporting') : t('guest.exportData')}
+              </Button>
+              <Button
+                variant="outline" size="sm"
+                className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                onClick={() => setGdprDialog(true)}
+              >
+                <ShieldOff className="w-3.5 h-3.5 mr-1.5" />
+                {t('guest.anonymize')}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Anonymize confirm dialog ── */}
+      <Dialog open={gdprDialog} onOpenChange={setGdprDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <ShieldOff className="w-4 h-4" />
+              {t('guest.anonymizeTitle')}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {t('guest.anonymizeWarning')}
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGdprDialog(false)}>{t('common.cancel')}</Button>
+            <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={handleAnonymize} disabled={anonymizing}>
+              {anonymizing ? t('guest.anonymizing') : t('common.confirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Flag dialog ── */}
       <Dialog open={flagDialog} onOpenChange={setFlagDialog}>

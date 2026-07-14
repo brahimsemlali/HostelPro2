@@ -1,6 +1,6 @@
-import { createHmac, timingSafeEqual } from 'crypto'
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { verifyWebhookSignature, mapLsStatus } from '@/lib/billing'
 
 // Must use service-role client — RLS blocks anon writes to subscriptions
 function getServiceClient() {
@@ -10,31 +10,12 @@ function getServiceClient() {
   )
 }
 
-function mapStatus(lsStatus: string): string {
-  const map: Record<string, string> = {
-    active: 'active',
-    past_due: 'past_due',
-    unpaid: 'past_due',
-    cancelled: 'cancelled',
-    expired: 'expired',
-    paused: 'past_due',  // paused = temporarily suspended, treat as past_due (grace period applies)
-    on_trial: 'trialing',
-  }
-  return map[lsStatus] ?? 'active'
-}
-
 export async function POST(request: Request) {
   const rawBody = await request.text()
   const signature = request.headers.get('X-Signature') ?? ''
   const secret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET ?? ''
 
-  // Verify HMAC-SHA256 signature
-  const expected = createHmac('sha256', secret).update(rawBody).digest('hex')
-  try {
-    if (!timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
-    }
-  } catch {
+  if (!verifyWebhookSignature(rawBody, signature, secret)) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
   }
 
@@ -60,13 +41,15 @@ export async function POST(request: Request) {
   const { event_name, custom_data } = payload.meta
   const propertyId = custom_data?.property_id
 
+  // NOTE: subscription_payment_success/failed are deliberately NOT handled —
+  // those events carry a subscription-invoice object (no variant_id/renews_at,
+  // and data.id is the invoice id), which would corrupt the subscriptions row.
+  // Renewals and failures also fire subscription_updated with the real subscription.
   const HANDLED_EVENTS = [
     'subscription_created',
     'subscription_updated',
     'subscription_cancelled',
     'subscription_expired',
-    'subscription_payment_success',
-    'subscription_payment_failed',
     'subscription_resumed',
   ]
 
@@ -85,7 +68,7 @@ export async function POST(request: Request) {
   // Determine period end — prefer renews_at, fall back to ends_at, then null (don't fabricate)
   const periodEnd = attrs.renews_at ?? attrs.ends_at ?? null
 
-  let status = mapStatus(attrs.status)
+  let status = mapLsStatus(attrs.status)
   if (event_name === 'subscription_cancelled') status = 'cancelled'
   if (event_name === 'subscription_expired') status = 'expired'
 

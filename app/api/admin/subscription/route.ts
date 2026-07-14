@@ -1,11 +1,30 @@
 import { NextResponse } from 'next/server'
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+import { createAdminClient } from '@/lib/supabase/server'
 
 const SUPERADMIN_EMAILS = (process.env.SUPERADMIN_EMAILS ?? '').split(',').filter(Boolean)
 
 export async function POST(request: Request) {
-  // Auth check — must be an authenticated superadmin
-  const supabase = await createClient()
+  // Auth check — must be an authenticated superadmin.
+  // Fresh (non-cached) client: React.cache()'d createClient is not reliable in Route Handlers.
+  const cookieStore = await cookies()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll() },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch { /* ignored in Route Handlers */ }
+        },
+      },
+    }
+  )
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user || !SUPERADMIN_EMAILS.includes(user.email ?? '')) {
@@ -28,7 +47,7 @@ export async function POST(request: Request) {
   const admin = createAdminClient()
 
   if (action === 'extend') {
-    const monthsToAdd = Math.max(1, Math.min(60, months ?? 1))
+    const monthsToAdd = Math.max(1, Math.min(60, Number(months) || 1))
 
     // Fetch current subscription to extend from its current end date
     const { data: existing } = await admin
@@ -45,13 +64,16 @@ export async function POST(request: Request) {
     }
     base.setMonth(base.getMonth() + monthsToAdd)
 
-    const { error } = await admin.from('subscriptions').upsert({
-      property_id: propertyId,
-      status: 'active',
-      provider: 'manual_wire',
-      current_period_end: base.toISOString(),
-      updated_at: new Date().toISOString(),
-    })
+    const { error } = await admin.from('subscriptions').upsert(
+      {
+        property_id: propertyId,
+        status: 'active',
+        provider: 'manual_wire',
+        current_period_end: base.toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'property_id' },
+    )
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true })
@@ -59,15 +81,18 @@ export async function POST(request: Request) {
 
   if (action === 'trial') {
     const expiry = new Date()
-    expiry.setDate(expiry.getDate() + 30)
+    expiry.setDate(expiry.getDate() + 14)
 
-    const { error } = await admin.from('subscriptions').upsert({
-      property_id: propertyId,
-      status: 'trialing',
-      provider: 'manual_wire',
-      current_period_end: expiry.toISOString(),
-      updated_at: new Date().toISOString(),
-    })
+    const { error } = await admin.from('subscriptions').upsert(
+      {
+        property_id: propertyId,
+        status: 'trialing',
+        provider: 'manual_wire',
+        current_period_end: expiry.toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'property_id' },
+    )
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true })

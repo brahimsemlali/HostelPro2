@@ -174,7 +174,7 @@ function ExpenseModal({
   const t = useT()
   const [saving, setSaving] = useState(false)
   const supabase = createClient()
-  const today = new Date().toISOString().split('T')[0]
+  const today = new Date().toLocaleDateString('en-CA')
 
   const {
     register,
@@ -562,7 +562,7 @@ function InventoryCard({
   item: InventoryItem
   onUpdate: (id: string, newStock: number) => void
   onEdit: (item: InventoryItem) => void
-  onDelete: (id: string) => void
+  onDelete: (item: InventoryItem) => void
 }) {
   const t = useT()
   const [adjusting, setAdjusting] = useState(false)
@@ -680,7 +680,7 @@ function InventoryCard({
           <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
         </button>
         <button
-          onClick={() => onDelete(item.id)}
+          onClick={() => onDelete(item)}
           className="h-8 w-8 flex items-center justify-center rounded-lg border hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-colors"
           title={t('common.delete')}
         >
@@ -702,7 +702,11 @@ interface Props {
 export function ExpensesClient({ propertyId, initialExpenses, initialInventory }: Props) {
   const t = useT()
   const supabase = createClient()
-  const [tab, setTab] = useState<'expenses' | 'inventory'>('expenses')
+  const [tab, setTab] = useState<'expenses' | 'inventory'>(() =>
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab') === 'inventory'
+      ? 'inventory'
+      : 'expenses',
+  )
   const [dateRange, setDateRange] = useState<DateRange>('30d')
   const [expenses, setExpenses] = useState<Expense[]>(initialExpenses)
   const [inventory, setInventory] = useState<InventoryItem[]>(initialInventory)
@@ -762,16 +766,18 @@ export function ExpensesClient({ propertyId, initialExpenses, initialInventory }
   }, [])
 
   const handleExpenseDelete = useCallback(
-    async (id: string) => {
-      setExpenses((prev) => prev.filter((e) => e.id !== id))
-      const { error } = await supabase.from('expenses').delete().eq('id', id)
+    async (expense: Expense) => {
+      setExpenses((prev) => prev.filter((e) => e.id !== expense.id))
+      const { error } = await supabase.from('expenses').delete().eq('id', expense.id)
       if (error) {
+        // Rollback the optimistic removal — the row still exists in the DB
+        setExpenses((prev) => [expense, ...prev])
         toast.error(t('common.deleteError'))
       } else {
         toast.success(t('expenses.expenseDeleted'))
       }
     },
-    [supabase],
+    [supabase, t],
   )
 
   // ─── Handlers — inventory ────────────────────────────────────────────
@@ -795,16 +801,18 @@ export function ExpensesClient({ propertyId, initialExpenses, initialInventory }
   }, [])
 
   const handleInventoryDelete = useCallback(
-    async (id: string) => {
-      setInventory((prev) => prev.filter((i) => i.id !== id))
-      const { error } = await supabase.from('inventory_items').delete().eq('id', id)
+    async (item: InventoryItem) => {
+      setInventory((prev) => prev.filter((i) => i.id !== item.id))
+      const { error } = await supabase.from('inventory_items').delete().eq('id', item.id)
       if (error) {
+        // Rollback the optimistic removal — the row still exists in the DB
+        setInventory((prev) => [...prev, item])
         toast.error(t('common.deleteError'))
       } else {
         toast.success(t('expenses.itemDeleted'))
       }
     },
-    [supabase],
+    [supabase, t],
   )
 
   const handleEditItem = useCallback((item: InventoryItem) => {
@@ -828,6 +836,9 @@ export function ExpensesClient({ propertyId, initialExpenses, initialInventory }
         onSave={handleExpenseSaved}
       />
       <InventoryModal
+        // Remount per item — useForm defaultValues are only read on first mount,
+        // so without this the edit form shows blank/default values instead of the item values.
+        key={editingItem ? editingItem.id : 'new'}
         open={showInventoryModal}
         propertyId={propertyId}
         item={editingItem}
@@ -1021,7 +1032,7 @@ export function ExpensesClient({ propertyId, initialExpenses, initialInventory }
                                     {fmt(expense.amount)}
                                   </p>
                                   <button
-                                    onClick={() => handleExpenseDelete(expense.id)}
+                                    onClick={() => handleExpenseDelete(expense)}
                                     className="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded hover:bg-red-100 hover:text-red-600 transition-all"
                                     title={t('common.delete')}
                                   >

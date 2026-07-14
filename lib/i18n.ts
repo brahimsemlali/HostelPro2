@@ -84,6 +84,8 @@ const fr = {
   'nav.nightAudit': 'Audit de nuit',
   'nav.settings': 'Paramètres',
   'nav.logout': 'Déconnexion',
+  'billing.suspendedTitle': 'Abonnement suspendu',
+  'billing.suspendedStaffDesc': 'L\'accès de votre équipe est temporairement suspendu. Veuillez contacter le propriétaire de l\'établissement pour réactiver l\'abonnement.',
   'nav.hotelManagement': 'Gestion d\'auberge',
   'nav.moreItems': 'Plus',
   'nav.menuTitle': 'Navigation',
@@ -758,7 +760,6 @@ const fr = {
   'staff.active': 'actif(s)',
   'staff.pendingInvites': 'invitation(s) en attente',
   'staff.invite': 'Inviter',
-  'staff.pendingInvitations': 'Invitations en attente',
   'staff.inviteCreated': 'Invitation créée ✓',
   'staff.inviteEmployee': 'Inviter un employé',
   'staff.shareInviteWith': 'Partagez ce lien avec',
@@ -872,19 +873,6 @@ const fr = {
   'integrations.step3.highlight': 'Exporter le calendrier',
   'integrations.step4.title': 'Copiez le lien iCal',
   'integrations.step4.detail': 'Un lien commençant par https://admin.booking.com/hotel/... apparaît. Copiez-le et collez-le ci-dessous.',
-
-  // Accept invite
-  'acceptInvite.title': 'Vous êtes invité(e)',
-  'acceptInvite.joinPrefix': 'Rejoignez',
-  'acceptInvite.joinSuffix': 'en tant que',
-  'acceptInvite.choosePassword': 'Choisissez un mot de passe',
-  'acceptInvite.passwordPlaceholder': '8 caractères minimum',
-  'acceptInvite.createAndJoin': 'Créer mon compte et rejoindre',
-  'acceptInvite.alreadyHaveAccount': 'Vous avez déjà un compte avec cet email ?',
-  'acceptInvite.passwordTooShort': 'Le mot de passe doit contenir au moins 8 caractères',
-  'acceptInvite.checkEmail': 'Compte créé ! Vérifiez votre email pour confirmer.',
-  'acceptInvite.linkError': 'Erreur lors de la liaison du compte',
-  'acceptInvite.welcome': 'Bienvenue, {name} !',
 
   // Pre-check-in page
   'precheckin.invalid': 'Lien invalide',
@@ -1267,6 +1255,8 @@ const en = {
   'nav.nightAudit': 'Night Audit',
   'nav.settings': 'Settings',
   'nav.logout': 'Log out',
+  'billing.suspendedTitle': 'Subscription suspended',
+  'billing.suspendedStaffDesc': 'Your team\'s access is temporarily suspended. Please contact the property owner to reactivate the subscription.',
   'nav.hotelManagement': 'Hostel management',
   'nav.moreItems': 'More',
   'nav.menuTitle': 'Navigation',
@@ -1941,7 +1931,6 @@ const en = {
   'staff.active': 'active',
   'staff.pendingInvites': 'pending invite(s)',
   'staff.invite': 'Invite',
-  'staff.pendingInvitations': 'Pending invitations',
   'staff.inviteCreated': 'Invitation created ✓',
   'staff.inviteEmployee': 'Invite a staff member',
   'staff.shareInviteWith': 'Share this link with',
@@ -2056,18 +2045,6 @@ const en = {
   'integrations.step4.title': 'Copy the iCal link',
   'integrations.step4.detail': 'A link starting with https://admin.booking.com/hotel/... will appear. Copy and paste it below.',
 
-  // Accept invite
-  'acceptInvite.title': 'You\'re invited',
-  'acceptInvite.joinPrefix': 'Join',
-  'acceptInvite.joinSuffix': 'as',
-  'acceptInvite.choosePassword': 'Choose a password',
-  'acceptInvite.passwordPlaceholder': 'Minimum 8 characters',
-  'acceptInvite.createAndJoin': 'Create account and join',
-  'acceptInvite.alreadyHaveAccount': 'Already have an account with this email?',
-  'acceptInvite.passwordTooShort': 'Password must be at least 8 characters',
-  'acceptInvite.checkEmail': 'Account created! Check your email to confirm.',
-  'acceptInvite.linkError': 'Error linking the account',
-  'acceptInvite.welcome': 'Welcome, {name}!',
 
   // Pre-check-in page
   'precheckin.invalid': 'Invalid link',

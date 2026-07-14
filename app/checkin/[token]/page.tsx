@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, use } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -55,57 +54,44 @@ export default function PreArrivalPage({
 
   useEffect(() => {
     async function load() {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('bookings')
-        .select(`
-          id, guest_id, pre_checkin_completed, check_in_date, check_out_date,
-          property:property_id(name, wifi_password, check_in_time, check_out_time),
-          bed:bed_id(name, room:room_id(name))
-        `)
-        .eq('pre_checkin_token', token)
-        .single()
+      // Booking lookup goes through the server (service role) — the token is
+      // the authorization. No public RLS policies needed on bookings/guests.
+      let res: Response
+      try {
+        res = await fetch(`/api/checkin/${token}`)
+      } catch {
+        setStatus('error')
+        return
+      }
+      if (!res.ok) { setStatus('error'); return }
 
-      if (error || !data) { setStatus('error'); return }
-
-      const rawProp = data.property
-      const prop = Array.isArray(rawProp) ? (rawProp[0] ?? null) : rawProp
-      const rawBed = data.bed
-      const rawBedObj = Array.isArray(rawBed) ? (rawBed[0] ?? null) : rawBed
-      const bed = rawBedObj
-        ? {
-            name: rawBedObj.name as string,
-            room: Array.isArray(rawBedObj.room)
-              ? (rawBedObj.room[0] ?? null)
-              : (rawBedObj.room ?? null),
-          }
-        : null
-      const b = { ...data, property: prop, bed } as BookingInfo
+      const { booking: b, guest: g } = (await res.json()) as {
+        booking: BookingInfo
+        guest: {
+          first_name: string | null; last_name: string | null; nationality: string | null
+          document_type: string | null; document_number: string | null
+          date_of_birth: string | null; gender: string | null; phone: string | null
+          country_of_residence: string | null; profession: string | null
+        } | null
+      }
       setBooking(b)
 
       if (b.pre_checkin_completed) { setStatus('done'); return }
 
-      if (b.guest_id) {
-        const { data: g } = await supabase
-          .from('guests')
-          .select('first_name, last_name, nationality, document_type, document_number, date_of_birth, gender, phone, country_of_residence, profession')
-          .eq('id', b.guest_id)
-          .single()
-        if (g) {
-          setForm((prev) => ({
-            ...prev,
-            first_name: g.first_name ?? '',
-            last_name: g.last_name ?? '',
-            nationality: g.nationality ?? '',
-            document_type: g.document_type ?? 'passport',
-            document_number: g.document_number ?? '',
-            date_of_birth: g.date_of_birth ?? '',
-            gender: g.gender ?? '',
-            phone: g.phone ?? '',
-            country_of_residence: g.country_of_residence ?? '',
-            profession: g.profession ?? '',
-          }))
-        }
+      if (g) {
+        setForm((prev) => ({
+          ...prev,
+          first_name: g.first_name ?? '',
+          last_name: g.last_name ?? '',
+          nationality: g.nationality ?? '',
+          document_type: g.document_type ?? 'passport',
+          document_number: g.document_number ?? '',
+          date_of_birth: g.date_of_birth ?? '',
+          gender: g.gender ?? '',
+          phone: g.phone ?? '',
+          country_of_residence: g.country_of_residence ?? '',
+          profession: g.profession ?? '',
+        }))
       }
 
       setStatus('form')
@@ -220,7 +206,7 @@ export default function PreArrivalPage({
           <p className="text-sm text-muted-foreground">{t('precheckin.title')}</p>
           {booking && (
             <p className="text-xs text-muted-foreground">
-              {t('precheckin.arrival.label')} : {new Date(booking.check_in_date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+              {t('precheckin.arrival.label')} : {new Date(`${booking.check_in_date}T00:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
               {bed ? ` · ${t('precheckin.bed')} ${bed.name}` : ''}
             </p>
           )}

@@ -33,7 +33,7 @@ Do NOT create or rename to `middleware.ts` — Next.js 16 will error if both exi
 - `'/'` is **exact-matched** (`pathname === '/'`), not prefix-matched — putting `'/'` in a `startsWith` array would make every route public (all paths start with `/`)
 - Authenticated users hitting `/`, `/login`, or `/register` are redirected to `/dashboard`
 - Unauthenticated users hitting protected routes are redirected to `/login?next=<pathname>`
-- Public prefixes: `/login`, `/register`, `/forgot-password`, `/reset-password`, `/accept-invite`, `/checkin`, `/api/auth`, `/api/staff/accept-invite`, `/api/webhooks/lemonsqueezy`
+- Public prefixes: `/login`, `/register`, `/forgot-password`, `/reset-password`, `/checkin`, `/api/checkin`, `/api/auth`, `/api/webhooks/lemonsqueezy`
 - Marketing/SEO pages are public: `/blog`, `/logiciel-hostel-*`, `/sitemap.xml`, `/robots.txt`, `/og-image`
 
 ---
@@ -206,6 +206,7 @@ This redirect is applied in `app/(dashboard)/dashboard/page.tsx` after `getUserS
 | `019_pre_checkin_security.sql` | Drops insecure public pre-checkin RLS policies from 004 (anon key could read/update ALL bookings) |
 | `022_booking_overlap_protection.sql` | btree_gist exclusion constraint `bookings_no_bed_overlap` — DB-level rejection of overlapping active bookings per bed (error 23P01, surfaced via `isBedConflictError()` in `lib/utils.ts`). Run the pre-flight queries in the file first. |
 | `023_scale_hardening.sql` | Heavy-use hardening: unique index on `bookings.pre_checkin_token` (public endpoint was seq-scanning all tenants); pg_trgm indexes for guest search; missing hot-path indexes (properties.owner_id, checkout date, booking_extras, payments.guest_id, whatsapp_messages, expenses, maintenance); `UNIQUE night_audits(property_id, audit_date)` (client treats 23505 as "colleague already finalized"); partial unique index deduping iCal imports; all staff RLS policies rewritten to `(SELECT get_my_property_id())` (per-query InitPlan instead of per-row); `swap_booking_beds()` RPC (atomic bed swap via NULL hop — the old two-UPDATE client swap violated 022); staff read/insert/delete policies on `booking_extras` (were owner-only, receptionist extras writes failed RLS). Run the pre-flight queries in the file first. |
+| `024_drop_staff_invitations.sql` | Drops the orphaned `staff_invitations` table — the email/magic-link invite flow was deleted (2026-07-14); staff are now created via `POST /api/staff/create`. No incoming FKs; safe. **Not yet applied in prod** — apply in the Supabase SQL editor. |
 
 ### `subscriptions` table
 Added for LemonSqueezy billing. Key columns:
@@ -225,21 +226,23 @@ The billing page (`/settings/billing`) reads from this table to show current sta
 
 ---
 
-## STAFF INVITE FLOW — COMPLETE
+## STAFF INVITE FLOW — CREDENTIAL-BASED (no email)
 
-Owner goes to `/settings/staff` → clicks "Inviter" → fills name/email/role →
-app calls `POST /api/staff/invite` → gets back an invite URL →
-shows URL with Copy button + WhatsApp share button →
-staff member opens URL `/accept-invite?token=XXX` →
-creates password → account linked → can log in.
+Owner goes to `/settings/staff` → clicks "Inviter" → fills name/email/**password**/role →
+app calls `POST /api/staff/create` → account is created immediately (email pre-confirmed) →
+owner shares the credentials via **Copy** or **WhatsApp** → staff logs in at `/login`.
+
+There is NO email/magic-link invite. The old `/api/staff/invite` → `/accept-invite` →
+`/api/staff/accept-invite` path was fully built but never wired to the UI, and was **deleted**
+(2026-07-14). Do not re-add it unless the product decision changes.
 
 ### API routes
-- `POST /api/staff/invite` — owner only, creates invitation + pre-creates inactive staff record
+- `POST /api/staff/create` — owner only, rate-limited; creates the auth user (`email_confirm:true`) + staff row, rolls back the auth user if the staff insert fails, returns 409 on duplicate email
 - `POST /api/staff/revoke` — owner only, sets `is_active = false`
-- `POST /api/staff/accept-invite` — public (called after signUp), links `user_id` to staff record
+- `POST /api/staff/toggle-revenue` — owner only, flips `staff.hide_revenue`
 
 ### Public routes (in `proxy.ts`)
-`/login`, `/register`, `/accept-invite`, `/checkin`, `/api/auth`, `/api/staff/accept-invite`, `/api/webhooks/lemonsqueezy` are public.
+`/login`, `/register`, `/forgot-password`, `/reset-password`, `/checkin`, `/api/checkin`, `/api/auth`, `/api/webhooks/lemonsqueezy` are public.
 `/` is public for unauthenticated visitors (shows landing page); authenticated users are redirected to `/dashboard`.
 Everything else requires auth.
 
@@ -403,7 +406,7 @@ const CreateActivityModal = dynamic(() => import('./CreateActivityModal').then(m
 | **Billing page (LemonSqueezy)** | ✅ | `app/(dashboard)/settings/billing/` |
 | Multi-user auth (owner + staff) | ✅ | `lib/supabase/server.ts`, `app/context/SessionContext.tsx` |
 | Role-based sidebar | ✅ | `components/layout/Sidebar.tsx` |
-| Accept-invite page | ✅ | `app/accept-invite/` |
+| Staff account creation (credential-based) | ✅ | `app/api/staff/create/route.ts`, `app/(dashboard)/settings/staff/StaffClient.tsx` |
 | **Expenses tracking** | ✅ | `app/(dashboard)/expenses/` |
 | **Housekeeping task management** | ✅ | `app/(dashboard)/housekeeping/` |
 | **Activities & Events + WA broadcast** | ✅ | `app/(dashboard)/activities/` |

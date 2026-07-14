@@ -1,0 +1,860 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Landing-page copy — FR (default) / EN / AR.
+// Isolated from lib/i18n.ts on purpose: the app dictionary only supports
+// fr|en and must not be touched. All marketing claims here are limited to
+// what the product actually does today (see CLAUDE.md "WHAT'S BUILT").
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type LandingLang = 'fr' | 'en' | 'ar'
+
+export const BRAND = 'Sweet Reservation'
+
+const fr = {
+  dir: 'ltr' as 'ltr' | 'rtl',
+  skipToContent: 'Aller au contenu',
+  announce: 'Nouveau : fiches de police marocaines générées automatiquement.',
+  announceClose: 'Fermer l’annonce',
+  nav: {
+    features: 'Fonctionnalités',
+    solutions: 'Solutions',
+    pricing: 'Tarifs',
+    customers: 'Clients',
+    resources: 'Ressources',
+    signin: 'Se connecter',
+    start: 'Essai gratuit',
+    openMenu: 'Ouvrir le menu',
+    closeMenu: 'Fermer le menu',
+    langLabel: 'Langue',
+  },
+  hero: {
+    eyebrow: 'Conçu pour l’hôtellerie marocaine',
+    h1a: 'Gérez votre établissement.',
+    h1b: 'Pas votre paperasse.',
+    sub: 'Réservations, lits, check-ins, fiches de police, paiements et conversations clients — dans une seule plateforme simple et élégante, pensée pour les hostels, riads et maisons d’hôtes au Maroc.',
+    ctaPrimary: 'Essai gratuit 14 jours',
+    ctaSecondary: 'Visite du produit — 2 min',
+    trust: ['Sans carte bancaire', 'Assistance à la configuration incluse', 'Français · English · العربية'],
+    mockCaption: 'Aperçu du tableau de bord — données de démonstration',
+  },
+  trustStrip: {
+    heading: 'Pensé pour vos canaux et vos outils de tous les jours',
+    items: [
+      { name: 'WhatsApp', note: 'Messages clients en un clic — disponible' },
+      { name: 'Booking.com', note: 'Suivi des réservations et commissions' },
+      { name: 'Hostelworld', note: 'Suivi des réservations et commissions' },
+      { name: 'Sync automatique OTA', note: 'En développement' },
+    ],
+    statement: 'Une plateforme indépendante, développée au Maroc pour les hébergeurs marocains.',
+  },
+  outcomes: {
+    eyebrow: 'Résultats concrets',
+    heading: 'Plus de contrôle à la réception. Plus de liberté partout ailleurs.',
+    items: [
+      {
+        title: 'Check-in en 60 secondes',
+        desc: 'Recherchez le client, choisissez le lit, encaissez — le tout guidé, sans double saisie.',
+      },
+      {
+        title: 'Fiches de police sans re-saisie',
+        desc: 'Les informations du check-in remplissent la fiche PDF au format marocain, prête à imprimer.',
+      },
+      {
+        title: 'Chaque lit dans un seul calendrier',
+        desc: 'Dortoirs et chambres privées, arrivées et départs — une vue unique, sans surréservation.',
+      },
+      {
+        title: 'Caisse réconciliée sans tableur',
+        desc: 'Espèces attendues vs comptées, écart calculé automatiquement à l’audit de nuit.',
+      },
+    ],
+  },
+  tour: {
+    eyebrow: 'Visite du produit',
+    heading: 'Une plateforme, six métiers de votre journée',
+    sub: 'Sélectionnez un module pour voir comment il fonctionne.',
+    tabs: [
+      {
+        label: 'Réservations',
+        headline: 'Toutes vos réservations, une seule vue',
+        body: 'Direct, Booking.com, Hostelworld, téléphone ou walk-in : chaque réservation arrive dans le même calendrier, avec sa source, sa commission et son revenu net.',
+        outcome: 'Fini les doubles réservations entre plateformes.',
+      },
+      {
+        label: 'Check-in digital',
+        headline: 'Le client remplit ses informations avant d’arriver',
+        body: 'Envoyez un lien sécurisé : le voyageur saisit passeport, nationalité et coordonnées depuis son téléphone. À l’arrivée, tout est déjà prêt.',
+        outcome: 'L’accueil s’occupe du client, pas du clavier.',
+      },
+      {
+        label: 'Fiches de police',
+        headline: 'La conformité marocaine, générée en un clic',
+        body: 'Chaque check-in étranger produit une fiche de police PDF au format standard. L’audit de nuit regroupe toutes les fiches du jour en un seul rapport.',
+        outcome: 'Zéro fiche manuscrite, zéro oubli.',
+      },
+      {
+        label: 'WhatsApp',
+        headline: 'Parlez à vos clients là où ils répondent',
+        body: 'Messages de bienvenue, rappels de paiement et de départ, demandes d’avis — des modèles prêts en français, anglais et arabe, envoyés en un clic.',
+        outcome: 'Une communication professionnelle, sans copier-coller.',
+      },
+      {
+        label: 'Paiements',
+        headline: 'Espèces, virement, CMI — tout est tracé en MAD',
+        body: 'Encaissez des paiements partiels, suivez les soldes restants, et réconciliez la caisse chaque soir avec l’écart calculé automatiquement.',
+        outcome: 'Vous savez exactement où est chaque dirham.',
+      },
+      {
+        label: 'Rapports',
+        headline: 'Votre performance, sans exporter un seul fichier',
+        body: 'Taux d’occupation, RevPAR, durée moyenne de séjour, revenu net par canal après commissions — mis à jour en continu.',
+        outcome: 'Des décisions basées sur vos chiffres réels.',
+      },
+    ],
+  },
+  workflow: {
+    eyebrow: 'Votre journée',
+    heading: 'Une plateforme pour toute votre journée.',
+    steps: [
+      { time: '08:00', title: 'Arrivées et occupation', desc: 'Le tableau de bord affiche les arrivées du jour, les départs et le taux d’occupation de la nuit.' },
+      { time: '11:00', title: 'Lits nettoyés', desc: 'Le ménage passe les lits de « à nettoyer » à « libre » directement depuis un téléphone.' },
+      { time: '14:00', title: 'Check-ins digitaux', desc: 'Les clients arrivent, leurs informations sont déjà saisies — la fiche de police se génère en un clic.' },
+      { time: '18:00', title: 'Messages WhatsApp', desc: 'Rappels de solde et messages de bienvenue partent depuis les modèles intégrés.' },
+      { time: '23:00', title: 'Caisse et audit de nuit', desc: 'Comptez la caisse, validez l’écart, générez le rapport de police du jour. Journée terminée.' },
+    ],
+  },
+  local: {
+    eyebrow: 'Avantage local',
+    heading: 'Une capacité internationale. Construite autour de votre réalité locale.',
+    sub: 'Les logiciels hôteliers internationaux ignorent la fiche de police, le dirham et WhatsApp. Pas nous.',
+    points: [
+      { title: 'Fiches de police marocaines', desc: 'Format standard des préfectures, généré à chaque check-in étranger.' },
+      { title: 'Comptabilité en dirhams', desc: 'Paiements, rapports et réconciliation de caisse en MAD, au format français.' },
+      { title: 'Français · English · العربية', desc: 'Interface en français et anglais ; fiches bilingues français-arabe. Interface arabe en préparation.' },
+      { title: 'Support WhatsApp local', desc: 'Onboarding et assistance par une équipe basée au Maroc, sur WhatsApp.' },
+      { title: 'Inventaire au lit près', desc: 'Dortoirs gérés lit par lit — position, statut ménage, tarif par lit.' },
+      { title: 'Pensé pour riads et surf camps', desc: 'Séjours longs, activités et extras, paiements partiels — pas seulement des chambres standard.' },
+      { title: 'Mobile d’abord', desc: 'Propriétaires et équipes gèrent tout depuis leur téléphone, où qu’ils soient.' },
+    ],
+  },
+  properties: {
+    eyebrow: 'Solutions',
+    heading: 'À chaque type d’établissement, son mode de fonctionnement',
+    sub: 'Sélectionnez votre établissement pour voir ce qui compte pour vous.',
+    types: [
+      {
+        label: 'Hostel',
+        challenges: ['Fort passage de voyageurs et check-ins en rafale', 'Lits en dortoir vendus sur plusieurs plateformes', 'Fiches de police pour presque chaque arrivée'],
+        features: ['Plan des lits en direct, lit par lit', 'Check-in guidé en 60 secondes', 'Rapport de police groupé à l’audit de nuit'],
+        benefit: 'Absorbez les soirées chargées sans file d’attente à la réception.',
+      },
+      {
+        label: 'Riad',
+        challenges: ['Service personnalisé pour une clientèle exigeante', 'Chambres privées avec extras et excursions', 'Image haut de gamme à maintenir'],
+        features: ['Profils clients avec historique de séjours', 'Extras et activités facturés sur la réservation', 'Messages WhatsApp soignés, prêts à envoyer'],
+        benefit: 'L’élégance de votre accueil, désormais aussi dans votre gestion.',
+      },
+      {
+        label: 'Surf camp',
+        challenges: ['Séjours à la semaine avec cours et activités', 'Paiements échelonnés difficiles à suivre', 'Équipe polyvalente, souvent en déplacement'],
+        features: ['Réservations longue durée avec paiements partiels', 'Activités et événements avec diffusion WhatsApp', 'Gestion complète depuis le téléphone'],
+        benefit: 'Le camp tourne, même quand vous êtes à l’eau.',
+      },
+      {
+        label: 'Maison d’hôtes',
+        challenges: ['Petite équipe qui fait tout, du ménage aux comptes', 'Dépenses et revenus mélangés', 'Peu de temps pour l’administratif'],
+        features: ['Suivi des dépenses et de l’inventaire', 'Tâches ménage assignées à l’équipe', 'Rapports de revenus sans exporter un fichier'],
+        benefit: 'Toute la maison, gérée depuis une seule application.',
+      },
+    ],
+    challengesLabel: 'Vos défis',
+    featuresLabel: 'Ce que la plateforme apporte',
+  },
+  customers: {
+    eyebrow: 'Clients',
+    heading: 'Nous accompagnons nos premiers établissements',
+    body: 'Sweet Reservation équipe ses premiers hostels et maisons d’hôtes au Maroc. Nous publierons leurs résultats ici — avec leur accord, et rien d’inventé. En attendant, jugez le produit par vous-même : l’essai est gratuit, la configuration prend quelques minutes.',
+    cta: 'Devenir un établissement pilote',
+  },
+  ecosystem: {
+    eyebrow: 'Fonctionnalités',
+    heading: 'Tout l’écosystème de votre exploitation',
+    groups: [
+      { title: 'Opérer', items: ['Réservations et calendrier', 'Plan des lits en direct', 'Check-in en 5 étapes', 'Ménage et statuts des lits', 'Audit de nuit guidé'] },
+      { title: 'Connecter', items: ['Suivi des canaux (Booking.com, Hostelworld…)', 'Hub WhatsApp multilingue', 'Profils et historique clients', 'Check-in digital pré-arrivée'] },
+      { title: 'Encaisser', items: ['Paiements en MAD (espèces, virement, CMI)', 'Soldes restants et rappels', 'Réconciliation de caisse', 'Suivi des dépenses'] },
+      { title: 'Développer', items: ['Rapports de revenus et d’occupation', 'Revenu net par canal après commissions', 'RevPAR et durée moyenne de séjour', 'Comptes staff par rôle'] },
+    ],
+  },
+  migration: {
+    eyebrow: 'Démarrage',
+    heading: 'Changez d’outil sans perdre votre historique.',
+    steps: [
+      { title: 'Importez vos données', desc: 'Notre équipe vous aide à reprendre vos clients et réservations existants pendant l’onboarding.' },
+      { title: 'Configurez chambres et lits', desc: 'Dortoirs, chambres privées, tarifs par lit — l’assistant de configuration prend quelques minutes.' },
+      { title: 'Reliez vos canaux', desc: 'Enregistrez vos réservations Booking.com et Hostelworld avec leurs commissions.' },
+      { title: 'Formez l’équipe et lancez', desc: 'Comptes staff par rôle, prise en main rapide, assistance WhatsApp pendant le lancement.' },
+    ],
+    note: 'Une personne réelle vous accompagne pendant toute la mise en place.',
+  },
+  pricing: {
+    eyebrow: 'Tarifs',
+    heading: 'Des tarifs simples, sans surprise',
+    sub: 'Essai gratuit de 14 jours sur tous les plans. Changez ou annulez à tout moment.',
+    monthly: 'Mensuel',
+    annual: 'Annuel',
+    save: '-20%',
+    perMonth: 'par mois',
+    billedAnnually: 'facturé annuellement',
+    approxNote: 'Facturation en USD. Équivalent en dirhams donné à titre indicatif.',
+    popular: 'Le plus populaire',
+    plans: [
+      {
+        name: 'Starter',
+        tagline: 'Pour les petites structures — jusqu’à 45 lits',
+        features: ['Jusqu’à 45 lits', 'Check-ins illimités', 'Fiches de police PDF', 'Plan des lits en direct', 'Messages WhatsApp en un clic', '1 compte staff', 'Support par email'],
+        cta: 'Essai gratuit 14 jours',
+      },
+      {
+        name: 'Business',
+        tagline: 'Pour les établissements en croissance',
+        features: ['Lits illimités', 'Comptes staff illimités, par rôle', 'Rapports de revenus et d’occupation', 'Audit de nuit et réconciliation de caisse', 'Suivi des dépenses et inventaire', 'Support WhatsApp prioritaire', 'Sync OTA automatique — bientôt disponible'],
+        cta: 'Commencer',
+      },
+      {
+        name: 'Enterprise',
+        tagline: 'Pour les groupes et multi-propriétés',
+        features: ['Tout le plan Business', 'Multi-propriétés', 'Onboarding sur mesure', 'Interlocuteur dédié', 'Garantie SLA'],
+        cta: 'Nous contacter',
+      },
+    ],
+  },
+  faq: {
+    eyebrow: 'FAQ',
+    heading: 'Questions fréquentes',
+    items: [
+      {
+        q: 'Sweet Reservation se connecte-t-il à Booking.com et Hostelworld ?',
+        a: 'Vous enregistrez vos réservations Booking.com et Hostelworld dans la plateforme avec leur référence et leur taux de commission — le revenu net par canal est calculé automatiquement. La synchronisation automatique des disponibilités (channel manager) est en cours de développement pour le plan Business.',
+      },
+      {
+        q: 'Comment les fiches de police marocaines sont-elles générées ?',
+        a: 'Les informations saisies au check-in (identité, passeport, nationalité, adresse au Maroc, destination suivante) remplissent automatiquement une fiche de police PDF au format standard marocain. L’audit de nuit peut regrouper toutes les fiches du jour en un seul rapport pour la préfecture.',
+      },
+      {
+        q: 'Puis-je gérer les lits de dortoir individuellement ?',
+        a: 'Oui. Chaque lit a son nom, sa position (haut/bas), son tarif et son statut (libre, occupé, à nettoyer, maintenance). Le plan des lits et le calendrier fonctionnent au lit près, et une protection en base de données empêche les surréservations.',
+      },
+      {
+        q: 'Mes employés peuvent-ils avoir des comptes séparés ?',
+        a: 'Oui. Quatre rôles sont disponibles : propriétaire, manager, réceptionniste et ménage — chacun avec ses permissions. Les chiffres de revenus, par exemple, ne sont visibles que par les rôles autorisés. L’invitation d’un employé se fait par lien sécurisé.',
+      },
+      {
+        q: 'Sweet Reservation fonctionne-t-il sur mobile ?',
+        a: 'Oui, l’application est entièrement responsive et pensée mobile d’abord : navigation dédiée en bas d’écran, check-in, plan des lits, paiements et ménage utilisables depuis n’importe quel smartphone.',
+      },
+      {
+        q: 'L’interface est-elle disponible en arabe ?',
+        a: 'L’interface de gestion est disponible en français et en anglais ; la version arabe est en préparation. Les fiches de police générées sont bilingues français-arabe, et les modèles WhatsApp existent en français, anglais et arabe.',
+      },
+      {
+        q: 'Pouvez-vous importer mes réservations existantes ?',
+        a: 'Oui. Pendant l’onboarding, notre équipe vous aide à reprendre vos clients et réservations existants (depuis Excel, papier ou un autre logiciel) pour que vous ne perdiez pas votre historique.',
+      },
+      {
+        q: 'Quel support est inclus ?',
+        a: 'Tous les plans incluent l’assistance à la configuration. Le plan Starter inclut le support par email ; le plan Business ajoute un support WhatsApp prioritaire assuré par une équipe basée au Maroc.',
+      },
+      {
+        q: 'Mes données et les paiements sont-ils sécurisés ?',
+        a: 'Les données sont hébergées sur une base PostgreSQL sécurisée avec isolation stricte par établissement, servie exclusivement en HTTPS. Les abonnements sont traités par LemonSqueezy — aucune donnée de carte bancaire ne transite par nos serveurs. Un export et une anonymisation des données clients (RGPD) sont intégrés.',
+      },
+    ],
+  },
+  finalCta: {
+    heading: 'Votre établissement mérite mieux que des tableurs.',
+    sub: 'Démarrez votre essai gratuit et faites votre prochain check-in avec Sweet Reservation.',
+    ctaPrimary: 'Essai gratuit 14 jours',
+    ctaDemo: 'Réserver une démo personnelle',
+  },
+  footer: {
+    tagline: 'La plateforme de gestion tout-en-un pour hostels, riads et maisons d’hôtes au Maroc et en Afrique du Nord.',
+    product: 'Produit',
+    solutions: 'Solutions',
+    resources: 'Ressources',
+    cities: 'Villes',
+    features: 'Fonctionnalités',
+    pricing: 'Tarifs',
+    tour: 'Visite du produit',
+    faq: 'FAQ',
+    signin: 'Se connecter',
+    start: 'Essai gratuit',
+    blog: 'Blog',
+    contact: 'Contact',
+    privacy: 'Confidentialité',
+    terms: 'Conditions',
+    rights: 'Tous droits réservés.',
+    langLabel: 'Langue',
+  },
+}
+
+export type LPCopy = typeof fr
+
+const en: LPCopy = {
+  dir: 'ltr',
+  skipToContent: 'Skip to content',
+  announce: 'New: generate Moroccan police forms automatically.',
+  announceClose: 'Dismiss announcement',
+  nav: {
+    features: 'Features',
+    solutions: 'Solutions',
+    pricing: 'Pricing',
+    customers: 'Customers',
+    resources: 'Resources',
+    signin: 'Sign in',
+    start: 'Start free',
+    openMenu: 'Open menu',
+    closeMenu: 'Close menu',
+    langLabel: 'Language',
+  },
+  hero: {
+    eyebrow: 'Built for Moroccan hospitality',
+    h1a: 'Run your property.',
+    h1b: 'Not your paperwork.',
+    sub: 'Manage reservations, beds, check-ins, police forms, payments and guest conversations from one beautifully simple platform — built for hostels, riads and guesthouses in Morocco.',
+    ctaPrimary: 'Start free for 14 days',
+    ctaSecondary: 'Take the 2-minute tour',
+    trust: ['No credit card required', 'Setup assistance included', 'Français · English · العربية'],
+    mockCaption: 'Dashboard preview — demonstration data',
+  },
+  trustStrip: {
+    heading: 'Designed around the channels and tools you already use',
+    items: [
+      { name: 'WhatsApp', note: 'One-click guest messaging — available now' },
+      { name: 'Booking.com', note: 'Reservation and commission tracking' },
+      { name: 'Hostelworld', note: 'Reservation and commission tracking' },
+      { name: 'Automatic OTA sync', note: 'In development' },
+    ],
+    statement: 'An independent platform, built in Morocco for Moroccan hosts.',
+  },
+  outcomes: {
+    eyebrow: 'Real outcomes',
+    heading: 'More control at the desk. More freedom everywhere else.',
+    items: [
+      { title: 'Check guests in within 60 seconds', desc: 'Find the guest, pick the bed, take payment — fully guided, no duplicate typing.' },
+      { title: 'Police forms without repetitive data entry', desc: 'Check-in details fill the Moroccan-format PDF automatically, ready to print.' },
+      { title: 'Every bed in one calendar', desc: 'Dorms and private rooms, arrivals and departures — one view, no double bookings.' },
+      { title: 'Reconcile cash without spreadsheets', desc: 'Expected vs counted cash, with the difference computed at night audit.' },
+    ],
+  },
+  tour: {
+    eyebrow: 'Product tour',
+    heading: 'One platform, six jobs in your day',
+    sub: 'Pick a module to see how it works.',
+    tabs: [
+      {
+        label: 'Reservations',
+        headline: 'Every reservation, one view',
+        body: 'Direct, Booking.com, Hostelworld, phone or walk-in: every booking lands in the same calendar with its source, commission rate and net revenue.',
+        outcome: 'No more double bookings across platforms.',
+      },
+      {
+        label: 'Digital check-in',
+        headline: 'Guests fill in their details before they arrive',
+        body: 'Send a secure link: the traveller enters passport, nationality and contact details from their phone. When they arrive, everything is ready.',
+        outcome: 'The front desk focuses on the guest, not the keyboard.',
+      },
+      {
+        label: 'Police forms',
+        headline: 'Moroccan compliance, generated in one click',
+        body: 'Every foreign check-in produces a standard-format police form PDF. Night audit bundles the day’s forms into a single report.',
+        outcome: 'Zero handwritten forms, zero omissions.',
+      },
+      {
+        label: 'WhatsApp',
+        headline: 'Talk to guests where they actually reply',
+        body: 'Welcome messages, payment and checkout reminders, review requests — ready-made templates in French, English and Arabic, sent in one click.',
+        outcome: 'Professional communication without copy-paste.',
+      },
+      {
+        label: 'Payments',
+        headline: 'Cash, transfer, CMI — all tracked in MAD',
+        body: 'Take partial payments, follow outstanding balances, and reconcile the cash drawer every night with the difference computed for you.',
+        outcome: 'You know exactly where every dirham is.',
+      },
+      {
+        label: 'Reports',
+        headline: 'Your performance, without exporting a single file',
+        body: 'Occupancy rate, RevPAR, average length of stay, net revenue per channel after commissions — continuously up to date.',
+        outcome: 'Decisions based on your real numbers.',
+      },
+    ],
+  },
+  workflow: {
+    eyebrow: 'Your day',
+    heading: 'One platform for your entire day.',
+    steps: [
+      { time: '08:00', title: 'Review arrivals and occupancy', desc: 'The dashboard shows today’s arrivals, departures and tonight’s occupancy at a glance.' },
+      { time: '11:00', title: 'Update cleaned beds', desc: 'Housekeeping flips beds from “needs cleaning” to “available” straight from a phone.' },
+      { time: '14:00', title: 'Complete digital check-ins', desc: 'Guests arrive with their details already entered — the police form generates in one click.' },
+      { time: '18:00', title: 'Send WhatsApp guest messages', desc: 'Balance reminders and welcome messages go out from built-in templates.' },
+      { time: '23:00', title: 'Reconcile cash and finish the night audit', desc: 'Count the drawer, confirm the difference, generate the day’s police report. Done.' },
+    ],
+  },
+  local: {
+    eyebrow: 'Local advantage',
+    heading: 'Global capability. Built around how you work locally.',
+    sub: 'International hotel software ignores the fiche de police, the dirham and WhatsApp. We don’t.',
+    points: [
+      { title: 'Moroccan police-form workflows', desc: 'Standard prefecture format, generated at every foreign guest check-in.' },
+      { title: 'Financial reporting in MAD', desc: 'Payments, reports and cash reconciliation in dirhams, French number formatting.' },
+      { title: 'Français · English · العربية', desc: 'Interface in French and English; bilingual French-Arabic police forms. Arabic interface in preparation.' },
+      { title: 'Local WhatsApp support', desc: 'Onboarding and assistance from a Morocco-based team, over WhatsApp.' },
+      { title: 'Bed-level dormitory inventory', desc: 'Dorms managed bed by bed — bunk position, housekeeping status, per-bed pricing.' },
+      { title: 'Designed for riads and surf camps', desc: 'Long stays, activities and extras, partial payments — not just standard rooms.' },
+      { title: 'Mobile first', desc: 'Owners and managers run everything from their phone, wherever they are.' },
+    ],
+  },
+  properties: {
+    eyebrow: 'Solutions',
+    heading: 'Every property type works differently. So does the platform.',
+    sub: 'Select your property to see what matters for you.',
+    types: [
+      {
+        label: 'Hostel',
+        challenges: ['High traveller turnover and check-in rushes', 'Dorm beds sold across several platforms', 'Police forms for almost every arrival'],
+        features: ['Live bed map, bed by bed', 'Guided 60-second check-in', 'Bundled police report at night audit'],
+        benefit: 'Absorb busy evenings without a queue at the desk.',
+      },
+      {
+        label: 'Riad',
+        challenges: ['Personalised service for demanding guests', 'Private rooms with extras and excursions', 'A premium image to maintain'],
+        features: ['Guest profiles with stay history', 'Extras and activities billed to the booking', 'Polished WhatsApp messages, ready to send'],
+        benefit: 'The elegance of your welcome, now in your operations too.',
+      },
+      {
+        label: 'Surf camp',
+        challenges: ['Week-long stays with lessons and activities', 'Instalment payments that are hard to track', 'A versatile team, often on the move'],
+        features: ['Long-stay bookings with partial payments', 'Activities and events with WhatsApp broadcast', 'Full management from the phone'],
+        benefit: 'The camp keeps running, even when you’re in the water.',
+      },
+      {
+        label: 'Guesthouse',
+        challenges: ['A small team doing everything, cleaning to accounts', 'Expenses and revenue mixed together', 'Little time for admin'],
+        features: ['Expense and inventory tracking', 'Housekeeping tasks assigned to the team', 'Revenue reports without exporting a file'],
+        benefit: 'The whole house, run from one app.',
+      },
+    ],
+    challengesLabel: 'Your challenges',
+    featuresLabel: 'What the platform brings',
+  },
+  customers: {
+    eyebrow: 'Customers',
+    heading: 'We’re onboarding our first properties',
+    body: 'Sweet Reservation is equipping its first hostels and guesthouses in Morocco. We will publish their results here — with their permission, and nothing invented. In the meantime, judge the product yourself: the trial is free and setup takes minutes.',
+    cta: 'Become a pilot property',
+  },
+  ecosystem: {
+    eyebrow: 'Features',
+    heading: 'The full ecosystem of your operation',
+    groups: [
+      { title: 'Operate', items: ['Reservations and calendar', 'Live bed map', '5-step check-in', 'Housekeeping and bed statuses', 'Guided night audit'] },
+      { title: 'Connect', items: ['Channel tracking (Booking.com, Hostelworld…)', 'Multilingual WhatsApp hub', 'Guest profiles and history', 'Pre-arrival digital check-in'] },
+      { title: 'Get paid', items: ['Payments in MAD (cash, transfer, CMI)', 'Outstanding balances and reminders', 'Cash reconciliation', 'Expense tracking'] },
+      { title: 'Grow', items: ['Revenue and occupancy reports', 'Net revenue per channel after commissions', 'RevPAR and average length of stay', 'Role-based staff accounts'] },
+    ],
+  },
+  migration: {
+    eyebrow: 'Getting started',
+    heading: 'Switch without losing your history.',
+    steps: [
+      { title: 'Import existing data', desc: 'Our team helps you bring over your existing guests and reservations during onboarding.' },
+      { title: 'Configure rooms and beds', desc: 'Dorms, private rooms, per-bed pricing — the setup wizard takes minutes.' },
+      { title: 'Connect booking channels', desc: 'Record your Booking.com and Hostelworld reservations with their commissions.' },
+      { title: 'Train staff and launch', desc: 'Role-based staff accounts, a quick learning curve, WhatsApp assistance during launch.' },
+    ],
+    note: 'A real person supports you throughout setup.',
+  },
+  pricing: {
+    eyebrow: 'Pricing',
+    heading: 'Simple pricing, no surprises',
+    sub: '14-day free trial on every plan. Upgrade or cancel anytime.',
+    monthly: 'Monthly',
+    annual: 'Annual',
+    save: '-20%',
+    perMonth: 'per month',
+    billedAnnually: 'billed annually',
+    approxNote: 'Billed in USD. Dirham equivalent shown for reference.',
+    popular: 'Most popular',
+    plans: [
+      {
+        name: 'Starter',
+        tagline: 'For small properties — up to 45 beds',
+        features: ['Up to 45 beds', 'Unlimited check-ins', 'Police form PDFs', 'Live bed map', 'One-click WhatsApp messages', '1 staff account', 'Email support'],
+        cta: 'Start free for 14 days',
+      },
+      {
+        name: 'Business',
+        tagline: 'For growing properties',
+        features: ['Unlimited beds', 'Unlimited role-based staff accounts', 'Revenue and occupancy reports', 'Night audit and cash reconciliation', 'Expense and inventory tracking', 'Priority WhatsApp support', 'Automatic OTA sync — coming soon'],
+        cta: 'Get started',
+      },
+      {
+        name: 'Enterprise',
+        tagline: 'For groups and multi-property operators',
+        features: ['Everything in Business', 'Multi-property', 'Custom onboarding', 'Dedicated point of contact', 'SLA guarantee'],
+        cta: 'Contact us',
+      },
+    ],
+  },
+  faq: {
+    eyebrow: 'FAQ',
+    heading: 'Frequently asked questions',
+    items: [
+      {
+        q: 'Does Sweet Reservation connect to Booking.com and Hostelworld?',
+        a: 'You record your Booking.com and Hostelworld reservations in the platform with their reference and commission rate — net revenue per channel is calculated automatically. Automatic availability synchronization (channel manager) is in development for the Business plan.',
+      },
+      {
+        q: 'How are Moroccan police forms generated?',
+        a: 'The details entered at check-in (identity, passport, nationality, address in Morocco, next destination) automatically fill a police form PDF in the standard Moroccan format. Night audit can bundle all of the day’s forms into a single report for the prefecture.',
+      },
+      {
+        q: 'Can I manage individual dormitory beds?',
+        a: 'Yes. Every bed has its own name, bunk position, price and status (available, occupied, needs cleaning, maintenance). The bed map and calendar work at bed level, and a database-level guard prevents double bookings.',
+      },
+      {
+        q: 'Can employees have separate accounts?',
+        a: 'Yes. Four roles are available: owner, manager, receptionist and housekeeping — each with its own permissions. Revenue figures, for example, are only visible to authorised roles. Staff are invited via a secure link.',
+      },
+      {
+        q: 'Does Sweet Reservation work on mobile?',
+        a: 'Yes, the app is fully responsive and mobile-first: a dedicated bottom navigation, with check-in, bed map, payments and housekeeping all usable from any smartphone.',
+      },
+      {
+        q: 'Is the interface available in Arabic?',
+        a: 'The management interface is available in French and English; the Arabic version is in preparation. Generated police forms are bilingual French-Arabic, and WhatsApp templates exist in French, English and Arabic.',
+      },
+      {
+        q: 'Can you import existing reservations?',
+        a: 'Yes. During onboarding, our team helps you bring over your existing guests and reservations (from Excel, paper or another system) so you don’t lose your history.',
+      },
+      {
+        q: 'What support is included?',
+        a: 'Every plan includes setup assistance. Starter includes email support; Business adds priority WhatsApp support from a Morocco-based team.',
+      },
+      {
+        q: 'Is customer and payment data secure?',
+        a: 'Data lives in a secured PostgreSQL database with strict per-property isolation, served exclusively over HTTPS. Subscriptions are processed by LemonSqueezy — card data never touches our servers. Built-in GDPR export and anonymization of guest data are included.',
+      },
+    ],
+  },
+  finalCta: {
+    heading: 'Your property deserves better than spreadsheets.',
+    sub: 'Start your free trial and run your next check-in with Sweet Reservation.',
+    ctaPrimary: 'Start free for 14 days',
+    ctaDemo: 'Book a personal demo',
+  },
+  footer: {
+    tagline: 'The all-in-one management platform for hostels, riads and guesthouses in Morocco and North Africa.',
+    product: 'Product',
+    solutions: 'Solutions',
+    resources: 'Resources',
+    cities: 'Cities',
+    features: 'Features',
+    pricing: 'Pricing',
+    tour: 'Product tour',
+    faq: 'FAQ',
+    signin: 'Sign in',
+    start: 'Start free',
+    blog: 'Blog',
+    contact: 'Contact',
+    privacy: 'Privacy',
+    terms: 'Terms',
+    rights: 'All rights reserved.',
+    langLabel: 'Language',
+  },
+}
+
+const ar: LPCopy = {
+  dir: 'rtl',
+  skipToContent: 'الانتقال إلى المحتوى',
+  announce: 'جديد: توليد استمارات الشرطة المغربية تلقائيًا.',
+  announceClose: 'إغلاق الإعلان',
+  nav: {
+    features: 'المميزات',
+    solutions: 'الحلول',
+    pricing: 'الأسعار',
+    customers: 'العملاء',
+    resources: 'الموارد',
+    signin: 'تسجيل الدخول',
+    start: 'ابدأ مجانًا',
+    openMenu: 'فتح القائمة',
+    closeMenu: 'إغلاق القائمة',
+    langLabel: 'اللغة',
+  },
+  hero: {
+    eyebrow: 'صُمّم للضيافة المغربية',
+    h1a: 'أدِر مؤسستك.',
+    h1b: 'لا أوراقها.',
+    sub: 'الحجوزات، الأسرّة، تسجيل الوصول، استمارات الشرطة، المدفوعات ومحادثات الضيوف — كل ذلك في منصة واحدة بسيطة وأنيقة، صُمّمت لبيوت الشباب والرياضات ودور الضيافة في المغرب.',
+    ctaPrimary: 'جرّب مجانًا لمدة 14 يومًا',
+    ctaSecondary: 'جولة في المنتج — دقيقتان',
+    trust: ['بدون بطاقة بنكية', 'مساعدة في الإعداد مشمولة', 'Français · English · العربية'],
+    mockCaption: 'معاينة لوحة التحكم — بيانات تجريبية',
+  },
+  trustStrip: {
+    heading: 'مصمّم حول القنوات والأدوات التي تستخدمها يوميًا',
+    items: [
+      { name: 'WhatsApp', note: 'مراسلة الضيوف بنقرة واحدة — متاح الآن' },
+      { name: 'Booking.com', note: 'تتبّع الحجوزات والعمولات' },
+      { name: 'Hostelworld', note: 'تتبّع الحجوزات والعمولات' },
+      { name: 'مزامنة OTA تلقائية', note: 'قيد التطوير' },
+    ],
+    statement: 'منصة مستقلة، طُوِّرت في المغرب من أجل المضيفين المغاربة.',
+  },
+  outcomes: {
+    eyebrow: 'نتائج ملموسة',
+    heading: 'تحكّم أكبر في الاستقبال. حرية أكبر في كل مكان آخر.',
+    items: [
+      { title: 'تسجيل وصول في 60 ثانية', desc: 'ابحث عن الضيف، اختر السرير، استلم الدفع — بخطوات موجّهة ودون إدخال مكرر.' },
+      { title: 'استمارات شرطة بدون إعادة إدخال', desc: 'بيانات تسجيل الوصول تملأ استمارة PDF بالصيغة المغربية تلقائيًا، جاهزة للطباعة.' },
+      { title: 'كل سرير في تقويم واحد', desc: 'العنابر والغرف الخاصة، الوصول والمغادرة — عرض واحد، بدون حجوزات مزدوجة.' },
+      { title: 'تسوية الصندوق بدون جداول', desc: 'النقد المتوقع مقابل المعدود، والفرق يُحسب تلقائيًا في تدقيق الليل.' },
+    ],
+  },
+  tour: {
+    eyebrow: 'جولة في المنتج',
+    heading: 'منصة واحدة، ست مهام في يومك',
+    sub: 'اختر وحدة لترى كيف تعمل.',
+    tabs: [
+      {
+        label: 'الحجوزات',
+        headline: 'كل حجوزاتك في عرض واحد',
+        body: 'مباشر، Booking.com، Hostelworld، هاتف أو زيارة مباشرة: كل حجز يصل إلى نفس التقويم مع مصدره ونسبة عمولته وإيراده الصافي.',
+        outcome: 'لا مزيد من الحجوزات المزدوجة بين المنصات.',
+      },
+      {
+        label: 'تسجيل وصول رقمي',
+        headline: 'الضيف يُدخل بياناته قبل وصوله',
+        body: 'أرسل رابطًا آمنًا: يُدخل المسافر جواز سفره وجنسيته وبيانات الاتصال من هاتفه. عند الوصول، كل شيء جاهز.',
+        outcome: 'الاستقبال يهتم بالضيف، لا بلوحة المفاتيح.',
+      },
+      {
+        label: 'استمارات الشرطة',
+        headline: 'الامتثال المغربي، بنقرة واحدة',
+        body: 'كل تسجيل وصول لضيف أجنبي يُنتج استمارة شرطة PDF بالصيغة القياسية. تدقيق الليل يجمع استمارات اليوم في تقرير واحد.',
+        outcome: 'صفر استمارات بخط اليد، صفر نسيان.',
+      },
+      {
+        label: 'واتساب',
+        headline: 'تواصل مع ضيوفك حيث يجيبون فعلًا',
+        body: 'رسائل ترحيب، تذكيرات بالدفع والمغادرة، طلبات تقييم — قوالب جاهزة بالفرنسية والإنجليزية والعربية، تُرسل بنقرة واحدة.',
+        outcome: 'تواصل احترافي بدون نسخ ولصق.',
+      },
+      {
+        label: 'المدفوعات',
+        headline: 'نقدًا، تحويل، CMI — كل شيء مسجّل بالدرهم',
+        body: 'استلم دفعات جزئية، تابع الأرصدة المتبقية، وسوِّ صندوق النقد كل مساء مع حساب الفرق تلقائيًا.',
+        outcome: 'تعرف بالضبط أين كل درهم.',
+      },
+      {
+        label: 'التقارير',
+        headline: 'أداؤك، دون تصدير أي ملف',
+        body: 'نسبة الإشغال، الإيراد لكل سرير متاح، متوسط مدة الإقامة، الإيراد الصافي لكل قناة بعد العمولات — محدّثة باستمرار.',
+        outcome: 'قرارات مبنية على أرقامك الحقيقية.',
+      },
+    ],
+  },
+  workflow: {
+    eyebrow: 'يومك',
+    heading: 'منصة واحدة ليومك كله.',
+    steps: [
+      { time: '08:00', title: 'مراجعة الوصول والإشغال', desc: 'لوحة التحكم تعرض وصول اليوم والمغادرات ونسبة إشغال الليلة بنظرة واحدة.' },
+      { time: '11:00', title: 'تحديث الأسرّة المنظّفة', desc: 'فريق النظافة يحوّل الأسرّة من «تحتاج تنظيفًا» إلى «متاحة» مباشرة من الهاتف.' },
+      { time: '14:00', title: 'إتمام تسجيلات الوصول الرقمية', desc: 'يصل الضيوف وبياناتهم مُدخلة مسبقًا — وتُولَّد استمارة الشرطة بنقرة واحدة.' },
+      { time: '18:00', title: 'إرسال رسائل واتساب', desc: 'تذكيرات الأرصدة ورسائل الترحيب تنطلق من القوالب المدمجة.' },
+      { time: '23:00', title: 'تسوية الصندوق وإنهاء تدقيق الليل', desc: 'عُدّ الصندوق، أكّد الفرق، وولّد تقرير الشرطة لليوم. انتهى اليوم.' },
+    ],
+  },
+  local: {
+    eyebrow: 'الميزة المحلية',
+    heading: 'قدرات عالمية. مبنية حول طريقة عملك المحلية.',
+    sub: 'برامج الفنادق العالمية تتجاهل استمارة الشرطة والدرهم وواتساب. نحن لا.',
+    points: [
+      { title: 'استمارات الشرطة المغربية', desc: 'صيغة العمالات القياسية، تُولَّد عند كل تسجيل وصول لضيف أجنبي.' },
+      { title: 'تقارير مالية بالدرهم', desc: 'المدفوعات والتقارير وتسوية الصندوق بالدرهم المغربي.' },
+      { title: 'Français · English · العربية', desc: 'واجهة بالفرنسية والإنجليزية؛ استمارات ثنائية اللغة فرنسية-عربية. الواجهة العربية قيد الإعداد.' },
+      { title: 'دعم واتساب محلي', desc: 'إعداد ومساعدة من فريق مقره المغرب، عبر واتساب.' },
+      { title: 'جرد على مستوى السرير', desc: 'العنابر تُدار سريرًا بسرير — الموضع، حالة النظافة، والسعر لكل سرير.' },
+      { title: 'مصمّم للرياضات ومخيمات الأمواج', desc: 'إقامات طويلة، أنشطة وإضافات، دفعات جزئية — وليس فقط غرفًا قياسية.' },
+      { title: 'الهاتف أولًا', desc: 'المالكون والمديرون يديرون كل شيء من هواتفهم، أينما كانوا.' },
+    ],
+  },
+  properties: {
+    eyebrow: 'الحلول',
+    heading: 'لكل نوع مؤسسة طريقة عمل مختلفة. وكذلك المنصة.',
+    sub: 'اختر نوع مؤسستك لترى ما يهمّك.',
+    types: [
+      {
+        label: 'بيت شباب',
+        challenges: ['تدفق كبير للمسافرين وذروات تسجيل وصول', 'أسرّة عنابر تُباع عبر عدة منصات', 'استمارات شرطة لكل وصول تقريبًا'],
+        features: ['خريطة أسرّة مباشرة، سريرًا بسرير', 'تسجيل وصول موجّه في 60 ثانية', 'تقرير شرطة مجمّع في تدقيق الليل'],
+        benefit: 'استوعب الأمسيات المزدحمة دون طابور في الاستقبال.',
+      },
+      {
+        label: 'رياض',
+        challenges: ['خدمة شخصية لضيوف متطلّبين', 'غرف خاصة مع إضافات ورحلات', 'صورة راقية يجب الحفاظ عليها'],
+        features: ['ملفات ضيوف مع سجل الإقامات', 'إضافات وأنشطة تُحسب على الحجز', 'رسائل واتساب أنيقة جاهزة للإرسال'],
+        benefit: 'أناقة استقبالك، الآن في إدارتك أيضًا.',
+      },
+      {
+        label: 'مخيم أمواج',
+        challenges: ['إقامات أسبوعية مع دروس وأنشطة', 'دفعات مقسّطة يصعب تتبّعها', 'فريق متعدد المهام وكثير التنقل'],
+        features: ['حجوزات طويلة مع دفعات جزئية', 'أنشطة وفعاليات مع بث واتساب', 'إدارة كاملة من الهاتف'],
+        benefit: 'المخيم يستمر بالعمل، حتى وأنت في الماء.',
+      },
+      {
+        label: 'دار ضيافة',
+        challenges: ['فريق صغير يقوم بكل شيء، من التنظيف إلى الحسابات', 'مصاريف وإيرادات مختلطة', 'وقت قليل للأعمال الإدارية'],
+        features: ['تتبّع المصاريف والمخزون', 'مهام نظافة موزّعة على الفريق', 'تقارير إيرادات دون تصدير ملفات'],
+        benefit: 'الدار كلها، تُدار من تطبيق واحد.',
+      },
+    ],
+    challengesLabel: 'تحدياتك',
+    featuresLabel: 'ما تقدّمه المنصة',
+  },
+  customers: {
+    eyebrow: 'العملاء',
+    heading: 'نرافق مؤسساتنا الأولى',
+    body: 'تجهّز Sweet Reservation أولى بيوت الشباب ودور الضيافة في المغرب. سننشر نتائجهم هنا — بموافقتهم، ودون أي اختلاق. في الأثناء، احكم على المنتج بنفسك: التجربة مجانية والإعداد يستغرق دقائق.',
+    cta: 'كن مؤسسة رائدة',
+  },
+  ecosystem: {
+    eyebrow: 'المميزات',
+    heading: 'منظومة تشغيلك الكاملة',
+    groups: [
+      { title: 'التشغيل', items: ['الحجوزات والتقويم', 'خريطة أسرّة مباشرة', 'تسجيل وصول في 5 خطوات', 'النظافة وحالات الأسرّة', 'تدقيق ليلي موجّه'] },
+      { title: 'الاتصال', items: ['تتبّع القنوات (Booking.com، Hostelworld…)', 'مركز واتساب متعدد اللغات', 'ملفات الضيوف وسجلّهم', 'تسجيل وصول رقمي قبل الوصول'] },
+      { title: 'التحصيل', items: ['مدفوعات بالدرهم (نقدًا، تحويل، CMI)', 'أرصدة متبقية وتذكيرات', 'تسوية الصندوق', 'تتبّع المصاريف'] },
+      { title: 'النمو', items: ['تقارير الإيرادات والإشغال', 'الإيراد الصافي لكل قناة بعد العمولات', 'RevPAR ومتوسط مدة الإقامة', 'حسابات موظفين حسب الدور'] },
+    ],
+  },
+  migration: {
+    eyebrow: 'البداية',
+    heading: 'انتقل دون أن تفقد سجلّك.',
+    steps: [
+      { title: 'استورد بياناتك الحالية', desc: 'فريقنا يساعدك على نقل ضيوفك وحجوزاتك الحالية أثناء الإعداد.' },
+      { title: 'جهّز الغرف والأسرّة', desc: 'عنابر، غرف خاصة، أسعار لكل سرير — معالج الإعداد يستغرق دقائق.' },
+      { title: 'اربط قنوات الحجز', desc: 'سجّل حجوزات Booking.com وHostelworld مع عمولاتها.' },
+      { title: 'درّب الفريق وانطلق', desc: 'حسابات موظفين حسب الدور، تعلّم سريع، ومساعدة واتساب أثناء الانطلاق.' },
+    ],
+    note: 'شخص حقيقي يرافقك طوال فترة الإعداد.',
+  },
+  pricing: {
+    eyebrow: 'الأسعار',
+    heading: 'أسعار بسيطة، بدون مفاجآت',
+    sub: 'تجربة مجانية 14 يومًا على كل الخطط. رقِّ أو ألغِ في أي وقت.',
+    monthly: 'شهري',
+    annual: 'سنوي',
+    save: '-20%',
+    perMonth: 'شهريًا',
+    billedAnnually: 'تُدفع سنويًا',
+    approxNote: 'الفوترة بالدولار الأمريكي. المقابل بالدرهم للاسترشاد فقط.',
+    popular: 'الأكثر شيوعًا',
+    plans: [
+      {
+        name: 'Starter',
+        tagline: 'للمؤسسات الصغيرة — حتى 45 سريرًا',
+        features: ['حتى 45 سريرًا', 'تسجيلات وصول غير محدودة', 'استمارات شرطة PDF', 'خريطة أسرّة مباشرة', 'رسائل واتساب بنقرة واحدة', 'حساب موظف واحد', 'دعم عبر البريد الإلكتروني'],
+        cta: 'جرّب مجانًا 14 يومًا',
+      },
+      {
+        name: 'Business',
+        tagline: 'للمؤسسات المتنامية',
+        features: ['أسرّة غير محدودة', 'حسابات موظفين غير محدودة حسب الدور', 'تقارير الإيرادات والإشغال', 'تدقيق الليل وتسوية الصندوق', 'تتبّع المصاريف والمخزون', 'دعم واتساب ذو أولوية', 'مزامنة OTA تلقائية — قريبًا'],
+        cta: 'ابدأ الآن',
+      },
+      {
+        name: 'Enterprise',
+        tagline: 'للمجموعات ومتعددي المؤسسات',
+        features: ['كل ما في خطة Business', 'تعدد المؤسسات', 'إعداد مخصص', 'جهة اتصال مخصصة', 'ضمان SLA'],
+        cta: 'تواصل معنا',
+      },
+    ],
+  },
+  faq: {
+    eyebrow: 'الأسئلة الشائعة',
+    heading: 'أسئلة متكررة',
+    items: [
+      {
+        q: 'هل يتصل Sweet Reservation بـ Booking.com وHostelworld؟',
+        a: 'تسجّل حجوزات Booking.com وHostelworld في المنصة مع مرجعها ونسبة عمولتها — ويُحسب الإيراد الصافي لكل قناة تلقائيًا. المزامنة التلقائية للتوفر (مدير القنوات) قيد التطوير لخطة Business.',
+      },
+      {
+        q: 'كيف تُولَّد استمارات الشرطة المغربية؟',
+        a: 'البيانات المُدخلة عند تسجيل الوصول (الهوية، جواز السفر، الجنسية، العنوان في المغرب، الوجهة التالية) تملأ تلقائيًا استمارة شرطة PDF بالصيغة المغربية القياسية. ويمكن لتدقيق الليل جمع استمارات اليوم كلها في تقرير واحد للعمالة.',
+      },
+      {
+        q: 'هل يمكنني إدارة أسرّة العنابر فرديًا؟',
+        a: 'نعم. لكل سرير اسمه وموضعه (علوي/سفلي) وسعره وحالته (متاح، مشغول، يحتاج تنظيفًا، صيانة). خريطة الأسرّة والتقويم يعملان على مستوى السرير، وحماية على مستوى قاعدة البيانات تمنع الحجوزات المزدوجة.',
+      },
+      {
+        q: 'هل يمكن لموظفيّ امتلاك حسابات منفصلة؟',
+        a: 'نعم. تتوفر أربعة أدوار: مالك، مدير، موظف استقبال، ونظافة — لكل منها صلاحياته. أرقام الإيرادات مثلًا لا تظهر إلا للأدوار المخوّلة. تتم دعوة الموظف عبر رابط آمن.',
+      },
+      {
+        q: 'هل يعمل Sweet Reservation على الهاتف؟',
+        a: 'نعم، التطبيق متجاوب بالكامل ومصمّم للهاتف أولًا: شريط تنقل سفلي مخصص، مع تسجيل الوصول وخريطة الأسرّة والمدفوعات والنظافة متاحة من أي هاتف ذكي.',
+      },
+      {
+        q: 'هل الواجهة متوفرة بالعربية؟',
+        a: 'واجهة الإدارة متوفرة بالفرنسية والإنجليزية؛ والنسخة العربية قيد الإعداد. استمارات الشرطة المولَّدة ثنائية اللغة فرنسية-عربية، وقوالب واتساب متوفرة بالفرنسية والإنجليزية والعربية.',
+      },
+      {
+        q: 'هل يمكنكم استيراد حجوزاتي الحالية؟',
+        a: 'نعم. أثناء الإعداد، يساعدك فريقنا على نقل ضيوفك وحجوزاتك الحالية (من Excel أو الورق أو نظام آخر) حتى لا تفقد سجلّك.',
+      },
+      {
+        q: 'ما الدعم المشمول؟',
+        a: 'كل الخطط تشمل المساعدة في الإعداد. خطة Starter تشمل الدعم عبر البريد الإلكتروني؛ وخطة Business تضيف دعم واتساب ذا أولوية من فريق مقره المغرب.',
+      },
+      {
+        q: 'هل بيانات العملاء والمدفوعات آمنة؟',
+        a: 'تُستضاف البيانات في قاعدة PostgreSQL مؤمَّنة مع عزل صارم لكل مؤسسة، وتُقدَّم حصريًا عبر HTTPS. تُعالج الاشتراكات عبر LemonSqueezy — بيانات البطاقات لا تمر أبدًا عبر خوادمنا. كما يتوفر تصدير وإخفاء هوية بيانات الضيوف (GDPR) مدمجان.',
+      },
+    ],
+  },
+  finalCta: {
+    heading: 'مؤسستك تستحق أفضل من جداول البيانات.',
+    sub: 'ابدأ تجربتك المجانية وأنجز تسجيل وصولك القادم مع Sweet Reservation.',
+    ctaPrimary: 'جرّب مجانًا 14 يومًا',
+    ctaDemo: 'احجز عرضًا شخصيًا',
+  },
+  footer: {
+    tagline: 'منصة الإدارة الشاملة لبيوت الشباب والرياضات ودور الضيافة في المغرب وشمال إفريقيا.',
+    product: 'المنتج',
+    solutions: 'الحلول',
+    resources: 'الموارد',
+    cities: 'المدن',
+    features: 'المميزات',
+    pricing: 'الأسعار',
+    tour: 'جولة في المنتج',
+    faq: 'الأسئلة الشائعة',
+    signin: 'تسجيل الدخول',
+    start: 'ابدأ مجانًا',
+    blog: 'المدونة',
+    contact: 'اتصل بنا',
+    privacy: 'الخصوصية',
+    terms: 'الشروط',
+    rights: 'جميع الحقوق محفوظة.',
+    langLabel: 'اللغة',
+  },
+}
+
+export const LP_COPY: Record<LandingLang, LPCopy> = { fr, en, ar }
+
+export const LANG_LABELS: Record<LandingLang, string> = {
+  fr: 'Français',
+  en: 'English',
+  ar: 'العربية',
+}

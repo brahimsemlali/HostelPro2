@@ -1,0 +1,24 @@
+-- ============================================================
+-- Migration 024 — Drop the orphaned staff_invitations table
+-- ============================================================
+--
+-- CONTEXT: The email/magic-link staff invite flow was removed on 2026-07-14.
+-- Staff are now created directly with a password via POST /api/staff/create
+-- (owner shares credentials by Copy / WhatsApp). Nothing reads or writes
+-- staff_invitations anymore — the API routes, /accept-invite page, and their
+-- client code were all deleted.
+--
+-- This table:
+--   • is no longer referenced by any code path
+--   • has no incoming foreign keys (safe to drop)
+--   • still stores stale PII (email, name, token) — dropping removes it
+--
+-- IRREVERSIBLE: if email invites are ever revived, recreate the table from
+-- the definition in 003_staff_auth.sql.
+--
+-- Pre-flight (optional) — inspect what you're about to delete:
+--   SELECT count(*) FROM staff_invitations;
+--   SELECT email, name, role, accepted_at, created_at FROM staff_invitations;
+-- ============================================================
+
+DROP TABLE IF EXISTS staff_invitations CASCADE;
