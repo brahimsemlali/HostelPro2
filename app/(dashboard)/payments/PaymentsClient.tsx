@@ -54,6 +54,7 @@ type CatalogItem = {
 
 type ModalBooking = {
   id: string
+  guest_id: string | null
   check_in_date: string
   check_out_date: string
   total_price: number
@@ -173,7 +174,7 @@ export function PaymentsClient({ propertyId, todayPayments, pendingBookings, cur
       try {
         let query = supabase
           .from('bookings')
-          .select('id, check_in_date, check_out_date, total_price, guest:guest_id!inner(first_name, last_name)')
+          .select('id, guest_id, check_in_date, check_out_date, total_price, guest:guest_id!inner(first_name, last_name)')
           .eq('property_id', propertyId)
           .in('status', ['confirmed', 'checked_in'])
           .order('check_in_date', { ascending: false })
@@ -218,7 +219,9 @@ export function PaymentsClient({ propertyId, todayPayments, pendingBookings, cur
       const { error } = await supabase.from('payments').insert({
         property_id: propertyId,
         booking_id: form.booking_id || null,
-        guest_id: null,
+        // Link the payment to the booking's guest so it counts toward
+        // guests.total_spent (migration 025 keys the recompute on guest_id).
+        guest_id: selectedBooking?.guest_id ?? null,
         amount: parseFloat(form.amount),
         method: form.method,
         type: 'payment',

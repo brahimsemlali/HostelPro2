@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -110,6 +110,12 @@ export function CheckInWizard({ property, beds, preselectedBedId }: Props) {
   // Step 5 — result
   const [createdGuest, setCreatedGuest] = useState<Guest | null>(null)
   const [createdBooking, setCreatedBooking] = useState<Booking | null>(null)
+  // Idempotency guards: if the payment insert fails after the booking + bed are
+  // already committed, a retry must resume — not re-create the booking (which
+  // would trip the bed-overlap constraint and surface a misleading error).
+  const createdBookingRef = useRef<Booking | null>(null)
+  const createdGuestRef = useRef<Guest | null>(null)
+  const paymentDoneRef = useRef(false)
 
   // Returning guest info (fetched lazily when a guest is selected)
   const [returningInfo, setReturningInfo] = useState<{
@@ -127,7 +133,7 @@ export function CheckInWizard({ property, beds, preselectedBedId }: Props) {
       const supabase = createClient()
       const { data } = await supabase
         .from('guests')
-        .select('*')
+        .select('id, property_id, first_name, last_name, email, phone, whatsapp, nationality, document_type, document_number, date_of_birth, gender, country_of_residence, profession, address_in_morocco, next_destination, total_stays, total_spent, notes, is_flagged, flag_reason, created_at')
         .eq('property_id', property.id)
         .or(
           `first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%,document_number.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%`,
@@ -222,13 +228,22 @@ export function CheckInWizard({ property, beds, preselectedBedId }: Props) {
     setLoading(true)
     try {
       const supabase = createClient()
+      const price = parseFloat(bookingForm.total_price) || autoPrice
 
-      let guestId = selectedGuest?.id
-      let guestData = selectedGuest
+      // A stay starting after today is an advance reservation, not a check-in:
+      // it must not occupy the bed today nor mark the guest as checked-in.
+      const isFutureReservation = bookingForm.check_in_date > todayISO()
 
-      if (isNewGuest || !selectedGuest) {
-        const payload = {
-          property_id: property.id,
+      let guestId = createdBookingRef.current?.guest_id ?? selectedGuest?.id
+      // createdGuestRef survives a failed-payment retry (createdGuest state is
+      // only set after the payment block, so it's still null on the retry).
+      let guestData = createdGuestRef.current ?? selectedGuest
+      let booking = createdBookingRef.current
+
+      // Guest + booking + bed are only written once. On a retry after a failed
+      // payment, createdBookingRef is already set and this whole block is skipped.
+      if (!booking) {
+        const guestPayload = {
           first_name: guestForm.first_name,
           last_name: guestForm.last_name,
           nationality: guestForm.nationality || null,
@@ -245,48 +260,72 @@ export function CheckInWizard({ property, beds, preselectedBedId }: Props) {
           email: guestForm.email || null,
           notes: guestForm.notes || null,
         }
-        const { data: newGuest, error: guestErr } = await supabase
-          .from('guests')
-          .insert(payload)
+
+        if (isNewGuest || !selectedGuest) {
+          const { data: newGuest, error: guestErr } = await supabase
+            .from('guests')
+            .insert({ property_id: property.id, ...guestPayload })
+            .select()
+            .single()
+          if (guestErr) throw guestErr
+          guestId = newGuest.id
+          guestData = newGuest
+          createdGuestRef.current = newGuest
+        } else {
+          // Returning guest: persist the edits made in step 2 (address in
+          // Morocco / next destination change every stay and feed the fiche).
+          const { data: updatedGuest, error: updErr } = await supabase
+            .from('guests')
+            .update(guestPayload)
+            .eq('id', selectedGuest.id)
+            .select()
+            .single()
+          if (updErr) throw updErr
+          guestId = updatedGuest.id
+          guestData = updatedGuest
+          createdGuestRef.current = updatedGuest
+        }
+
+        const { data: newBooking, error: bookingErr } = await supabase
+          .from('bookings')
+          .insert({
+            property_id: property.id,
+            guest_id: guestId,
+            bed_id: bookingForm.bed_id || null,
+            source: bookingForm.source,
+            external_booking_id: bookingForm.external_booking_id || null,
+            status: isFutureReservation ? 'confirmed' : 'checked_in',
+            check_in_date: bookingForm.check_in_date,
+            check_out_date: bookingForm.check_out_date,
+            adults: 1,
+            total_price: price,
+            special_requests: bookingForm.special_requests || null,
+          })
           .select()
           .single()
-        if (guestErr) throw guestErr
-        guestId = newGuest.id
-        guestData = newGuest
+        if (bookingErr) {
+          if (isBedConflictError(bookingErr)) throw new Error(t('checkin.bedConflict'))
+          throw bookingErr
+        }
+        booking = newBooking
+        createdBookingRef.current = newBooking
+
+        if (bookingForm.bed_id && !isFutureReservation) {
+          await supabase
+            .from('beds')
+            .update({ status: 'occupied' })
+            .eq('id', bookingForm.bed_id)
+        }
       }
 
-      const price = parseFloat(bookingForm.total_price) || autoPrice
-      const { data: booking, error: bookingErr } = await supabase
-        .from('bookings')
-        .insert({
-          property_id: property.id,
-          guest_id: guestId,
-          bed_id: bookingForm.bed_id || null,
-          source: bookingForm.source,
-          external_booking_id: bookingForm.external_booking_id || null,
-          status: 'checked_in',
-          check_in_date: bookingForm.check_in_date,
-          check_out_date: bookingForm.check_out_date,
-          adults: 1,
-          total_price: price,
-          special_requests: bookingForm.special_requests || null,
-        })
-        .select()
-        .single()
-      if (bookingErr) {
-        if (isBedConflictError(bookingErr)) throw new Error(t('checkin.bedConflict'))
-        throw bookingErr
-      }
+      if (!booking) throw new Error(t('checkin.error'))
 
-      if (bookingForm.bed_id) {
-        await supabase
-          .from('beds')
-          .update({ status: 'occupied' })
-          .eq('id', bookingForm.bed_id)
-      }
-
-      const paymentAmount = parseFloat(paymentForm.amount)
-      if (paymentAmount > 0) {
+      // Record only the sale amount — cash tendered above the price is change
+      // returned to the guest, not revenue (would otherwise skew night-audit
+      // cash reconciliation). Runs at most once thanks to paymentDoneRef.
+      const rawAmount = parseFloat(paymentForm.amount)
+      const paymentAmount = Number.isFinite(rawAmount) ? Math.min(rawAmount, price) : 0
+      if (paymentAmount > 0 && !paymentDoneRef.current) {
         const { error: payErr } = await supabase.from('payments').insert({
           property_id: property.id,
           booking_id: booking.id,
@@ -299,12 +338,13 @@ export function CheckInWizard({ property, beds, preselectedBedId }: Props) {
           payment_date: new Date().toISOString(),
         })
         if (payErr) throw new Error(`Paiement non enregistré : ${payErr.message}`)
+        paymentDoneRef.current = true
       }
 
       setCreatedGuest(guestData)
       setCreatedBooking(booking)
       setStep(5)
-      toast.success(t('checkin.checkedIn'))
+      toast.success(isFutureReservation ? t('checkin.reserved') : t('checkin.checkedIn'))
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('checkin.error'))
     } finally {
@@ -831,6 +871,12 @@ export function CheckInWizard({ property, beds, preselectedBedId }: Props) {
                 />
               </div>
             </div>
+            {bookingForm.check_in_date && bookingForm.check_out_date && nights < 1 && (
+              <p className="text-[13px] font-medium text-red-600 flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                {t('checkin.step3.invalidDates')}
+              </p>
+            )}
           </div>
 
           {/* Bed selection */}
@@ -936,7 +982,7 @@ export function CheckInWizard({ property, beds, preselectedBedId }: Props) {
                 }))
                 setStep(4)
               }}
-              nextDisabled={!bookingForm.check_in_date || !bookingForm.check_out_date}
+              nextDisabled={!bookingForm.check_in_date || !bookingForm.check_out_date || nights < 1}
             />
           </div>
         </div>

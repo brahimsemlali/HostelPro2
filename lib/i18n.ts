@@ -318,6 +318,7 @@ const fr = {
   'checkin.step3.title': 'Détails de la réservation',
   'checkin.step3.checkin': 'Date d\'arrivée',
   'checkin.step3.checkout': 'Date de départ',
+  'checkin.step3.invalidDates': 'La date de départ doit être postérieure à la date d\'arrivée.',
   'checkin.step3.nights': 'nuits',
   'checkin.step3.bedAssign': 'Assignation du lit',
   'checkin.step3.source': 'Source de réservation',
@@ -336,6 +337,7 @@ const fr = {
   'checkin.step5.sendWhatsApp': 'Envoyer WhatsApp',
   'checkin.returnDashboard': 'Retourner au Tableau de Bord',
   'checkin.checkedIn': 'Client enregistré avec succès',
+  'checkin.reserved': 'Réservation enregistrée avec succès',
 
   // Guests
   'guests.title': 'Clients',
@@ -1489,6 +1491,7 @@ const en = {
   'checkin.step3.title': 'Booking details',
   'checkin.step3.checkin': 'Check-in date',
   'checkin.step3.checkout': 'Check-out date',
+  'checkin.step3.invalidDates': 'Check-out date must be after the check-in date.',
   'checkin.step3.nights': 'nights',
   'checkin.step3.bedAssign': 'Bed assignment',
   'checkin.step3.source': 'Booking source',
@@ -1507,6 +1510,7 @@ const en = {
   'checkin.step5.sendWhatsApp': 'Send WhatsApp',
   'checkin.returnDashboard': 'Return to Dashboard',
   'checkin.checkedIn': 'Guest checked in successfully',
+  'checkin.reserved': 'Reservation saved successfully',
 
   // Guests
   'guests.title': 'Guests',

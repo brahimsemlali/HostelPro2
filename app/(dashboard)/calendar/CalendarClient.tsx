@@ -245,18 +245,30 @@ export function CalendarClient({ propertyId, rooms, beds: initialBeds, bookings:
         const bedPrice = targetBed?.base_price ?? 0
         const newTotalPrice = newNights * bedPrice
 
+        // Only auto-adjust the price if the booking was still on the rack rate
+        // (old nights × old bed price). A custom / OTA / discounted total must
+        // survive a drag untouched — otherwise a one-day nudge silently resets a
+        // negotiated Booking.com price to the standard rate.
+        const orig = bookings.find(b => b.id === dragState.id)
+        const oldNights = Math.max(1, daysBetween(dragState.initialCheckIn, dragState.initialCheckOut))
+        const oldBedPrice = flatBeds.find(b => b.id === dragState.initialBedId)?.base_price ?? 0
+        const wasRackRate =
+          orig != null && oldBedPrice > 0 && Math.abs(orig.total_price - oldNights * oldBedPrice) < 0.01
+        const priceChanged = bedPrice > 0 && wasRackRate
+
         // Optimistic UI update
-        setBookings(prev => prev.map(b => b.id === dragState.id ? {...b, bed_id: newBedId, check_in_date: newCheckIn, check_out_date: newCheckOut} : b))
-        
-        // Persist to DB (including recalculated price)
+        setBookings(prev => prev.map(b => b.id === dragState.id
+          ? { ...b, bed_id: newBedId, check_in_date: newCheckIn, check_out_date: newCheckOut, ...(priceChanged ? { total_price: newTotalPrice } : {}) }
+          : b))
+
+        // Persist to DB (price only when the booking was on the standard rate)
         const supabase = createClient()
-        const updatePayload: Record<string, unknown> = { 
-          bed_id: newBedId, 
-          check_in_date: newCheckIn, 
+        const updatePayload: Record<string, unknown> = {
+          bed_id: newBedId,
+          check_in_date: newCheckIn,
           check_out_date: newCheckOut,
         }
-        // Only update price if we have a valid bed price
-        if (bedPrice > 0) {
+        if (priceChanged) {
           updatePayload.total_price = newTotalPrice
         }
         const { error } = await supabase.from('bookings').update(updatePayload).eq('id', dragState.id)
@@ -265,7 +277,7 @@ export function CalendarClient({ propertyId, rooms, beds: initialBeds, bookings:
           toast.error(isBedConflictError(error) ? t('calendar.slotOccupied') : t('calendar.updateError'))
           refreshBookings() // Rollback
         } else {
-          const priceInfo = bedPrice > 0 ? ` · ${newNights} ${newNights > 1 ? t('common.nights') : t('common.night')} = ${newTotalPrice} MAD` : ''
+          const priceInfo = priceChanged ? ` · ${newNights} ${newNights > 1 ? t('common.nights') : t('common.night')} = ${newTotalPrice} MAD` : ''
           toast.success(`${t('calendar.bookingUpdated')}${priceInfo}`)
         }
       }
