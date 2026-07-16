@@ -542,7 +542,18 @@ LEMONSQUEEZY_STORE_ID=370406
 LEMONSQUEEZY_WEBHOOK_SECRET=sweetreservation2026secret
 LEMONSQUEEZY_STARTER_VARIANT_ID=1633090
 LEMONSQUEEZY_PRO_VARIANT_ID=1633110
+
+# Sentry (error monitoring). App no-ops until NEXT_PUBLIC_SENTRY_DSN is set,
+# and only reports in production. ORG/PROJECT/AUTH_TOKEN are build-time only
+# (source-map upload on prod deploys) — safe to omit locally.
+NEXT_PUBLIC_SENTRY_DSN=
+SENTRY_ORG=
+SENTRY_PROJECT=
+SENTRY_AUTH_TOKEN=
 ```
+
+### Sentry (observability)
+Scaffolded with `@sentry/nextjs` (instrumentation.ts + instrumentation-client.ts + sentry.server/edge.config.ts, `withSentryConfig` in `next.config.ts`). Error boundaries: `app/error.tsx` (in-app recovery) and `app/global-error.tsx` (root-layout failures) both `captureException`. Replay/PII are OFF (this app shows guest passport data). CSP `connect-src` in `next.config.ts` includes `https://*.sentry.io` so browser events aren't blocked. **To activate: set `NEXT_PUBLIC_SENTRY_DSN` in Vercel** (+ ORG/PROJECT/AUTH_TOKEN for source maps). Until then it's a harmless no-op.
 
 ---
 
