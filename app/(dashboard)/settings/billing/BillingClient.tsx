@@ -126,7 +126,15 @@ export function BillingClient({ propertyId, subscription }: Props) {
         <div className="lg:col-span-2 space-y-6">
           <h2 className="text-lg font-semibold text-[#0A1F1C]">Choisir un forfait</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {BILLING_PLANS.map((plan) => (
+            {BILLING_PLANS.map((plan) => {
+              // Once an LS subscription is active, starting a fresh checkout
+              // would create a SECOND subscription and double-bill. So route
+              // plan changes to the LS customer portal instead of a new checkout.
+              const hasActiveLsSub = !!isActive && subscription?.provider === 'lemonsqueezy'
+              const isCurrentPlan = hasActiveLsSub &&
+                String(subscription?.ls_variant_id ?? '') === String(plan.ls_variant_id)
+              const portalUrl = subscription?.customer_portal_url
+              return (
               <Card key={plan.id} className="relative overflow-hidden border-[#E8ECF0] hover:border-[#0F6E56]/30 transition-all">
                 <CardHeader>
                   <CardTitle className="text-xl">{plan.name}</CardTitle>
@@ -144,19 +152,42 @@ export function BillingClient({ propertyId, subscription }: Props) {
                       </li>
                     ))}
                   </ul>
-                  <Button
-                    className="w-full bg-[#0F6E56] hover:bg-[#0c5a46] rounded-xl py-6"
-                    disabled={loadingVariant === plan.ls_variant_id}
-                    onClick={() => handleCheckout(plan.ls_variant_id)}
-                  >
-                    {loadingVariant === plan.ls_variant_id
-                      ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Chargement…</>
-                      : 'Sélectionner'
-                    }
-                  </Button>
+                  {isCurrentPlan ? (
+                    <Button className="w-full rounded-xl py-6" variant="outline" disabled>
+                      Forfait actuel
+                    </Button>
+                  ) : hasActiveLsSub ? (
+                    portalUrl ? (
+                      <a
+                        href={portalUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#0F6E56]/30 py-4 text-sm font-medium text-[#0F6E56] hover:bg-[#0F6E56]/5 transition-colors"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        Changer via le portail
+                      </a>
+                    ) : (
+                      <Button className="w-full rounded-xl py-6" variant="outline" disabled>
+                        Gérez votre forfait via le portail
+                      </Button>
+                    )
+                  ) : (
+                    <Button
+                      className="w-full bg-[#0F6E56] hover:bg-[#0c5a46] rounded-xl py-6"
+                      disabled={loadingVariant === plan.ls_variant_id}
+                      onClick={() => handleCheckout(plan.ls_variant_id)}
+                    >
+                      {loadingVariant === plan.ls_variant_id
+                        ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Chargement…</>
+                        : 'Sélectionner'
+                      }
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
-            ))}
+              )
+            })}
           </div>
         </div>
 
