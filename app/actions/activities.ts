@@ -3,6 +3,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { Activity } from '@/types'
+import { getUserSession } from '@/lib/supabase/server'
+import { isSessionBlocked } from '@/lib/billing'
 
 async function getSupabase() {
   const cookieStore = await cookies()
@@ -35,6 +37,9 @@ export async function createActivityAction(formData: FormData) {
   if (!title || !activity_date || !start_time || !property_id) {
     return { error: 'Missing required fields' }
   }
+
+  const gate = await getUserSession()
+  if (!gate || isSessionBlocked(gate)) return { error: 'Abonnement inactif' }
 
   const supabase = await getSupabase()
   
@@ -110,6 +115,9 @@ export async function deleteActivityAction(id: string) {
 }
 
 export async function notifyGuestsAction(activityId: string) {
+  const gate = await getUserSession()
+  if (!gate || isSessionBlocked(gate)) return { error: 'Abonnement inactif' }
+
   const supabase = await getSupabase()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Unauthorized' }

@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'crypto'
-import type { SubscriptionStatus } from '@/types'
+import type { SubscriptionStatus, UserSession } from '@/types'
 
 export const GRACE_DAYS = 7
 
@@ -36,6 +36,25 @@ export function isSubscriptionBlocked(
 
   // null = no subscription row at all
   return true
+}
+
+/**
+ * Server-side subscription gate for API routes / server actions. The dashboard
+ * layout blocks the UI, but writes that go through route handlers or actions
+ * must re-check here so a churned account with a still-valid cookie can't keep
+ * mutating data. (Note: client-direct Supabase writes are bounded by RLS/tenant
+ * only — full enforcement of those would need subscription checks in RLS.)
+ */
+export function isSessionBlocked(
+  session: Pick<UserSession, 'subscriptionStatus' | 'subscriptionPeriodEnd' | 'isSuperAdmin'>,
+  now: Date = new Date(),
+): boolean {
+  return isSubscriptionBlocked(
+    session.subscriptionStatus,
+    session.subscriptionPeriodEnd,
+    session.isSuperAdmin,
+    now,
+  )
 }
 
 /**
