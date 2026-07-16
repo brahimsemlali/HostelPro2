@@ -1,10 +1,11 @@
 import { createAdminClient } from '@/lib/supabase/server'
+import { BILLING_PLANS } from '@/lib/constants'
 import { AdminClient } from './AdminClient'
 
-const PLAN_PRICES: Record<string, { name: string; price: number }> = {
-  '1633090': { name: 'Starter', price: 19 },
-  '1633110': { name: 'Pro', price: 49 },
-}
+// Derived from BILLING_PLANS so the superadmin MRR always matches real pricing
+const PLAN_PRICES: Record<string, { name: string; price: number }> = Object.fromEntries(
+  BILLING_PLANS.map((p) => [p.ls_variant_id, { name: p.name.replace(/ \(.*\)$/, ''), price: p.price }])
+)
 
 export default async function AdminPage() {
   const admin = createAdminClient()

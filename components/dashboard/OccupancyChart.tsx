@@ -78,7 +78,7 @@ export function OccupancyChart({ data }: { data: DayRevenue[] }) {
           tick={{ fontSize: 11, fill: 'oklch(0.56 0 0)' }}
           tickLine={false}
           axisLine={false}
-          tickFormatter={(v) => `${Math.round(v / 1000)}k`}
+          tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1).replace(/\.0$/, '')}k` : String(v))}
           width={36}
         />
         <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.035)', radius: 6 }} />

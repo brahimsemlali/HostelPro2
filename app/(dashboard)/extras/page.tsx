@@ -5,6 +5,7 @@ import { ExtrasClient, CurrentGuestBooking } from './ExtrasClient'
 export default async function ExtrasPage() {
   const session = await getUserSession()
   if (!session) redirect('/login')
+  if (session.role === 'housekeeping') redirect('/beds')
 
   const supabase = await createClient()
 

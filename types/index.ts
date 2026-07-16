@@ -231,8 +231,10 @@ export type Subscription = {
   status: SubscriptionStatus
   provider: BillingProvider
   ls_subscription_id: string | null
+  ls_variant_id: string | null
   current_period_end: string
   cancel_at_period_end: boolean
+  customer_portal_url: string | null
   created_at: string
 }
 

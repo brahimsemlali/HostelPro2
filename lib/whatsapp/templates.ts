@@ -32,7 +32,9 @@ export const WHATSAPP_TEMPLATES = {
 }
 
 export function buildWhatsAppLink(phone: string, message: string): string {
-  const cleaned = phone.replace(/\D/g, '')
+  // wa.me requires the full international number WITHOUT leading zeros or
+  // the "00" dial prefix — "00212612345678" must become "212612345678".
+  const cleaned = phone.replace(/\D/g, '').replace(/^0+/, '')
   const encoded = encodeURIComponent(message)
   return `https://wa.me/${cleaned}?text=${encoded}`
 }

@@ -269,7 +269,7 @@ export function ArrivalsPanel({
                     booking={booking}
                     isLoading={checkingIn.has(booking.id)}
                     onCheckIn={() => onQuickCheckIn(booking)}
-                    canCheckIn={date <= new Date().toISOString().split('T')[0]}
+                    canCheckIn={date <= new Date().toLocaleDateString('en-CA')}
                     appUrl={appUrl}
                     index={i}
                     t={t}

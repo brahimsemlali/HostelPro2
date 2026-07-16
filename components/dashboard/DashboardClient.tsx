@@ -45,6 +45,7 @@ import type { Property } from '@/types'
 import { AppLogo } from '@/components/shared/AppLogo'
 
 import { useSession, useCanDo } from '@/app/context/SessionContext'
+import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
 import { useT } from '@/app/context/LanguageContext'
 import { logActivity } from '@/lib/activity'
 
@@ -60,6 +61,7 @@ interface BedSummary {
 interface PaymentSummary {
   amount: number
   method: string
+  type: string
 }
 
 interface GuestRef { first_name: string; last_name: string; nationality?: string | null; phone?: string | null; whatsapp?: string | null }
@@ -168,6 +170,7 @@ const ACTIVITY_CONFIG: Record<string, { Icon: React.ElementType; bg: string; col
   booking_created:      { Icon: CalendarPlus, bg: 'bg-blue-50',   color: 'text-blue-600' },
   booking_cancelled:    { Icon: Activity,  bg: 'bg-red-50',       color: 'text-red-500' },
   bed_status:           { Icon: BedDouble, bg: 'bg-gray-100',     color: 'text-gray-500' },
+  pre_checkin:          { Icon: CheckCircle2, bg: 'bg-[#0F6E56]/10', color: 'text-[#0F6E56]' },
   default:              { Icon: Activity,  bg: 'bg-gray-100',     color: 'text-gray-500' },
 }
 
@@ -236,9 +239,10 @@ interface Props {
   property: DashboardProperty
   initialData: DashboardInitialData
   trialDaysLeft: number | null
+  lowStockItems?: string[]
 }
 
-export function DashboardCommandCenter({ property, initialData, trialDaysLeft }: Props) {
+export function DashboardCommandCenter({ property, initialData, trialDaysLeft, lowStockItems = [] }: Props) {
   const supabase = createClient()
   const session = useSession()
   const t = useT()
@@ -288,10 +292,10 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft }:
   const totalBeds = beds.length
   const occupiedBeds = beds.filter((b) => b.status === 'occupied').length
   const occupancyPct = totalBeds ? Math.round((occupiedBeds / totalBeds) * 100) : 0
-  const todayRevenue = todayPayments.reduce((s, p) => s + p.amount, 0)
+  const todayRevenue = todayPayments.reduce((s, p) => s + (p.type === 'refund' ? -p.amount : p.amount), 0)
   const cashToday = todayPayments
     .filter((p) => p.method === 'cash')
-    .reduce((s, p) => s + p.amount, 0)
+    .reduce((s, p) => s + (p.type === 'refund' ? -p.amount : p.amount), 0)
   
   const pendingCheckIns = arrivalsToday.filter((b) => b.status === 'confirmed')
   const pendingCheckouts = departuresToday.filter((b) => b.status === 'checked_in')
@@ -449,7 +453,8 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft }:
   // ── Re-fetch helpers ──
 
   const refreshOccupancy = useCallback(async () => {
-    const today = new Date().toISOString().split('T')[0]
+    // Local date — matches the server page (avoids UTC off-by-one at midnight in UTC+1)
+    const today = new Date().toLocaleDateString('en-CA')
     const [bedsRes, arrivalsRes] = await Promise.all([
       supabase.from('beds').select('id, status').eq('property_id', property.id),
       supabase
@@ -473,27 +478,30 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft }:
   }, [property.id, setDirtyBedsCount, supabase])
 
   const refreshRevenue = useCallback(async () => {
-    const today = new Date().toISOString().split('T')[0]
+    const today = new Date().toLocaleDateString('en-CA')
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const tomorrowStr = tomorrow.toLocaleDateString('en-CA')
     const { data } = await supabase
       .from('payments')
-      .select('amount, method')
+      .select('amount, method, type')
       .eq('property_id', property.id)
       .eq('status', 'completed')
       .gte('payment_date', `${today}T00:00:00`)
-      .lt('payment_date', `${today}T23:59:59`)
+      .lt('payment_date', `${tomorrowStr}T00:00:00`)
     if (data) setTodayPayments(data)
   }, [property.id, supabase])
 
   const arrivalSelect = 'id, bed_id, status, source, check_in_date, check_out_date, pre_checkin_completed, pre_checkin_token, arrival_notes, expected_arrival_time, guest:guest_id(first_name, last_name, nationality, phone, whatsapp), bed:bed_id(name, room:room_id(name))'
 
   const refreshArrivals = useCallback(async () => {
-    const today = new Date().toISOString().split('T')[0]
+    const today = new Date().toLocaleDateString('en-CA')
     const tomorrow = new Date()
     tomorrow.setDate(tomorrow.getDate() + 1)
-    const tomorrowStr = tomorrow.toISOString().split('T')[0]
+    const tomorrowStr = tomorrow.toLocaleDateString('en-CA')
     const weekEnd = new Date()
     weekEnd.setDate(weekEnd.getDate() + 7)
-    const weekEndStr = weekEnd.toISOString().split('T')[0]
+    const weekEndStr = weekEnd.toLocaleDateString('en-CA')
 
     const [todayRes, tomorrowRes, weekRes] = await Promise.all([
       supabase
@@ -526,16 +534,28 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft }:
   }, [property.id, supabase])
 
   const refreshDepartures = useCallback(async () => {
-    const today = new Date().toISOString().split('T')[0]
+    const today = new Date().toLocaleDateString('en-CA')
     const { data } = await supabase
       .from('bookings')
       .select(
-        'id, bed_id, status, check_out_date, guest:guest_id(first_name, last_name), bed:bed_id(name)',
+        'id, bed_id, status, check_out_date, total_price, guest:guest_id(first_name, last_name), bed:bed_id(name), extras:booking_extras(quantity, unit_price), booking_payments:payments(amount, type, status)',
       )
       .eq('property_id', property.id)
       .eq('check_out_date', today)
       .eq('status', 'checked_in')
-    if (data) setDeparturesToday(data as unknown as DepartureBooking[])
+    if (data) {
+      // Recompute balance_due like the server page — without it the unpaid-balance
+      // checkout guard silently disappears after a realtime refresh.
+      const withBalance = data.map((b) => {
+        const paid = ((b.booking_payments as { amount: number; type: string; status: string }[] | null) ?? [])
+          .filter((p) => p.status === 'completed')
+          .reduce((s, p) => (p.type === 'refund' ? s - p.amount : s + p.amount), 0)
+        const extras = ((b.extras as { quantity: number; unit_price: number }[] | null) ?? [])
+          .reduce((s, e) => s + e.quantity * e.unit_price, 0)
+        return { ...b, balance_due: ((b.total_price as number) ?? 0) + extras - paid }
+      })
+      setDeparturesToday(withBalance as unknown as DepartureBooking[])
+    }
   }, [property.id, supabase])
 
   const refreshActivity = useCallback(async () => {
@@ -551,26 +571,28 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft }:
   const refreshChart = useCallback(async () => {
     const sevenDaysAgo = new Date()
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6)
+    sevenDaysAgo.setHours(0, 0, 0, 0)
     const { data } = await supabase
       .from('payments')
-      .select('amount, method, payment_date')
+      .select('amount, method, type, payment_date')
       .eq('property_id', property.id)
       .eq('status', 'completed')
       .gte('payment_date', sevenDaysAgo.toISOString())
     if (data) {
+      const signed = (p: { amount: number; type: string }) => (p.type === 'refund' ? -p.amount : p.amount)
       const built = Array.from({ length: 7 }, (_, i) => {
         const d = new Date()
         d.setDate(d.getDate() - (6 - i))
-        const dayStr = d.toISOString().split('T')[0]
+        const dayStr = d.toLocaleDateString('en-CA')
         const dayPayments = data.filter((p) => p.payment_date.startsWith(dayStr))
         return {
           day: d.toLocaleDateString('fr-FR', { weekday: 'short' }),
-          revenue: dayPayments.reduce((s, p) => s + p.amount, 0),
-          cash: dayPayments.filter((p) => p.method === 'cash').reduce((s, p) => s + p.amount, 0),
+          revenue: dayPayments.reduce((s, p) => s + signed(p), 0),
+          cash: dayPayments.filter((p) => p.method === 'cash').reduce((s, p) => s + signed(p), 0),
           virement: dayPayments
             .filter((p) => p.method === 'virement')
-            .reduce((s, p) => s + p.amount, 0),
-          cmi: dayPayments.filter((p) => p.method === 'cmi').reduce((s, p) => s + p.amount, 0),
+            .reduce((s, p) => s + signed(p), 0),
+          cmi: dayPayments.filter((p) => p.method === 'cmi').reduce((s, p) => s + signed(p), 0),
         }
       })
       setChartData(built)
@@ -578,7 +600,7 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft }:
   }, [property.id, supabase])
 
   const refreshForecast = useCallback(async () => {
-    const today = new Date().toISOString().split('T')[0]
+    const today = new Date().toLocaleDateString('en-CA')
     const sevenDaysLater = new Date()
     sevenDaysLater.setDate(sevenDaysLater.getDate() + 6)
     const { data } = await supabase
@@ -586,14 +608,14 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft }:
       .select('check_in_date, check_out_date')
       .eq('property_id', property.id)
       .in('status', ['confirmed', 'checked_in'])
-      .lte('check_in_date', sevenDaysLater.toISOString().split('T')[0])
+      .lte('check_in_date', sevenDaysLater.toLocaleDateString('en-CA'))
       .gt('check_out_date', today)
     if (data) {
       const total = bedsLengthRef.current
       const days = Array.from({ length: 7 }, (_, i) => {
         const d = new Date()
         d.setDate(d.getDate() + i)
-        const dayStr = d.toISOString().split('T')[0]
+        const dayStr = d.toLocaleDateString('en-CA')
         const occupied = data.filter(
           (b) => b.check_in_date <= dayStr && b.check_out_date > dayStr,
         ).length
@@ -610,50 +632,72 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft }:
 
   // ── Realtime subscriptions ──
 
+  // Debounced: one busy-evening burst (20 payments, batch import) must
+  // coalesce into a single refetch fan-out, not one per event per viewer.
+  const refreshBookingData = useCallback(() => {
+    refreshOccupancy()
+    refreshArrivals()
+    refreshDepartures()
+    refreshForecast()
+  }, [refreshOccupancy, refreshArrivals, refreshDepartures, refreshForecast])
+  const refreshPaymentData = useCallback(() => {
+    refreshRevenue()
+    refreshChart()
+  }, [refreshRevenue, refreshChart])
+  const debouncedBookingRefresh = useDebouncedCallback(refreshBookingData)
+  const debouncedPaymentRefresh = useDebouncedCallback(refreshPaymentData)
+  const debouncedActivityRefresh = useDebouncedCallback(refreshActivity)
+
+  const wasDisconnectedRef = useRef(false)
+
   useEffect(() => {
     const channel = supabase
       .channel(`dashboard-live-${property.id}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'bookings', filter: `property_id=eq.${property.id}` },
-        () => {
-          refreshOccupancy()
-          refreshArrivals()
-          refreshDepartures()
-          refreshForecast()
-        },
+        () => debouncedBookingRefresh(),
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'payments', filter: `property_id=eq.${property.id}` },
-        () => {
-          refreshRevenue()
-          refreshChart()
-        },
+        () => debouncedPaymentRefresh(),
       )
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'activity_log', filter: `property_id=eq.${property.id}` },
-        () => refreshActivity(),
+        () => debouncedActivityRefresh(),
       )
       .subscribe((status) => {
-        setRealtimeConnected(status === 'SUBSCRIBED')
+        const connected = status === 'SUBSCRIBED'
+        if (connected && wasDisconnectedRef.current) {
+          // Realtime never replays events missed while offline — without
+          // this, a tab that slept overnight shows stale data forever.
+          wasDisconnectedRef.current = false
+          refreshBookingData()
+          refreshPaymentData()
+          refreshActivity()
+        } else if (!connected) {
+          wasDisconnectedRef.current = true
+        }
+        setRealtimeConnected(connected)
       })
 
     return () => {
       supabase.removeChannel(channel)
-      setRealtimeConnected(false)
+      // null = no active subscription — avoids a stuck "Reconnexion…" indicator
+      setRealtimeConnected(null)
     }
   }, [
     property.id,
     supabase,
     setRealtimeConnected,
-    refreshOccupancy,
-    refreshArrivals,
-    refreshDepartures,
-    refreshRevenue,
-    refreshChart,
-    refreshForecast,
+    refreshBookingData,
+    refreshPaymentData,
+    refreshActivity,
+    debouncedBookingRefresh,
+    debouncedPaymentRefresh,
+    debouncedActivityRefresh,
   ])
 
   // ── Welcome screen ──
@@ -755,6 +799,28 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft }:
                 trialDaysLeft <= 7 ? 'bg-amber-100 text-amber-700' : 'bg-teal-100 text-teal-700'
               }`}>
                 Voir les plans
+              </div>
+            </div>
+          </Link>
+        )}
+        {lowStockItems.length > 0 && (
+          <Link href="/expenses?tab=inventory">
+            <div className="group flex items-center gap-4 rounded-[24px] border border-orange-200 bg-orange-50/50 p-4 hover:bg-orange-50 hover:shadow-lg hover:shadow-orange-500/10 transition-all cursor-pointer animate-in slide-in-from-top-4 duration-500">
+              <div className="w-12 h-12 bg-orange-100 rounded-2xl flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110">
+                <TriangleAlert className="w-5 h-5 text-orange-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-orange-900">
+                  {lowStockItems.length > 1
+                    ? `${lowStockItems.length} articles en stock bas`
+                    : '1 article en stock bas'}
+                </p>
+                <p className="text-xs mt-0.5 text-orange-700 truncate">
+                  {lowStockItems.slice(0, 4).join(' · ')}{lowStockItems.length > 4 ? '…' : ''} — cliquez pour réapprovisionner
+                </p>
+              </div>
+              <div className="text-xs font-bold px-3 py-1.5 rounded-xl flex-shrink-0 bg-orange-100 text-orange-700">
+                Inventaire
               </div>
             </div>
           </Link>
@@ -888,7 +954,7 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft }:
             onQuickCheckIn={handleQuickCheckIn}
             onOpenAddArrival={() => setAddArrivalOpen(true)}
             propertyName={property.name}
-            appUrl={typeof window !== 'undefined' ? window.location.origin : ''}
+            appUrl={process.env.NEXT_PUBLIC_APP_URL ?? (typeof window !== 'undefined' ? window.location.origin : '')}
           />
 
           <Card className="rounded-[16px] border border-[#E8ECF0] shadow-[0_1px_4px_rgba(0,0,0,0.04)] bg-white overflow-hidden">

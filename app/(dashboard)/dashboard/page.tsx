@@ -32,7 +32,7 @@ export default async function DashboardPage() {
   const tomorrowStr = tomorrow.toLocaleDateString('en-CA')
   const weekEnd = new Date()
   weekEnd.setDate(weekEnd.getDate() + 7)
-  const weekEndStr = weekEnd.toISOString().split('T')[0]
+  const weekEndStr = weekEnd.toLocaleDateString('en-CA')
 
   // Arrivals select — includes new arrival pipeline fields
   const arrivalSelect =
@@ -40,6 +40,7 @@ export default async function DashboardPage() {
 
   const sevenDaysAgo = new Date()
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6)
+  sevenDaysAgo.setHours(0, 0, 0, 0)
 
   // All data fetched in a single parallel round-trip.
   // Arrivals: one query covering today → weekEnd, split in JS below (saves 2 round-trips).
@@ -58,16 +59,17 @@ export default async function DashboardPage() {
     allBedsRes,
     allCheckedInRes,
     subscriptionRes,
+    inventoryRes,
   ] = await Promise.all([
     supabase.from('beds').select('id, status').eq('property_id', property.id),
 
     supabase
       .from('payments')
-      .select('amount, method')
+      .select('amount, method, type')
       .eq('property_id', property.id)
       .eq('status', 'completed')
       .gte('payment_date', `${today}T00:00:00`)
-      .lt('payment_date', `${today}T23:59:59`),
+      .lt('payment_date', `${tomorrowStr}T00:00:00`),
 
     // Single arrivals query — today through end of week — split by date in JS
     supabase
@@ -114,7 +116,7 @@ export default async function DashboardPage() {
       .select('check_in_date, check_out_date')
       .eq('property_id', property.id)
       .in('status', ['confirmed', 'checked_in'])
-      .lte('check_in_date', (() => { const d = new Date(); d.setDate(d.getDate() + 6); return d.toISOString().split('T')[0] })())
+      .lte('check_in_date', (() => { const d = new Date(); d.setDate(d.getDate() + 6); return d.toLocaleDateString('en-CA') })())
       .gt('check_out_date', today),
 
     supabase
@@ -150,6 +152,14 @@ export default async function DashboardPage() {
       .select('status, current_period_end')
       .eq('property_id', property.id)
       .single(),
+
+    // Inventory levels for the low-stock alert (column-to-column comparison
+    // isn't supported by PostgREST filters — compared in JS below)
+    supabase
+      .from('inventory_items')
+      .select('name, current_stock, reorder_level')
+      .eq('property_id', property.id)
+      .limit(500),
   ])
 
   // Split consolidated arrivals by date
@@ -212,7 +222,7 @@ export default async function DashboardPage() {
   const forecastDays = Array.from({ length: 7 }, (_, i) => {
     const d = new Date()
     d.setDate(d.getDate() + i)
-    const dayStr = d.toISOString().split('T')[0]
+    const dayStr = d.toLocaleDateString('en-CA')
     const occupied = forecastBookings.filter(
       (b) => b.check_in_date <= dayStr && b.check_out_date > dayStr,
     ).length
@@ -259,9 +269,14 @@ export default async function DashboardPage() {
   const trialDaysLeft = (() => {
     const sub = subscriptionRes.data
     if (!sub || sub.status !== 'trialing' || !sub.current_period_end) return null
+    // eslint-disable-next-line react-hooks/purity
     const diff = Math.ceil((new Date(sub.current_period_end).getTime() - Date.now()) / 86_400_000)
     return diff > 0 ? diff : 0
   })()
 
-  return <DashboardCommandCenter property={property} initialData={initialData} trialDaysLeft={trialDaysLeft} />
+  const lowStockItems = (inventoryRes.data ?? [])
+    .filter((i) => i.current_stock <= i.reorder_level)
+    .map((i) => i.name)
+
+  return <DashboardCommandCenter property={property} initialData={initialData} trialDaysLeft={trialDaysLeft} lowStockItems={lowStockItems} />
 }

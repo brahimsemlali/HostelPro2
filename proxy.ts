@@ -7,11 +7,12 @@ const PUBLIC_ROUTE_PREFIXES = [
   '/register',
   '/forgot-password',
   '/reset-password',
-  '/accept-invite',
   '/checkin',           // public pre-check-in page
+  '/api/checkin',       // public pre-check-in submit endpoint
   '/api/auth',
-  '/api/staff/accept-invite',
   '/api/webhooks/lemonsqueezy',
+  '/blog',              // public marketing/SEO pages
+  '/logiciel-hostel',   // city landing pages (marrakech, agadir, ...)
 ]
 
 export async function proxy(request: NextRequest) {
@@ -26,6 +27,8 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/favicon') ||
     pathname === '/sitemap.xml' ||
     pathname === '/robots.txt' ||
+    pathname === '/llms.txt' ||
+    pathname === '/llms-full.md' ||
     pathname === '/opengraph-image' ||
     pathname.startsWith('/google')
 
@@ -69,8 +72,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  // Redirect authenticated users away from auth pages
-  if (isAuthenticated && (pathname === '/login' || pathname === '/register')) {
+  // Redirect authenticated users away from auth pages and the landing page
+  if (isAuthenticated && (pathname === '/' || pathname === '/login' || pathname === '/register')) {
     const homeUrl = request.nextUrl.clone()
     homeUrl.pathname = '/dashboard'
     return NextResponse.redirect(homeUrl)

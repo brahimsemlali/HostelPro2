@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { todayISO, isBedConflictError } from '@/lib/utils'
 import { useAppStore } from '@/stores/app.store'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
 import { BedCard } from '@/components/beds/BedCard'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -48,7 +50,7 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
     {
       value: 'available',
       label: t('beds.available'),
-      description: 'Prêt à accueillir',
+      description: t('beds.statusDesc.available'),
       icon: BedIcon,
       activeBg: 'bg-emerald-50 border-emerald-300',
       activeText: 'text-emerald-700',
@@ -62,7 +64,7 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
     {
       value: 'dirty',
       label: t('beds.dirty'),
-      description: 'Nettoyage requis',
+      description: t('beds.statusDesc.dirty'),
       icon: Wind,
       activeBg: 'bg-amber-50 border-amber-300',
       activeText: 'text-amber-800',
@@ -76,7 +78,7 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
     {
       value: 'maintenance',
       label: t('beds.maintenance'),
-      description: 'Hors service',
+      description: t('beds.statusDesc.maintenance'),
       icon: Wrench,
       activeBg: 'bg-red-50 border-red-300',
       activeText: 'text-red-700',
@@ -90,7 +92,7 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
     {
       value: 'blocked',
       label: t('beds.blocked'),
-      description: 'Non disponible',
+      description: t('beds.statusDesc.blocked'),
       icon: Ban,
       activeBg: 'bg-slate-100 border-slate-400',
       activeText: 'text-slate-700',
@@ -120,14 +122,14 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
     const supabase = createClient()
     const { data } = await supabase
       .from('beds')
-      .select('*')
+      .select('id, name, room_id, bunk_position, base_price, status, notes, property_id, created_at')
       .eq('property_id', propertyId)
       .order('name')
     if (data) setBeds(data as Bed[])
   }, [propertyId])
 
   const refreshBookings = useCallback(async () => {
-    const today = new Date().toISOString().split('T')[0]
+    const today = todayISO()
     const supabase = createClient()
     const { data } = await supabase
       .from('bookings')
@@ -144,14 +146,16 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
     setSwapping(true)
     const supabase = createClient()
 
-    const [r1, r2] = await Promise.all([
-      supabase.from('bookings').update({ bed_id: swapTarget.id }).eq('id', swapSource.booking.id),
-      supabase.from('bookings').update({ bed_id: swapSource.id }).eq('id', swapTarget.booking.id),
-    ])
+    // Single transaction: two separate updates would each violate the
+    // bookings_no_bed_overlap constraint and could persist a half-swap.
+    const { error } = await supabase.rpc('swap_booking_beds', {
+      p_booking_a: swapSource.booking.id,
+      p_booking_b: swapTarget.booking.id,
+    })
 
     setSwapping(false)
-    if (r1.error || r2.error) {
-      toast.error(t('beds.swapError'))
+    if (error) {
+      toast.error(isBedConflictError(error) ? t('checkin.bedConflict') : t('beds.swapError'))
     } else {
       toast.success(`${t('beds.swapSuccess')}: ${swapSource.name} - ${swapTarget.name}`)
       await Promise.all([refreshBeds(), refreshBookings()])
@@ -184,6 +188,15 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
 
   // ── Realtime subscription on beds + bookings ──
 
+  // Debounced so event bursts coalesce into one refetch instead of one per event.
+  const refreshAll = useCallback(() => {
+    refreshBeds()
+    refreshBookings()
+  }, [refreshBeds, refreshBookings])
+  const debouncedRefreshBeds = useDebouncedCallback(refreshBeds)
+  const debouncedRefreshAll = useDebouncedCallback(refreshAll)
+  const wasDisconnectedRef = useRef(false)
+
   useEffect(() => {
     const supabase = createClient()
 
@@ -192,25 +205,31 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'beds', filter: `property_id=eq.${propertyId}` },
-        () => refreshBeds(),
+        () => debouncedRefreshBeds(),
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'bookings', filter: `property_id=eq.${propertyId}` },
-        () => {
-          refreshBeds()
-          refreshBookings()
-        },
+        () => debouncedRefreshAll(),
       )
       .subscribe((status) => {
-        setRealtimeConnected(status === 'SUBSCRIBED')
+        const connected = status === 'SUBSCRIBED'
+        if (connected && wasDisconnectedRef.current) {
+          // Realtime never replays missed events — refetch after a reconnect
+          wasDisconnectedRef.current = false
+          refreshAll()
+        } else if (!connected) {
+          wasDisconnectedRef.current = true
+        }
+        setRealtimeConnected(connected)
       })
 
     return () => {
       supabase.removeChannel(channel)
-      setRealtimeConnected(false)
+      // null = no active subscription — avoids a stuck "Reconnexion…" indicator
+      setRealtimeConnected(null)
     }
-  }, [propertyId, setRealtimeConnected, refreshBeds, refreshBookings])
+  }, [propertyId, setRealtimeConnected, refreshAll, debouncedRefreshBeds, debouncedRefreshAll])
 
   // Map beds to include booking and room
   const bedsWithDetails: BedWithBooking[] = beds.map((bed) => {

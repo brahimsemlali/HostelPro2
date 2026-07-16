@@ -194,7 +194,7 @@ export function PricingClient({ propertyId, rules: initialRules }: { propertyId:
                     {rule.is_active ? t('pricing.active') : t('pricing.inactive')}
                   </button>
                   <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                    onClick={() => handleDelete(rule.id)}>
+                    onClick={() => handleDelete(rule.id)} aria-label={t('common.delete')}>
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
                 </div>

@@ -171,7 +171,7 @@ export function AdminClient({ properties, stats, signupsByWeek }: Props) {
 
       const msgs: Record<string, string> = {
         extend: `Abonnement prolongé de ${months} mois`,
-        trial: 'Essai 30 jours activé',
+        trial: 'Essai 14 jours activé',
         cancel: 'Abonnement annulé',
       }
       toast.success(msgs[action])
@@ -451,7 +451,7 @@ export function AdminClient({ properties, stats, signupsByWeek }: Props) {
                                 className="w-full text-left px-3 py-2 text-xs text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-2"
                               >
                                 <Clock className="w-3.5 h-3.5" />
-                                Essai 30 jours
+                                Essai 14 jours
                               </button>
                               <button
                                 onClick={() => handleAction(p.id, 'extend', 24)}

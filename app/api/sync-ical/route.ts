@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getRouteHandlerSession } from '@/lib/supabase/server'
+import { isSessionBlocked } from '@/lib/billing'
 
 interface IcalEvent {
   uid: string
@@ -77,6 +78,9 @@ export async function POST(req: NextRequest) {
   try {
     const session = await getRouteHandlerSession()
     if (!session) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    if (isSessionBlocked(session)) {
+      return NextResponse.json({ error: 'Abonnement inactif' }, { status: 402 })
+    }
 
     const { icalUrl } = await req.json() as { icalUrl: string }
 

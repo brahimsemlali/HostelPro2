@@ -33,7 +33,7 @@ Do NOT create or rename to `middleware.ts` — Next.js 16 will error if both exi
 - `'/'` is **exact-matched** (`pathname === '/'`), not prefix-matched — putting `'/'` in a `startsWith` array would make every route public (all paths start with `/`)
 - Authenticated users hitting `/`, `/login`, or `/register` are redirected to `/dashboard`
 - Unauthenticated users hitting protected routes are redirected to `/login?next=<pathname>`
-- Public prefixes: `/login`, `/register`, `/forgot-password`, `/reset-password`, `/accept-invite`, `/checkin`, `/api/auth`, `/api/staff/accept-invite`, `/api/webhooks/lemonsqueezy`
+- Public prefixes: `/login`, `/register`, `/forgot-password`, `/reset-password`, `/checkin`, `/api/checkin`, `/api/auth`, `/api/webhooks/lemonsqueezy`
 - Marketing/SEO pages are public: `/blog`, `/logiciel-hostel-*`, `/sitemap.xml`, `/robots.txt`, `/og-image`
 
 ---
@@ -203,6 +203,14 @@ This redirect is applied in `app/(dashboard)/dashboard/page.tsx` after `getUserS
 | `016_payments_performance_index.sql` | Composite index on `payments(property_id, status, type, payment_date DESC)` |
 | `017_fix_view_security.sql` | Security fix for views |
 | `018_subscriptions_updated_at.sql` | Adds `updated_at TIMESTAMPTZ` to `subscriptions` table (needed by LS webhook upsert) |
+| `019_pre_checkin_security.sql` | Drops insecure public pre-checkin RLS policies from 004 (anon key could read/update ALL bookings) |
+| `022_booking_overlap_protection.sql` | btree_gist exclusion constraint `bookings_no_bed_overlap` — DB-level rejection of overlapping active bookings per bed (error 23P01, surfaced via `isBedConflictError()` in `lib/utils.ts`). Run the pre-flight queries in the file first. |
+| `023_scale_hardening.sql` | Heavy-use hardening: unique index on `bookings.pre_checkin_token` (public endpoint was seq-scanning all tenants); pg_trgm indexes for guest search; missing hot-path indexes (properties.owner_id, checkout date, booking_extras, payments.guest_id, whatsapp_messages, expenses, maintenance); `UNIQUE night_audits(property_id, audit_date)` (client treats 23505 as "colleague already finalized"); partial unique index deduping iCal imports; all staff RLS policies rewritten to `(SELECT get_my_property_id())` (per-query InitPlan instead of per-row); `swap_booking_beds()` RPC (atomic bed swap via NULL hop — the old two-UPDATE client swap violated 022); staff read/insert/delete policies on `booking_extras` (were owner-only, receptionist extras writes failed RLS). Run the pre-flight queries in the file first. |
+| `024_drop_staff_invitations.sql` | Drops the orphaned `staff_invitations` table — the email/magic-link invite flow was deleted (2026-07-14); staff are now created via `POST /api/staff/create`. No incoming FKs; safe. **Not yet applied in prod** — apply in the Supabase SQL editor. |
+| `025_guest_totals_triggers.sql` | Triggers to keep `guests.total_stays` / `total_spent` accurate on every booking/payment change (they were only written from the booking-detail screen, so the guest list "loyal" filter + stays sort were stale/meaningless). Recompute matches the app definition (stays = non-cancelled/no_show bookings; spent = completed payments − refunds). Includes a one-time backfill. **Applied in production (2026-07-15).** |
+| `026_role_aware_staff_rls.sql` | **SECURITY FIX. Applied in production (2026-07-16).** Staff RLS in 007 was tenant-scoped but NOT role-aware — any active staff (incl. housekeeping) could read/fabricate payments and read/modify all guest PII via the browser Supabase client, bypassing the UI-only role checks. Adds `get_my_role_rank()` (owner4>manager3>receptionist2>housekeeping1) and gates: payments + whatsapp → receptionist+; guest/booking INSERT+UPDATE → receptionist+ (read stays all-staff for the cleaning list); night_audits → manager+. Consistent with existing server guards; no role's own pages break. Two documented residuals need app-layer follow-up (row-level RLS can't hide passport columns from housekeeping's needed name-read; receptionist can still SELECT payments for balances). **NOT yet applied in prod — apply in the Supabase SQL editor.** |
+| `027_onboarding_transaction.sql` | Adds `create_property_with_setup(...)` — a SECURITY DEFINER function that creates property+rooms+beds+staff+trial in ONE transaction with an anti-duplicate guard (`RAISE 'property_exists'` if the caller already owns a property). Replaces the old 5-separate-inserts onboarding flow (half-built property on mid-flow failure; duplicate property on retry). Also fixes a latent bug: there is no owner INSERT policy on `subscriptions` (by design), so the old client-side trial upsert failed silently and new signups could get no trial row — the SECURITY DEFINER function writes the trial correctly. Paired with a server-side guard in `app/onboarding/layout.tsx` (redirects to /dashboard if the user already owns a property). **Applied in production (2026-07-16).** |
+| `028_subscription_webhook_hardening.sql` | Adds `subscriptions.customer_portal_url` (LS-hosted manage/cancel link, now surfaced on the billing page for self-serve cancel) and `subscriptions.ls_updated_at` (webhook ordering/idempotency anchor). Supports the webhook resilience fixes: the LS webhook now falls back to the unique `ls_subscription_id` when `custom_data.property_id` is absent (a cancellation event no longer silently no-ops), drops stale/out-of-order events via `ls_updated_at`, and `mapLsStatus` fails CLOSED (unknown status → `past_due`, never `active`). **NOT yet applied in prod — apply in the Supabase SQL editor.** |
 
 ### `subscriptions` table
 Added for LemonSqueezy billing. Key columns:
@@ -222,21 +230,23 @@ The billing page (`/settings/billing`) reads from this table to show current sta
 
 ---
 
-## STAFF INVITE FLOW — COMPLETE
+## STAFF INVITE FLOW — CREDENTIAL-BASED (no email)
 
-Owner goes to `/settings/staff` → clicks "Inviter" → fills name/email/role →
-app calls `POST /api/staff/invite` → gets back an invite URL →
-shows URL with Copy button + WhatsApp share button →
-staff member opens URL `/accept-invite?token=XXX` →
-creates password → account linked → can log in.
+Owner goes to `/settings/staff` → clicks "Inviter" → fills name/email/**password**/role →
+app calls `POST /api/staff/create` → account is created immediately (email pre-confirmed) →
+owner shares the credentials via **Copy** or **WhatsApp** → staff logs in at `/login`.
+
+There is NO email/magic-link invite. The old `/api/staff/invite` → `/accept-invite` →
+`/api/staff/accept-invite` path was fully built but never wired to the UI, and was **deleted**
+(2026-07-14). Do not re-add it unless the product decision changes.
 
 ### API routes
-- `POST /api/staff/invite` — owner only, creates invitation + pre-creates inactive staff record
+- `POST /api/staff/create` — owner only, rate-limited; creates the auth user (`email_confirm:true`) + staff row, rolls back the auth user if the staff insert fails, returns 409 on duplicate email
 - `POST /api/staff/revoke` — owner only, sets `is_active = false`
-- `POST /api/staff/accept-invite` — public (called after signUp), links `user_id` to staff record
+- `POST /api/staff/toggle-revenue` — owner only, flips `staff.hide_revenue`
 
 ### Public routes (in `proxy.ts`)
-`/login`, `/register`, `/accept-invite`, `/checkin`, `/api/auth`, `/api/staff/accept-invite`, `/api/webhooks/lemonsqueezy` are public.
+`/login`, `/register`, `/forgot-password`, `/reset-password`, `/checkin`, `/api/checkin`, `/api/auth`, `/api/webhooks/lemonsqueezy` are public.
 `/` is public for unauthenticated visitors (shows landing page); authenticated users are redirected to `/dashboard`.
 Everything else requires auth.
 
@@ -400,7 +410,7 @@ const CreateActivityModal = dynamic(() => import('./CreateActivityModal').then(m
 | **Billing page (LemonSqueezy)** | ✅ | `app/(dashboard)/settings/billing/` |
 | Multi-user auth (owner + staff) | ✅ | `lib/supabase/server.ts`, `app/context/SessionContext.tsx` |
 | Role-based sidebar | ✅ | `components/layout/Sidebar.tsx` |
-| Accept-invite page | ✅ | `app/accept-invite/` |
+| Staff account creation (credential-based) | ✅ | `app/api/staff/create/route.ts`, `app/(dashboard)/settings/staff/StaffClient.tsx` |
 | **Expenses tracking** | ✅ | `app/(dashboard)/expenses/` |
 | **Housekeeping task management** | ✅ | `app/(dashboard)/housekeeping/` |
 | **Activities & Events + WA broadcast** | ✅ | `app/(dashboard)/activities/` |
@@ -430,27 +440,34 @@ const CreateActivityModal = dynamic(() => import('./CreateActivityModal').then(m
 ## WHAT STILL NEEDS TO BE BUILT
 
 ### HIGH PRIORITY
-1. **Pre-arrival digital check-in flow** — Schema is ready (`bookings.pre_checkin_token`, `bookings.pre_checkin_completed`). Need a public page at `/checkin/[token]` where guests fill in their own data before arriving.
+1. **Channex OTA sync** — the Business plan advertises OTA sync as "bientôt disponible". Feasibility notes exist; the integration itself is not started.
 
 ### MEDIUM PRIORITY
-2. **Inventory low-stock alerts** — `inventory_items.reorder_level` exists but no alert UI yet.
-3. **Guest blacklist enforcement** — `guests.is_flagged` exists; warning shown during check-in step 1 (`flagWarningGuest` state), but the UI for confirming and overriding the block needs review.
-4. **Push notifications** — Supabase Realtime to notify receptionist when new booking comes in.
+2. **Guest blacklist enforcement** — `guests.is_flagged` exists; warning shown during check-in step 1 (`flagWarningGuest` state), but the UI for confirming and overriding the block needs review.
 
 ### NICE TO HAVE
-5. **Dark mode** — CSS variables are set up, just needs a toggle + `dark:` Tailwind classes.
-6. **Arabic RTL support** — Foundation exists (locale constant), just not wired up.
-7. **Multi-property** — Schema supports it (`property_id` on everything), UI doesn't yet.
+3. **Dark mode** — CSS variables are set up, just needs a toggle + `dark:` Tailwind classes.
+4. **Arabic RTL support** — Foundation exists (locale constant), just not wired up.
+5. **Multi-property** — Schema supports it (`property_id` on everything), UI doesn't yet.
+
+### DONE (July 2026)
+- ✅ Pre-arrival digital check-in — public page `app/checkin/[token]/page.tsx`, API `app/api/checkin/[token]/route.ts` (GET lookup + POST submit, both service-role + rate-limited). Requires migration 019.
+- ✅ Inventory low-stock alerts — dashboard banner (`lowStockItems` prop) linking to `/expenses?tab=inventory`.
+- ✅ New-booking notification — `components/shared/BookingNotifications.tsx`, layout-level Realtime toast (excludes housekeeping).
+- ✅ GDPR export + anonymization — `app/api/guests/[id]/gdpr/route.ts` (GET export JSON, POST anonymize), owner-only UI card in `GuestDetailClient`.
+- ✅ CI — `.github/workflows/ci.yml` (tsc, eslint, vitest, build). Billing money paths unit-tested in `tests/billing.test.ts` against `lib/billing.ts`.
 
 ---
 
 ## WHAT STILL NEEDS EXTERNAL SETUP
 
+- Rate limiting (`lib/rate-limit.ts`) is in-memory per serverless instance — fine at current scale, swap for Upstash Redis before heavy load.
+
+All migrations through `022_booking_overlap_protection.sql` were applied in production on 2026-07-13. **`023_scale_hardening.sql` is NOT yet applied — run its pre-flight queries, then apply it.** The bed-swap UI (`BedMapClient`) now calls the `swap_booking_beds` RPC from 023, so swaps will error until 023 is applied.
+- Enable Web Analytics in the Vercel dashboard (code already ships `@vercel/analytics`).
 - LemonSqueezy store verification — pending (1–3 business days). Live checkouts only after approval.
-- Error monitoring: Sentry.io
-- CI/CD: GitHub Actions → Vercel deployment pipeline
+- Error monitoring: Sentry.io (deliberately deferred)
 - Staging environment
-- GDPR: data export + deletion flow
 
 ---
 
@@ -525,7 +542,18 @@ LEMONSQUEEZY_STORE_ID=370406
 LEMONSQUEEZY_WEBHOOK_SECRET=sweetreservation2026secret
 LEMONSQUEEZY_STARTER_VARIANT_ID=1633090
 LEMONSQUEEZY_PRO_VARIANT_ID=1633110
+
+# Sentry (error monitoring). App no-ops until NEXT_PUBLIC_SENTRY_DSN is set,
+# and only reports in production. ORG/PROJECT/AUTH_TOKEN are build-time only
+# (source-map upload on prod deploys) — safe to omit locally.
+NEXT_PUBLIC_SENTRY_DSN=
+SENTRY_ORG=
+SENTRY_PROJECT=
+SENTRY_AUTH_TOKEN=
 ```
+
+### Sentry (observability)
+Scaffolded with `@sentry/nextjs` (instrumentation.ts + instrumentation-client.ts + sentry.server/edge.config.ts, `withSentryConfig` in `next.config.ts`). Error boundaries: `app/error.tsx` (in-app recovery) and `app/global-error.tsx` (root-layout failures) both `captureException`. Replay/PII are OFF (this app shows guest passport data). CSP `connect-src` in `next.config.ts` includes `https://*.sentry.io` so browser events aren't blocked. **To activate: set `NEXT_PUBLIC_SENTRY_DSN` in Vercel** (+ ORG/PROJECT/AUTH_TOKEN for source maps). Until then it's a harmless no-op.
 
 ---
 

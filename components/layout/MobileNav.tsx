@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAppStore } from '@/stores/app.store'
 import { useT } from '@/app/context/LanguageContext'
+import { useSession } from '@/app/context/SessionContext'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
@@ -56,7 +57,7 @@ function MoreDrawer({ open, onClose, pathname }: { open: boolean; onClose: () =>
         </div>
 
         <SheetHeader className="flex flex-row items-center justify-between mb-5 px-1">
-          <SheetTitle className="text-[16px] font-semibold tracking-tight">Navigation</SheetTitle>
+          <SheetTitle className="text-[16px] font-semibold tracking-tight">{t('nav.menuTitle')}</SheetTitle>
           <button
             onClick={onClose}
             className="w-7 h-7 flex items-center justify-center rounded-full bg-black/[0.07] text-[oklch(0.42_0_0)] hover:bg-black/[0.12] transition-colors active:scale-95"
@@ -149,9 +150,37 @@ function Tab({
 export function MobileNav() {
   const pathname = usePathname()
   const t = useT()
+  const session = useSession()
   const [moreOpen, setMoreOpen] = useState(false)
   const dirtyBedsCount = useAppStore((s) => s.dirtyBedsCount)
   const showHousekeeping = dirtyBedsCount > 0
+
+  // Housekeeping only has access to Beds + Housekeeping — mirror the sidebar
+  // so the mobile bar never links to pages the server would redirect away from.
+  if (session?.role === 'housekeeping') {
+    return (
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 safe-area-bottom"
+        style={{
+          background: 'rgba(255,255,255,0.96)',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+          borderTop: '1px solid #E8ECF0',
+        }}
+      >
+        <div className="flex items-end justify-around px-1 h-[62px]">
+          <Tab href="/beds"        label={t('nav.beds')}         icon={BedDouble} active={pathname.startsWith('/beds')} />
+          <Tab
+            href="/housekeeping"
+            label={t('nav.housekeeping')}
+            icon={Brush}
+            active={pathname.startsWith('/housekeeping')}
+            badge={dirtyBedsCount}
+          />
+        </div>
+      </nav>
+    )
+  }
 
   const moreItemHrefs = [
     '/guests', '/bookings', '/calendar', '/housekeeping',
@@ -192,7 +221,7 @@ export function MobileNav() {
             >
               <Plus className="w-[22px] h-[22px] text-white" strokeWidth={2.5} />
             </div>
-            <span className="text-[10px] font-medium text-[oklch(0.55_0_0)] leading-none">Check-in</span>
+            <span className="text-[10px] font-medium text-[oklch(0.55_0_0)] leading-none">{t('nav.checkin')}</span>
           </Link>
 
           <Tab href="/payments" label={t('nav.payments')} icon={DollarSign} active={pathname.startsWith('/payments')} />

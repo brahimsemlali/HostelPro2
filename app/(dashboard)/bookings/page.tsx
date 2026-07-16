@@ -2,7 +2,12 @@ import { redirect } from 'next/navigation'
 import { createClient, getUserSession } from '@/lib/supabase/server'
 import { BookingsClient } from './BookingsClient'
 
-const PAGE_SIZE = 50
+// Search + status filtering in BookingsClient run client-side over the loaded
+// page only. A large page size keeps them effectively global for the small
+// hostels this serves (well under 200 total bookings for a long time). If a
+// property genuinely outgrows this, move search + status to server-side query
+// params (guest-name ilike + a Postgres RPC to preserve bed/room search).
+const PAGE_SIZE = 200
 
 export default async function BookingsPage({
   searchParams,

@@ -57,14 +57,17 @@ export function rateLimit({ key, limit, windowSeconds }: RateLimitOptions): Rate
 
 /**
  * Get the real client IP from Next.js request headers.
- * Handles proxies (Vercel, Cloudflare, etc.)
+ * Deployment is Vercel: x-forwarded-for / x-real-ip are set (and sanitized)
+ * by Vercel's proxy, so they must take precedence over cf-connecting-ip,
+ * which Vercel does NOT sanitize — a client can spoof it freely to bypass
+ * per-IP rate limits. Only fall back to cf-connecting-ip last.
  */
 export function getClientIp(req: Request): string {
   const headers = req instanceof Request ? req.headers : new Headers()
   return (
-    headers.get('cf-connecting-ip') ||
     headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
     headers.get('x-real-ip') ||
+    headers.get('cf-connecting-ip') ||
     'unknown'
   )
 }

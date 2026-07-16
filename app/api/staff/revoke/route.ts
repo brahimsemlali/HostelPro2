@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getRouteHandlerSession, createAdminClient } from '@/lib/supabase/server'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
+import { isSessionBlocked } from '@/lib/billing'
 
 export async function POST(req: Request) {
   try {
@@ -11,6 +12,9 @@ export async function POST(req: Request) {
     const session = await getRouteHandlerSession()
     if (!session?.isOwner) {
       return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
+    }
+    if (isSessionBlocked(session)) {
+      return NextResponse.json({ error: 'Abonnement inactif' }, { status: 402 })
     }
 
     const { staffId } = await req.json()

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
 import { createClient } from '@/lib/supabase/client'
 import { useAppStore } from '@/stores/app.store'
 import { toast } from 'sonner'
@@ -21,7 +22,7 @@ import {
   CheckCircle2, BedDouble, Clock, Plus, Trash2,
   ClipboardList, ChevronDown, ChevronRight,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, todayISO } from '@/lib/utils'
 import { format, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import type { HousekeepingTask, TaskStatus, TaskPriority, UserSession } from '@/types'
@@ -421,7 +422,7 @@ export function HousekeepingClient({
   // ── Re-fetch beds ────────────────────────────────────────────────────────
   const refreshBeds = useCallback(async () => {
     const supabase = createClient()
-    const today = new Date().toISOString().split('T')[0]
+    const today = todayISO()
 
     const [bedsRes, checkoutsRes, arrivalsRes] = await Promise.all([
       supabase.from('beds').select('id, name, status, room_id').eq('property_id', propertyId).order('name'),
@@ -462,19 +463,34 @@ export function HousekeepingClient({
   }, [propertyId])
 
   // ── Realtime ─────────────────────────────────────────────────────────────
+  // Debounced so event bursts coalesce into one refetch instead of one per event.
+  const debouncedRefreshBeds = useDebouncedCallback(refreshBeds)
+  const wasDisconnectedRef = useRef(false)
+
   useEffect(() => {
     const supabase = createClient()
     const channel = supabase
       .channel(`housekeeping-${propertyId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'beds', filter: `property_id=eq.${propertyId}` }, () => refreshBeds())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings', filter: `property_id=eq.${propertyId}` }, () => refreshBeds())
-      .subscribe((status) => setRealtimeConnected(status === 'SUBSCRIBED'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'beds', filter: `property_id=eq.${propertyId}` }, () => debouncedRefreshBeds())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings', filter: `property_id=eq.${propertyId}` }, () => debouncedRefreshBeds())
+      .subscribe((status) => {
+        const connected = status === 'SUBSCRIBED'
+        if (connected && wasDisconnectedRef.current) {
+          // Realtime never replays missed events — refetch after a reconnect
+          wasDisconnectedRef.current = false
+          refreshBeds()
+        } else if (!connected) {
+          wasDisconnectedRef.current = true
+        }
+        setRealtimeConnected(connected)
+      })
 
     return () => {
       supabase.removeChannel(channel)
-      setRealtimeConnected(false)
+      // null = no active subscription — avoids a stuck "Reconnexion…" indicator
+      setRealtimeConnected(null)
     }
-  }, [propertyId, refreshBeds, setRealtimeConnected])
+  }, [propertyId, refreshBeds, debouncedRefreshBeds, setRealtimeConnected])
 
   useEffect(() => {
     const timers = animTimers.current

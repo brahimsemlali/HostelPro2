@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
+import { logActivityServer } from '@/lib/activity'
 
 // Service-role client bypasses RLS — used only after token validation
 function getServiceClient() {
@@ -8,6 +9,64 @@ function getServiceClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
+}
+
+/**
+ * GET — booking lookup for the public pre-check-in page.
+ * The unguessable token IS the authorization: the holder may see this one
+ * booking only. Runs with the service role so no public RLS policy is needed
+ * on bookings/guests (see migration 019 which drops the insecure ones).
+ */
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ token: string }> }
+) {
+  const ip = getClientIp(req)
+  const rl = rateLimit({ key: `precheckin-view:${ip}`, limit: 30, windowSeconds: 300 })
+  if (!rl.allowed) {
+    return NextResponse.json({ error: 'Trop de requêtes.' }, { status: 429 })
+  }
+
+  const { token } = await params
+  if (!token || token.length < 10) {
+    return NextResponse.json({ error: 'Token invalide' }, { status: 400 })
+  }
+
+  const supabase = getServiceClient()
+  const { data, error } = await supabase
+    .from('bookings')
+    .select(`
+      id, guest_id, pre_checkin_completed, check_in_date, check_out_date, status,
+      property:property_id(name, wifi_password, check_in_time, check_out_time),
+      bed:bed_id(name, room:room_id(name)),
+      guest:guest_id(first_name, last_name, nationality, document_type, document_number, date_of_birth, gender, phone, country_of_residence, profession)
+    `)
+    .eq('pre_checkin_token', token)
+    .maybeSingle()
+
+  if (error || !data) {
+    return NextResponse.json({ error: 'Réservation introuvable' }, { status: 404 })
+  }
+  if (data.status === 'cancelled' || data.status === 'no_show') {
+    return NextResponse.json({ error: 'Réservation annulée' }, { status: 410 })
+  }
+
+  // Supabase returns single-record joins as arrays — normalise server-side
+  const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? null) : v)
+  const rawBed = one(data.bed) as { name: string; room: { name: string } | { name: string }[] | null } | null
+
+  return NextResponse.json({
+    booking: {
+      id: data.id,
+      guest_id: data.guest_id,
+      pre_checkin_completed: data.pre_checkin_completed,
+      check_in_date: data.check_in_date,
+      check_out_date: data.check_out_date,
+      property: one(data.property),
+      bed: rawBed ? { name: rawBed.name, room: one(rawBed.room) } : null,
+    },
+    guest: one(data.guest),
+  })
 }
 
 export async function POST(
@@ -55,6 +114,19 @@ export async function POST(
     date_of_birth, gender, phone, country_of_residence, profession,
     address_in_morocco, next_destination,
   } = body as Record<string, string | null>
+
+  // Public endpoint — every provided field must be a string of sane length
+  // (rejects objects/arrays and multi-KB payloads being stored in the DB)
+  const providedFields = [
+    first_name, last_name, nationality, document_type, document_number,
+    date_of_birth, gender, phone, country_of_residence, profession,
+    address_in_morocco, next_destination,
+  ]
+  for (const value of providedFields) {
+    if (value != null && (typeof value !== 'string' || value.length > 300)) {
+      return NextResponse.json({ error: 'Champs invalides' }, { status: 400 })
+    }
+  }
 
   // Validate required fields (police form requires these)
   if (!first_name || !last_name) {
@@ -123,6 +195,17 @@ export async function POST(
       .eq('id', booking.id)
 
     if (updateError) throw updateError
+
+    await logActivityServer(supabase, {
+      propertyId: booking.property_id,
+      userId: null,
+      staffName: null,
+      actionType: 'pre_checkin',
+      entityType: 'booking',
+      entityId: booking.id,
+      description: `Pré check-in complété : ${guestData.first_name} ${guestData.last_name}`,
+      meta: { guest_name: `${guestData.first_name} ${guestData.last_name}` },
+    })
 
     return NextResponse.json({ success: true })
   } catch {

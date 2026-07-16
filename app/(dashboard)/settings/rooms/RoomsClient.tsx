@@ -216,7 +216,7 @@ export function RoomsClient({ propertyId, rooms, beds }: Props) {
                   )}
                   <span className="text-xs text-muted-foreground">{roomBeds.length} {t('rooms.beds')}</span>
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => deleteRoom(room.id)} className="text-muted-foreground hover:text-destructive h-7 w-7">
+                <Button variant="ghost" size="icon" onClick={() => deleteRoom(room.id)} aria-label={t('common.delete')} className="text-muted-foreground hover:text-destructive h-7 w-7">
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>
               </div>
@@ -232,7 +232,7 @@ export function RoomsClient({ propertyId, rooms, beds }: Props) {
                         <p className="text-sm font-medium">{bed.name}</p>
                         <p className="text-xs text-muted-foreground">{bed.base_price} MAD</p>
                       </div>
-                      <Button variant="ghost" size="icon" onClick={() => deleteBed(bed.id)} className="text-muted-foreground hover:text-destructive h-6 w-6">
+                      <Button variant="ghost" size="icon" onClick={() => deleteBed(bed.id)} aria-label={t('common.delete')} className="text-muted-foreground hover:text-destructive h-6 w-6">
                         <Trash2 className="w-3 h-3" />
                       </Button>
                     </div>

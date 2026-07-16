@@ -96,7 +96,7 @@ export function BillingClient({ propertyId, subscription }: Props) {
                   ? isTrial
                     ? `Votre essai gratuit se termine le ${periodEnd!.toLocaleDateString('fr-FR')}. Souscrivez pour continuer.`
                     : `Votre abonnement ${subscription.provider === 'manual_wire' ? 'manuel' : 'automatique'} se renouvelle le ${periodEnd!.toLocaleDateString('fr-FR')}`
-                  : "Vous n&apos;avez pas encore d&apos;abonnement actif."}
+                  : "Vous n'avez pas encore d'abonnement actif."}
               </p>
             </div>
           </div>
@@ -105,6 +105,17 @@ export function BillingClient({ propertyId, subscription }: Props) {
               <Badge className={cn("hover:opacity-90", isTrial ? "bg-amber-500" : "bg-[#0F6E56]")}>
                 {isTrial ? 'Essai' : subscription?.provider === 'manual_wire' ? 'Virement' : 'LemonSqueezy'}
               </Badge>
+            )}
+            {subscription?.customer_portal_url && (
+              <a
+                href={subscription.customer_portal_url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[#E8ECF0] px-3 py-2 text-sm font-medium text-[#475569] hover:border-[#0F6E56]/40 hover:text-[#0F6E56] transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Gérer / annuler
+              </a>
             )}
           </div>
         </CardContent>
@@ -115,7 +126,15 @@ export function BillingClient({ propertyId, subscription }: Props) {
         <div className="lg:col-span-2 space-y-6">
           <h2 className="text-lg font-semibold text-[#0A1F1C]">Choisir un forfait</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {BILLING_PLANS.map((plan) => (
+            {BILLING_PLANS.map((plan) => {
+              // Once an LS subscription is active, starting a fresh checkout
+              // would create a SECOND subscription and double-bill. So route
+              // plan changes to the LS customer portal instead of a new checkout.
+              const hasActiveLsSub = !!isActive && subscription?.provider === 'lemonsqueezy'
+              const isCurrentPlan = hasActiveLsSub &&
+                String(subscription?.ls_variant_id ?? '') === String(plan.ls_variant_id)
+              const portalUrl = subscription?.customer_portal_url
+              return (
               <Card key={plan.id} className="relative overflow-hidden border-[#E8ECF0] hover:border-[#0F6E56]/30 transition-all">
                 <CardHeader>
                   <CardTitle className="text-xl">{plan.name}</CardTitle>
@@ -133,19 +152,42 @@ export function BillingClient({ propertyId, subscription }: Props) {
                       </li>
                     ))}
                   </ul>
-                  <Button
-                    className="w-full bg-[#0F6E56] hover:bg-[#0c5a46] rounded-xl py-6"
-                    disabled={loadingVariant === plan.ls_variant_id}
-                    onClick={() => handleCheckout(plan.ls_variant_id)}
-                  >
-                    {loadingVariant === plan.ls_variant_id
-                      ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Chargement…</>
-                      : 'Sélectionner'
-                    }
-                  </Button>
+                  {isCurrentPlan ? (
+                    <Button className="w-full rounded-xl py-6" variant="outline" disabled>
+                      Forfait actuel
+                    </Button>
+                  ) : hasActiveLsSub ? (
+                    portalUrl ? (
+                      <a
+                        href={portalUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#0F6E56]/30 py-4 text-sm font-medium text-[#0F6E56] hover:bg-[#0F6E56]/5 transition-colors"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        Changer via le portail
+                      </a>
+                    ) : (
+                      <Button className="w-full rounded-xl py-6" variant="outline" disabled>
+                        Gérez votre forfait via le portail
+                      </Button>
+                    )
+                  ) : (
+                    <Button
+                      className="w-full bg-[#0F6E56] hover:bg-[#0c5a46] rounded-xl py-6"
+                      disabled={loadingVariant === plan.ls_variant_id}
+                      onClick={() => handleCheckout(plan.ls_variant_id)}
+                    >
+                      {loadingVariant === plan.ls_variant_id
+                        ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Chargement…</>
+                        : 'Sélectionner'
+                      }
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
-            ))}
+              )
+            })}
           </div>
         </div>
 
@@ -180,7 +222,7 @@ export function BillingClient({ propertyId, subscription }: Props) {
               
               <div className="space-y-2">
                 <p className="text-xs text-[#64748B] italic">
-                  * Après le virement, envoyez une capture d'écran sur WhatsApp pour activation immédiate.
+                  * Après le virement, envoyez une capture d&apos;écran sur WhatsApp pour activation immédiate.
                 </p>
                 <Button variant="outline" className="w-full border-[#25D366]/30 text-[#25D366] hover:bg-[#25D366]/5 gap-2"
                   onClick={() => window.open('https://wa.me/212679760746', '_blank')}>

@@ -11,6 +11,7 @@ export default async function BookingDetailPage({
   const { id } = await params
   const session = await getUserSession()
   if (!session) redirect('/login')
+  if (session.role === 'housekeeping') redirect('/beds')
 
   const supabase = await createClient()
 

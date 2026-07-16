@@ -129,24 +129,25 @@ export async function getRouteHandlerSession(): Promise<UserSession | null> {
   const userId = user.id
   const admin = createAdminClient()
 
-  const [{ data: properties }, { data: staffMember }, { data: sub }] = await Promise.all([
+  const [{ data: properties }, { data: staffMember }] = await Promise.all([
     admin.from('properties').select('id, name, city').eq('owner_id', userId).order('created_at', { ascending: true }),
     admin.from('staff').select('id, property_id, role, name, hide_revenue').eq('user_id', userId).eq('is_active', true).limit(1).maybeSingle(),
-    // subscription queried after we know property
-    Promise.resolve({ data: null }),
   ])
 
-  const propertyId = properties?.[0]?.id ?? staffMember?.property_id
+  // Resolve the ACTIVE property first (cookie-selected for multi-property owners)
+  // so the subscription check targets the property the session actually uses.
+  const activeFromCookie = cookieStore.get('hp-active-property')?.value
+  const validCookieProperty = properties && activeFromCookie ? properties.find((p) => p.id === activeFromCookie) : null
+  const activeProperty = validCookieProperty ?? properties?.[0] ?? null
+
+  const propertyId = activeProperty?.id ?? staffMember?.property_id
   const { data: subData } = propertyId
     ? await admin.from('subscriptions').select('status, current_period_end').eq('property_id', propertyId).maybeSingle()
     : { data: null }
 
   const isSuperAdmin = (process.env.SUPERADMIN_EMAILS ?? '').split(',').filter(Boolean).includes(user.email ?? '')
 
-  if (properties && properties.length > 0) {
-    const activeFromCookie = cookieStore.get('hp-active-property')?.value
-    const validCookieProperty = activeFromCookie ? properties.find((p) => p.id === activeFromCookie) : null
-    const activeProperty = validCookieProperty ?? properties[0]
+  if (properties && properties.length > 0 && activeProperty) {
     return {
       userId,
       role: 'owner',
@@ -211,28 +212,31 @@ export const getUserSession = cache(async (): Promise<UserSession | null> => {
     .limit(1)
     .maybeSingle()
 
-  // 3. Subscription status + period end?
-  const { data: sub } = await supabase
-    .from('subscriptions')
-    .select('status, current_period_end')
-    .eq('property_id', staffMember?.property_id ?? properties?.[0]?.id)
-    .maybeSingle()
+  // 3. Determine active property from cookie (for multi-property switcher)
+  //    BEFORE the subscription query so billing status matches the active property.
+  const cookieStore = await cookies()
+  const activeFromCookie = cookieStore.get('hp-active-property')?.value
+  const validCookieProperty = properties && activeFromCookie
+    ? properties.find((p) => p.id === activeFromCookie)
+    : null
+  const activeProperty = validCookieProperty ?? properties?.[0] ?? null
+
+  // 4. Subscription status + period end for the active property?
+  const subPropertyId = activeProperty?.id ?? staffMember?.property_id
+  const { data: sub } = subPropertyId
+    ? await supabase
+        .from('subscriptions')
+        .select('status, current_period_end')
+        .eq('property_id', subPropertyId)
+        .maybeSingle()
+    : { data: null }
 
   const isSuperAdmin = (process.env.SUPERADMIN_EMAILS ?? '')
     .split(',')
     .filter(Boolean)
     .includes(user.email ?? '')
 
-  if (properties && properties.length > 0) {
-    // Determine active property from cookie (for multi-property switcher)
-    const cookieStore = await cookies()
-    const activeFromCookie = cookieStore.get('hp-active-property')?.value
-    const validCookieProperty = activeFromCookie
-      ? properties.find((p) => p.id === activeFromCookie)
-      : null
-
-    const activeProperty = validCookieProperty ?? properties[0]
-
+  if (properties && properties.length > 0 && activeProperty) {
     return {
       userId,
       role: 'owner',

@@ -10,6 +10,7 @@ export default async function NewGuestPage({
   const params = await searchParams
   const session = await getUserSession()
   if (!session) redirect('/login')
+  if (session.role === 'housekeeping') redirect('/beds')
 
   const supabase = await createClient()
 

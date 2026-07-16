@@ -1,13 +1,14 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useAppStore } from '@/stores/app.store'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, isBedConflictError, todayISO } from '@/lib/utils'
 import { toast } from 'sonner'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useT } from '@/app/context/LanguageContext'
@@ -88,7 +89,7 @@ export function CalendarClient({ propertyId, rooms, beds: initialBeds, bookings:
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null)
 
   const dates = getDates(startDate, endDate)
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayISO()
 
   // Flatten beds to assign deterministic Y indexes and insert room headers
   const flatBeds = useMemo(() => {
@@ -244,27 +245,39 @@ export function CalendarClient({ propertyId, rooms, beds: initialBeds, bookings:
         const bedPrice = targetBed?.base_price ?? 0
         const newTotalPrice = newNights * bedPrice
 
+        // Only auto-adjust the price if the booking was still on the rack rate
+        // (old nights × old bed price). A custom / OTA / discounted total must
+        // survive a drag untouched — otherwise a one-day nudge silently resets a
+        // negotiated Booking.com price to the standard rate.
+        const orig = bookings.find(b => b.id === dragState.id)
+        const oldNights = Math.max(1, daysBetween(dragState.initialCheckIn, dragState.initialCheckOut))
+        const oldBedPrice = flatBeds.find(b => b.id === dragState.initialBedId)?.base_price ?? 0
+        const wasRackRate =
+          orig != null && oldBedPrice > 0 && Math.abs(orig.total_price - oldNights * oldBedPrice) < 0.01
+        const priceChanged = bedPrice > 0 && wasRackRate
+
         // Optimistic UI update
-        setBookings(prev => prev.map(b => b.id === dragState.id ? {...b, bed_id: newBedId, check_in_date: newCheckIn, check_out_date: newCheckOut} : b))
-        
-        // Persist to DB (including recalculated price)
+        setBookings(prev => prev.map(b => b.id === dragState.id
+          ? { ...b, bed_id: newBedId, check_in_date: newCheckIn, check_out_date: newCheckOut, ...(priceChanged ? { total_price: newTotalPrice } : {}) }
+          : b))
+
+        // Persist to DB (price only when the booking was on the standard rate)
         const supabase = createClient()
-        const updatePayload: Record<string, unknown> = { 
-          bed_id: newBedId, 
-          check_in_date: newCheckIn, 
+        const updatePayload: Record<string, unknown> = {
+          bed_id: newBedId,
+          check_in_date: newCheckIn,
           check_out_date: newCheckOut,
         }
-        // Only update price if we have a valid bed price
-        if (bedPrice > 0) {
+        if (priceChanged) {
           updatePayload.total_price = newTotalPrice
         }
         const { error } = await supabase.from('bookings').update(updatePayload).eq('id', dragState.id)
 
         if (error) {
-          toast.error(t('calendar.updateError'))
+          toast.error(isBedConflictError(error) ? t('calendar.slotOccupied') : t('calendar.updateError'))
           refreshBookings() // Rollback
         } else {
-          const priceInfo = bedPrice > 0 ? ` · ${newNights} ${newNights > 1 ? t('common.nights') : t('common.night')} = ${newTotalPrice} MAD` : ''
+          const priceInfo = priceChanged ? ` · ${newNights} ${newNights > 1 ? t('common.nights') : t('common.night')} = ${newTotalPrice} MAD` : ''
           toast.success(`${t('calendar.bookingUpdated')}${priceInfo}`)
         }
       }
@@ -279,16 +292,32 @@ export function CalendarClient({ propertyId, rooms, beds: initialBeds, bookings:
     }
   }, [dragState, delta, flatBeds, bookings, refreshBookings])
 
+  // Debounced so event bursts coalesce into one window refetch, not one per event.
+  const debouncedRefreshBookings = useDebouncedCallback(refreshBookings)
+  const debouncedRefreshBeds = useDebouncedCallback(refreshBeds)
+  const calWasDisconnectedRef = useRef(false)
+
   useEffect(() => {
     const supabase = createClient()
     const channel = supabase
       .channel(`calendar-live-${propertyId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings', filter: `property_id=eq.${propertyId}` }, () => refreshBookings())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'beds', filter: `property_id=eq.${propertyId}` }, () => refreshBeds())
-      .subscribe((status) => setRealtimeConnected(status === 'SUBSCRIBED'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings', filter: `property_id=eq.${propertyId}` }, () => debouncedRefreshBookings())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'beds', filter: `property_id=eq.${propertyId}` }, () => debouncedRefreshBeds())
+      .subscribe((status) => {
+        const connected = status === 'SUBSCRIBED'
+        if (connected && calWasDisconnectedRef.current) {
+          // Realtime never replays missed events — refetch after a reconnect
+          calWasDisconnectedRef.current = false
+          refreshBookings()
+          refreshBeds()
+        } else if (!connected) {
+          calWasDisconnectedRef.current = true
+        }
+        setRealtimeConnected(connected)
+      })
 
-    return () => { supabase.removeChannel(channel); setRealtimeConnected(false) }
-  }, [propertyId, refreshBookings, refreshBeds, setRealtimeConnected])
+    return () => { supabase.removeChannel(channel); setRealtimeConnected(null) }
+  }, [propertyId, refreshBookings, refreshBeds, debouncedRefreshBookings, debouncedRefreshBeds, setRealtimeConnected])
 
   const currentDays = daysBetween(startDate, endDate) + 1
   function navigate(direction: 'prev' | 'next') {
@@ -303,13 +332,13 @@ export function CalendarClient({ propertyId, rooms, beds: initialBeds, bookings:
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-black text-[#0A1F1C] tracking-tight">{t('nav.calendar')}</h1>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl hover:bg-muted/50" onClick={() => navigate('prev')}><ChevronLeft className="w-4 h-4" /></Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl hover:bg-muted/50" onClick={() => navigate('prev')} aria-label={t('calendar.prevPeriod')}><ChevronLeft className="w-4 h-4" /></Button>
             <span className="text-[13px] font-black uppercase tracking-widest text-muted-foreground">
               {new Date(startDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
               {' — '}
               {new Date(endDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
             </span>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl hover:bg-muted/50" onClick={() => navigate('next')}><ChevronRight className="w-4 h-4" /></Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl hover:bg-muted/50" onClick={() => navigate('next')} aria-label={t('calendar.nextPeriod')}><ChevronRight className="w-4 h-4" /></Button>
             
             <Select value={String(currentDays)} onValueChange={(v) => router.push(`/calendar?from=${startDate}&days=${v}`)}>
               <SelectTrigger className="h-8 w-[110px] text-[11px] font-bold uppercase tracking-wider ml-2 bg-[#F8FAFC] border-muted/40">

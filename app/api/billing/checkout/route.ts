@@ -1,19 +1,27 @@
 import { NextResponse } from 'next/server'
-import { getUserSession } from '@/lib/supabase/server'
-import { createClient } from '@/lib/supabase/server'
+import { getRouteHandlerSession, createAdminClient } from '@/lib/supabase/server'
+import { BILLING_PLANS } from '@/lib/constants'
 
 export async function POST(request: Request) {
-  const session = await getUserSession()
+  // getRouteHandlerSession — React.cache()'d getUserSession is unreliable in Route Handlers
+  const session = await getRouteHandlerSession()
   if (!session || !session.isOwner) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { variantId } = await request.json() as { variantId: string }
-  if (!variantId) {
-    return NextResponse.json({ error: 'variantId required' }, { status: 400 })
+  let variantId: string
+  try {
+    const body = await request.json() as { variantId?: string }
+    variantId = String(body.variantId ?? '')
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+  }
+  if (!BILLING_PLANS.some((p) => p.ls_variant_id === variantId)) {
+    return NextResponse.json({ error: 'Unknown plan' }, { status: 400 })
   }
 
-  const supabase = await createClient()
+  // session.propertyId is ownership-verified — admin client just reads that one row
+  const supabase = createAdminClient()
   const { data: property } = await supabase
     .from('properties')
     .select('id, email, name')

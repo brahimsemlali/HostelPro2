@@ -10,6 +10,8 @@ export type ActivityActionType =
   | 'booking_created'
   | 'booking_cancelled'
   | 'bed_status'
+  | 'pre_checkin'
+  | 'guest_anonymized'
 
 export interface LogActivityParams {
   propertyId: string

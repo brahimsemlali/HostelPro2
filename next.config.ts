@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next'
+import { withSentryConfig } from '@sentry/nextjs'
 
 const isDev = process.env.NODE_ENV !== 'production'
 
@@ -34,7 +35,7 @@ const securityHeaders = [
       `script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com${isDev ? " 'unsafe-eval'" : ''}`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob:",
-      `connect-src 'self' ${process.env.NEXT_PUBLIC_SUPABASE_URL} wss://*.supabase.co`,
+      `connect-src 'self' ${process.env.NEXT_PUBLIC_SUPABASE_URL} wss://*.supabase.co https://*.sentry.io`,
       "font-src 'self'",
       "frame-ancestors 'none'",
     ].join('; '),
@@ -86,4 +87,13 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default nextConfig
+// Wrap with Sentry. Source-map upload only runs when SENTRY_AUTH_TOKEN/org/
+// project are present (prod deploys); otherwise the build proceeds untouched.
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  disableLogger: true,
+})
