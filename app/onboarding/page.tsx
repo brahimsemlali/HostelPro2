@@ -72,66 +72,50 @@ export default function OnboardingPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Non connecté')
 
-      const { data: prop, error: propErr } = await supabase.from('properties').insert({
-        owner_id: user.id,
-        name: property.name,
-        city: property.city,
-        phone: property.phone || null,
-        wifi_password: property.wifi_password || null,
-        check_in_time: '14:00',
-        check_out_time: '11:00',
-        default_language: lang,
-      }).select().single()
-      if (propErr) throw new Error(propErr.message)
-
-      for (const roomDef of rooms) {
-        const { data: room, error: roomErr } = await supabase.from('rooms').insert({
-          property_id: prop.id,
-          name: roomDef.name,
-          type: roomDef.type,
-          gender_policy: 'mixed',
-        }).select().single()
-        if (roomErr) throw new Error(`Chambre "${roomDef.name}": ${roomErr.message}`)
-
+      // Build the full rooms+beds payload (bed-naming logic stays here); the DB
+      // function inserts property/rooms/beds/staff/trial in one transaction.
+      const roomsPayload = rooms.map((roomDef) => {
         const words = roomDef.name.trim().split(/\s+/)
         const lastWord = words[words.length - 1]
         const prefix = (lastWord.length === 1 && /[A-Za-z]/.test(lastWord))
           ? lastWord.toUpperCase()
           : words.map((w) => w[0]).join('').slice(0, 2).toUpperCase()
         const bunkable = roomDef.type === 'dorm' && roomDef.beds > 4
-        const bedsToCreate = Array.from({ length: roomDef.beds }, (_, i) => ({
-          property_id: prop.id,
-          room_id: room.id,
-          name: `${prefix}${i + 1}`,
-          bunk_position: bunkable ? (i % 2 === 0 ? 'bottom' : 'top') : null,
-          base_price: roomDef.price,
-          status: 'available',
-        }))
-        const { error: bedsErr } = await supabase.from('beds').insert(bedsToCreate)
-        if (bedsErr) throw new Error(`Lits "${roomDef.name}": ${bedsErr.message}`)
-      }
-
-      await supabase.from('staff').insert({
-        property_id: prop.id,
-        user_id: user.id,
-        name: user.email?.split('@')[0] || 'Admin',
-        role: 'owner',
-        is_active: true
+        return {
+          name: roomDef.name,
+          type: roomDef.type,
+          gender_policy: 'mixed',
+          beds: Array.from({ length: roomDef.beds }, (_, i) => ({
+            name: `${prefix}${i + 1}`,
+            bunk_position: bunkable ? (i % 2 === 0 ? 'bottom' : 'top') : null,
+            base_price: roomDef.price,
+            status: 'available',
+          })),
+        }
       })
 
-      // Create 14-day free trial — gives immediate access without requiring checkout
       const trialEnd = new Date()
       trialEnd.setDate(trialEnd.getDate() + 14)
-      await supabase.from('subscriptions').upsert({
-        property_id: prop.id,
-        status: 'trialing',
-        provider: 'free_trial',
-        ls_subscription_id: null,
-        ls_variant_id: null,
-        current_period_end: trialEnd.toISOString(),
-        cancel_at_period_end: false,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'property_id' })
+
+      const { error } = await supabase.rpc('create_property_with_setup', {
+        p_name: property.name,
+        p_city: property.city,
+        p_phone: property.phone || null,
+        p_wifi: property.wifi_password || null,
+        p_lang: lang,
+        p_owner_name: user.email?.split('@')[0] || 'Admin',
+        p_trial_end: trialEnd.toISOString(),
+        p_rooms: roomsPayload,
+      })
+
+      if (error) {
+        // Already onboarded (e.g. double-submit / stale tab) — just go in.
+        if (error.message.includes('property_exists')) {
+          window.location.href = '/dashboard'
+          return
+        }
+        throw new Error(error.message)
+      }
 
       toast.success(t('onboarding.success'))
       window.location.href = '/dashboard'
