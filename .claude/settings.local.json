@@ -77,7 +77,8 @@
       "Bash(echo \"eslint exit: $?\")",
       "Bash(echo \"=== ESLINT EXIT: $? ===\")",
       "Bash(echo \"TSC: $?\")",
-      "Bash(echo \"ESLINT: $?\")"
+      "Bash(echo \"ESLINT: $?\")",
+      "Bash(echo \"exit:$?\")"
     ]
   }
 }

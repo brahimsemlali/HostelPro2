@@ -32,6 +32,7 @@ export async function POST(request: Request) {
         status: string
         renews_at: string | null
         ends_at: string | null
+        updated_at?: string
         cancelled: boolean
         urls?: { customer_portal?: string }
       }
@@ -39,7 +40,6 @@ export async function POST(request: Request) {
   }
 
   const { event_name, custom_data } = payload.meta
-  const propertyId = custom_data?.property_id
 
   // NOTE: subscription_payment_success/failed are deliberately NOT handled —
   // those events carry a subscription-invoice object (no variant_id/renews_at,
@@ -57,13 +57,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true })
   }
 
-  if (!propertyId) {
-    console.error('LS webhook: missing property_id in custom_data', payload.meta)
-    return NextResponse.json({ error: 'Missing property_id' }, { status: 400 })
-  }
-
   const attrs = payload.data.attributes
   const lsSubscriptionId = payload.data.id
+  const supabase = getServiceClient()
+
+  // Resolve the tenant. Checkout-originated events carry custom_data.property_id,
+  // but lifecycle events (cancel/expire/update) can arrive WITHOUT it — so fall
+  // back to the row we already keyed on the unique ls_subscription_id. Without
+  // this a cancellation silently no-ops and the account stays active forever.
+  const { data: existing } = await supabase
+    .from('subscriptions')
+    .select('property_id, ls_updated_at')
+    .eq('ls_subscription_id', lsSubscriptionId)
+    .maybeSingle()
+
+  const propertyId = custom_data?.property_id ?? existing?.property_id
+  if (!propertyId) {
+    // Unknown subscription and no custom_data — nothing to update. Ack so LS
+    // stops retrying (a 4xx/5xx would just be redelivered forever).
+    return NextResponse.json({ received: true, note: 'unresolved subscription' })
+  }
+
+  // Ordering / idempotency guard: LS retries and does not guarantee order. If
+  // this event is older than (or identical to) the last one we applied, drop it
+  // so a stale/retried 'active' can't resurrect a cancelled subscription.
+  if (existing?.ls_updated_at && attrs.updated_at &&
+      new Date(attrs.updated_at) <= new Date(existing.ls_updated_at)) {
+    return NextResponse.json({ received: true, note: 'stale event ignored' })
+  }
 
   // Determine period end — prefer renews_at, fall back to ends_at, then null (don't fabricate)
   const periodEnd = attrs.renews_at ?? attrs.ends_at ?? null
@@ -72,25 +93,25 @@ export async function POST(request: Request) {
   if (event_name === 'subscription_cancelled') status = 'cancelled'
   if (event_name === 'subscription_expired') status = 'expired'
 
-  const supabase = getServiceClient()
+  const row: Record<string, unknown> = {
+    property_id: propertyId,
+    status,
+    provider: 'lemonsqueezy',
+    ls_subscription_id: lsSubscriptionId,
+    ls_customer_id: String(attrs.customer_id),
+    ls_variant_id: String(attrs.variant_id),
+    current_period_end: periodEnd,
+    cancel_at_period_end: attrs.cancelled,
+    updated_at: new Date().toISOString(),
+  }
+  // Only write these when the event actually carries them, so an event that
+  // omits them can't wipe a previously-stored value.
+  if (attrs.urls?.customer_portal) row.customer_portal_url = attrs.urls.customer_portal
+  if (attrs.updated_at) row.ls_updated_at = attrs.updated_at
 
-  const { error } = await supabase.from('subscriptions').upsert(
-    {
-      property_id: propertyId,
-      status,
-      provider: 'lemonsqueezy',
-      ls_subscription_id: lsSubscriptionId,
-      ls_customer_id: String(attrs.customer_id),
-      ls_variant_id: String(attrs.variant_id),
-      current_period_end: periodEnd,
-      cancel_at_period_end: attrs.cancelled,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'property_id' },
-  )
+  const { error } = await supabase.from('subscriptions').upsert(row, { onConflict: 'property_id' })
 
   if (error) {
-    console.error('LS webhook: supabase upsert error', error)
     return NextResponse.json({ error: 'DB error' }, { status: 500 })
   }
 

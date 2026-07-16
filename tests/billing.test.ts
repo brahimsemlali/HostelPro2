@@ -102,7 +102,9 @@ describe('mapLsStatus — LemonSqueezy → internal status', () => {
     expect(mapLsStatus('expired')).toBe('expired')
   })
 
-  it('defaults unknown statuses to active (never lock a paying customer out by accident)', () => {
-    expect(mapLsStatus('some_new_ls_status')).toBe('active')
+  it('fails closed on an unknown status — maps to past_due (grace), never grants active', () => {
+    // An unmapped/renamed LS status must not grant free access. past_due applies
+    // the grace window so a real customer isn't hard-locked instantly.
+    expect(mapLsStatus('some_new_ls_status')).toBe('past_due')
   })
 })

@@ -106,6 +106,17 @@ export function BillingClient({ propertyId, subscription }: Props) {
                 {isTrial ? 'Essai' : subscription?.provider === 'manual_wire' ? 'Virement' : 'LemonSqueezy'}
               </Badge>
             )}
+            {subscription?.customer_portal_url && (
+              <a
+                href={subscription.customer_portal_url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[#E8ECF0] px-3 py-2 text-sm font-medium text-[#475569] hover:border-[#0F6E56]/40 hover:text-[#0F6E56] transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Gérer / annuler
+              </a>
+            )}
           </div>
         </CardContent>
       </Card>

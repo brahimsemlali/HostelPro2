@@ -62,5 +62,8 @@ export function mapLsStatus(lsStatus: string): string {
     paused: 'past_due',  // paused = temporarily suspended, treat as past_due (grace period applies)
     on_trial: 'trialing',
   }
-  return map[lsStatus] ?? 'active'
+  // Fail CLOSED on an unknown/renamed LS status: never grant 'active' for a
+  // status we don't recognise. 'past_due' applies the grace window, so a real
+  // paying customer isn't hard-locked instantly, but nobody rides free forever.
+  return map[lsStatus] ?? 'past_due'
 }
