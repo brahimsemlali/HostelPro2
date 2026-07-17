@@ -15,8 +15,41 @@ const PUBLIC_ROUTE_PREFIXES = [
   '/logiciel-hostel',   // city landing pages (marrakech, agadir, ...)
 ]
 
+// Pure-public routes that NEVER depend on auth state — no need to touch Supabase
+// at all. Skipping getUser() here removes a needless auth round-trip from every
+// marketing/SEO page load and lets those pages be served/cached statically.
+// (Auth-aware public routes '/', '/login', '/register' are handled below because
+//  they redirect *authenticated* users to /dashboard and so still need getUser.)
+function isPurelyPublic(pathname: string): boolean {
+  return (
+    pathname.startsWith('/forgot-password') ||
+    pathname.startsWith('/reset-password') ||
+    pathname.startsWith('/checkin') ||
+    pathname.startsWith('/api/checkin') ||
+    pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/webhooks/lemonsqueezy') ||
+    pathname.startsWith('/blog') ||
+    pathname.startsWith('/logiciel-hostel') ||
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/favicon') ||
+    pathname === '/sitemap.xml' ||
+    pathname === '/robots.txt' ||
+    pathname === '/llms.txt' ||
+    pathname === '/llms-full.md' ||
+    pathname === '/opengraph-image' ||
+    pathname.startsWith('/google')
+  )
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // Fast path: pure-public routes skip Supabase entirely (no auth round-trip).
+  if (isPurelyPublic(pathname)) {
+    const res = NextResponse.next({ request })
+    res.headers.set('x-pathname', pathname)
+    return res
+  }
 
   // Allow public routes and Next.js internals
   // '/' is exact-matched to avoid making every path public (all paths start with '/')
