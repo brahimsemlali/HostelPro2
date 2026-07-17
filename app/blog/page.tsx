@@ -73,6 +73,8 @@ export default function BlogIndexPage() {
 
       {/* Articles grid */}
       <section style={{ padding: '64px 24px', maxWidth: 1040, margin: '0 auto' }}>
+        {/* CSS hover — keeps this a Server Component (no client-side event handlers) */}
+        <style dangerouslySetInnerHTML={{ __html: '.blog-card{transition:box-shadow .2s,transform .2s}.blog-card:hover{box-shadow:0 8px 32px rgba(14,26,31,0.1);transform:translateY(-3px)}' }} />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 24 }}>
           {BLOG_POSTS.map((post) => {
             const cat = CATEGORY_COLORS[post.category] ?? { bg: 'rgba(14,26,31,0.06)', text: '#334155' }
@@ -82,15 +84,11 @@ export default function BlogIndexPage() {
                 href={`/blog/${post.slug}`}
                 style={{ textDecoration: 'none', display: 'block' }}
               >
-                <article style={{
+                <article className="blog-card" style={{
                   background: '#fff', borderRadius: 20, padding: '28px',
                   border: '1.5px solid #E8EDEF', height: '100%',
                   boxShadow: '0 2px 12px rgba(14,26,31,0.05)',
-                  transition: 'box-shadow 0.2s, transform 0.2s',
-                }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 32px rgba(14,26,31,0.1)'; (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px)' }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 12px rgba(14,26,31,0.05)'; (e.currentTarget as HTMLElement).style.transform = 'none' }}
-                >
+                }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                     <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '4px 10px', borderRadius: 999, background: cat.bg, color: cat.text }}>
                       {post.category}
