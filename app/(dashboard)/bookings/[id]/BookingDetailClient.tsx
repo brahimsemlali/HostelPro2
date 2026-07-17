@@ -232,12 +232,15 @@ export function BookingDetailClient({ booking, payments, extras, property, total
   }
 
   async function handleAddPayment() {
-    if (!payForm.amount) return
+    const amount = parseFloat(payForm.amount)
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error(t('payments.invalidAmount'))
+      return
+    }
     setLoading(true)
     try {
       const supabase = createClient()
-      const amount = parseFloat(payForm.amount)
-      
+
       // If dynamicBalance is negative, this is a refund being processed.
       const isRefund = dynamicBalance < 0
       const paymentType = isRefund ? 'refund' : (amount < dynamicBalance ? 'deposit' : 'payment')
@@ -712,7 +715,7 @@ export function BookingDetailClient({ booking, payments, extras, property, total
           <div className="space-y-4 pt-2">
             <div className="space-y-1.5">
               <Label>{t('payments.amountMad')} *</Label>
-              <Input type="number" value={payForm.amount} onChange={(e) => setPayForm(p => ({ ...p, amount: e.target.value }))} placeholder="0" />
+              <Input type="number" min="0" step="0.01" value={payForm.amount} onChange={(e) => setPayForm(p => ({ ...p, amount: e.target.value }))} placeholder="0" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">

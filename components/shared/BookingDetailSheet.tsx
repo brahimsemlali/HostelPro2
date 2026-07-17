@@ -14,8 +14,9 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { buildWhatsAppLink } from '@/lib/whatsapp/templates'
+import { useCanDo } from '@/app/context/SessionContext'
 import { formatCurrency, formatDate, formatDateShort } from '@/lib/utils'
-import { differenceInDays } from 'date-fns'
+import { differenceInCalendarDays, parseISO } from 'date-fns'
 import type { Booking, Guest, Payment, Bed, Room } from '@/types'
 import {
   User, Phone, MessageSquare, Calendar, CreditCard, FileText,
@@ -62,6 +63,17 @@ export function BookingDetailSheet({ bookingId, onClose, isMobile = false }: Pro
   const [booking, setBooking] = useState<FullBooking | null>(null)
   const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(false)
+
+  // Role-aware: housekeeping (update_bed_status only) can open an occupied bed
+  // on the map, but must not see guest PII (passport/DOB) or financials — and
+  // RLS filters payments to rank>=2, so the finance numbers would be wrong for
+  // them anyway. Guest details require check-in access; finances require
+  // payment/revenue access.
+  const canSeeGuestDetails = useCanDo('check_in_guests')
+  // Call both hooks unconditionally (no || short-circuit) — rules-of-hooks.
+  const canRecordPayments = useCanDo('record_payments')
+  const canViewRevenue = useCanDo('view_revenue')
+  const canSeeFinances = canRecordPayments || canViewRevenue
 
   useEffect(() => {
     const supabase = createClient()
@@ -112,7 +124,7 @@ export function BookingDetailSheet({ bookingId, onClose, isMobile = false }: Pro
   )
   const balance = booking ? booking.total_price - amountPaid : 0
   const daysLeft = booking
-    ? differenceInDays(new Date(booking.check_out_date), new Date())
+    ? differenceInCalendarDays(parseISO(booking.check_out_date), new Date())
     : 0
 
   const docTypeLabel: Record<string, string> = {
@@ -213,7 +225,7 @@ export function BookingDetailSheet({ bookingId, onClose, isMobile = false }: Pro
             )}
 
             {/* ── Quick contact actions ── */}
-            {guest && (
+            {guest && canSeeGuestDetails && (
               <div className="flex gap-2 mb-4">
                 {guest.phone && (
                   <a href={`tel:${guest.phone}`} className="flex-1">
@@ -295,7 +307,7 @@ export function BookingDetailSheet({ bookingId, onClose, isMobile = false }: Pro
             </div>
 
             {/* ─────────── GUEST IDENTITY ─────────── */}
-            {guest && (
+            {guest && canSeeGuestDetails && (
               <>
                 <SectionTitle>Identité</SectionTitle>
                 <div className="rounded-2xl border border-slate-100 bg-white px-4 py-1">
@@ -358,6 +370,8 @@ export function BookingDetailSheet({ bookingId, onClose, isMobile = false }: Pro
             )}
 
             {/* ─────────── FINANCIAL ─────────── */}
+            {canSeeFinances && (
+              <>
             <SectionTitle>Finances</SectionTitle>
             <div className="rounded-2xl border border-slate-100 bg-white overflow-hidden">
               <div className="px-4 py-3 space-y-2 border-b border-slate-100">
@@ -421,9 +435,11 @@ export function BookingDetailSheet({ bookingId, onClose, isMobile = false }: Pro
                 </div>
               )}
             </div>
+              </>
+            )}
 
             {/* ─────────── POLICE FICHE ─────────── */}
-            {booking.police_fiche_generated && (
+            {canSeeGuestDetails && booking.police_fiche_generated && (
               <div className="mt-3 rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 flex items-center gap-3">
                 <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
                 <span className="text-xs text-slate-600 flex-1">Fiche de police générée</span>
@@ -436,24 +452,26 @@ export function BookingDetailSheet({ bookingId, onClose, isMobile = false }: Pro
             )}
 
             {/* ─────────── LINKS ─────────── */}
-            <div className="flex gap-2 mt-4">
-              {guest?.id && (
-                <Link href={`/guests/${guest.id}`} className="flex-1">
-                  <Button variant="outline" className="w-full gap-2 h-10 text-sm">
-                    <User className="w-3.5 h-3.5" />
-                    Profil complet
-                  </Button>
-                </Link>
-              )}
-              {booking.id && (
-                <Link href={`/bookings/${booking.id}`} className="flex-1">
-                  <Button variant="outline" className="w-full gap-2 h-10 text-sm">
-                    <FileText className="w-3.5 h-3.5" />
-                    Réservation
-                  </Button>
-                </Link>
-              )}
-            </div>
+            {canSeeGuestDetails && (
+              <div className="flex gap-2 mt-4">
+                {guest?.id && (
+                  <Link href={`/guests/${guest.id}`} className="flex-1">
+                    <Button variant="outline" className="w-full gap-2 h-10 text-sm">
+                      <User className="w-3.5 h-3.5" />
+                      Profil complet
+                    </Button>
+                  </Link>
+                )}
+                {booking.id && (
+                  <Link href={`/bookings/${booking.id}`} className="flex-1">
+                    <Button variant="outline" className="w-full gap-2 h-10 text-sm">
+                      <FileText className="w-3.5 h-3.5" />
+                      Réservation
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
         )}
       </SheetContent>

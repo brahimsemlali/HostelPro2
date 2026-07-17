@@ -136,7 +136,10 @@ function TaskCard({
               )}
               {task.due_date && (
                 <span className={cn(
-                  new Date(task.due_date) < new Date() && !isDone
+                  // Compare date-only strings (both local YYYY-MM-DD). Parsing a
+                  // DATE with new Date() gives UTC midnight, which flags a task
+                  // due *today* as overdue for most of the local day.
+                  task.due_date < todayISO() && !isDone
                     ? 'text-red-600 font-medium'
                     : '',
                 )}>

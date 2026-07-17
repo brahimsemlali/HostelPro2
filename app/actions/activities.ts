@@ -97,7 +97,7 @@ export async function createActivityAction(formData: FormData) {
 
       if (uniquePhones.length > 0) {
         phonesToNotify = uniquePhones
-        message = `🎉 Nouvelle activité: *${title}* !\n\n📅 Date: ${new Date(activity_date).toLocaleDateString()}\n🕒 Heure: ${start_time}\n${type === 'paid' && price ? `💰 Prix: ${price} MAD` : '🆓 Gratuit !'}\n\n${description ? description + '\n\n' : ''}Nous espérons vous y voir ! 👋`
+        message = `🎉 Nouvelle activité: *${title}* !\n\n📅 Date: ${new Date(`${activity_date}T00:00:00`).toLocaleDateString('fr-FR')}\n🕒 Heure: ${start_time}\n${type === 'paid' && price ? `💰 Prix: ${price} MAD` : '🆓 Gratuit !'}\n\n${description ? description + '\n\n' : ''}Nous espérons vous y voir ! 👋`
       }
     }
   }
@@ -154,7 +154,7 @@ export async function notifyGuestsAction(activityId: string) {
   const uniquePhones = Array.from(new Set(phones))
   if (uniquePhones.length === 0) return { error: 'Aucun numéro WhatsApp trouvé.' }
 
-  const message = `🎉 Rappel Activité: *${activity.title}* !\n\n📅 Date: ${new Date(activity.activity_date).toLocaleDateString()}\n🕒 Heure: ${activity.start_time}\n${activity.type === 'paid' ? `💰 Prix: ${activity.price} ${activity.currency || 'MAD'}` : '🆓 Gratuit !'}\n\n${activity.description ? activity.description + '\n\n' : ''}Nous espérons vous y voir ! 👋`
+  const message = `🎉 Rappel Activité: *${activity.title}* !\n\n📅 Date: ${new Date(`${activity.activity_date}T00:00:00`).toLocaleDateString('fr-FR')}\n🕒 Heure: ${activity.start_time}\n${activity.type === 'paid' ? `💰 Prix: ${activity.price} ${activity.currency || 'MAD'}` : '🆓 Gratuit !'}\n\n${activity.description ? activity.description + '\n\n' : ''}Nous espérons vous y voir ! 👋`
 
   // Update activity status
   await supabase.from('activities').update({ whatsapp_message_sent: true }).eq('id', activityId)

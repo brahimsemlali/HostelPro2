@@ -56,7 +56,10 @@ export function NightAuditClient({
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(false)
 
-  const cashDiff = actualCash ? parseFloat(actualCash) - stats.cashToday : null
+  const cashDiff =
+    actualCash && Number.isFinite(parseFloat(actualCash))
+      ? parseFloat(actualCash) - stats.cashToday
+      : null
   const occupancyRate = stats.totalBeds
     ? Math.round((stats.occupiedBeds / stats.totalBeds) * 100)
     : 0
@@ -70,7 +73,7 @@ export function NightAuditClient({
         audit_date: today,
         performed_by: userId,
         expected_cash: stats.cashToday,
-        actual_cash: actualCash ? parseFloat(actualCash) : stats.cashToday,
+        actual_cash: Number.isFinite(parseFloat(actualCash)) ? parseFloat(actualCash) : stats.cashToday,
         total_revenue: stats.totalRevenue,
         occupancy_rate: occupancyRate,
         notes: notes || null,
@@ -200,6 +203,8 @@ export function NightAuditClient({
               <Label className="text-[13px] font-medium text-[#475569]">{t('nightAudit.actual')}</Label>
               <Input
                 type="number"
+                min="0"
+                step="0.01"
                 value={actualCash}
                 onChange={(e) => setActualCash(e.target.value)}
                 placeholder="0"

@@ -97,12 +97,18 @@ export async function POST(
   // Validate the token — fetch the booking
   const { data: booking, error: bookingError } = await supabase
     .from('bookings')
-    .select('id, guest_id, pre_checkin_completed, property_id')
+    .select('id, guest_id, pre_checkin_completed, property_id, status')
     .eq('pre_checkin_token', token)
     .single()
 
   if (bookingError || !booking) {
     return NextResponse.json({ error: 'Réservation introuvable' }, { status: 404 })
+  }
+
+  // Mirror the GET guard: a cancelled/no-show booking must not accept a
+  // pre-check-in submission (would rewrite guest PII + mark it complete).
+  if (booking.status === 'cancelled' || booking.status === 'no_show') {
+    return NextResponse.json({ error: 'Réservation annulée' }, { status: 410 })
   }
 
   if (booking.pre_checkin_completed) {
