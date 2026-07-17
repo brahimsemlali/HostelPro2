@@ -515,7 +515,7 @@ export function CalendarClient({ propertyId, rooms, beds: initialBeds, bookings:
                     {/* ACTIVE BOOKING / DRAGGED PREVIEW */}
                     <div
                       className={cn(
-                        "absolute rounded-[12px] flex items-center px-4 transition-all pointer-events-auto",
+                        "absolute rounded-[12px] flex items-center px-4 transition-all pointer-events-auto touch-none",
                         hasCollision ? "bg-red-500 shadow-lg shadow-red-200" : (statusColors[booking.status] || 'bg-gray-400'),
                         isDragged ? 'z-50 shadow-2xl scale-[1.02] ring-2 ring-white/30' : 'z-10 shadow-sm hover:translate-y-[-1px] hover:shadow-md cursor-grab active:cursor-grabbing'
                       )}

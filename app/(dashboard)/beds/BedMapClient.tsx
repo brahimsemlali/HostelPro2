@@ -16,6 +16,13 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet'
 import { toast } from 'sonner'
 import type { Bed, Room, Booking, Guest } from '@/types'
 import { Plus, BedDouble, ArrowLeftRight, X, Wind, Wrench, Ban, Bed as BedIcon, Check } from 'lucide-react'
@@ -404,99 +411,101 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
         isMobile={isMobile}
       />
 
-      {/* ── Status sheet (non-occupied beds) ── */}
-      {selectedBed && !swapMode && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-end"
-          onClick={() => setSelectedBed(null)}
+      {/* ── Status sheet (non-occupied beds) ──
+          Shared Sheet primitive: portaled to <body>, so it stacks ABOVE the
+          fixed mobile nav (an inline overlay would be painted under it), with
+          internal scroll + safe-area padding on mobile. */}
+      <Sheet
+        open={!!selectedBed && !swapMode}
+        onOpenChange={(o) => !o && setSelectedBed(null)}
+      >
+        <SheetContent
+          side={isMobile ? 'bottom' : 'right'}
+          className={[
+            'overflow-y-auto',
+            isMobile
+              ? 'rounded-t-2xl max-h-[88vh] pb-[max(20px,env(safe-area-inset-bottom))]'
+              : 'max-w-sm',
+          ].join(' ')}
         >
-          <div
-            className="relative bg-white rounded-t-2xl sm:rounded-2xl sm:mr-4 w-full sm:w-80 shadow-2xl p-5 space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-bold text-[#0A1F1C]">
+          {selectedBed && (
+            <div className="p-5 space-y-4">
+              <SheetHeader className="p-0 space-y-1 pr-8">
+                <SheetTitle className="font-bold text-[#0A1F1C]">
                   {t('beds.bed')} {selectedBed.name}
                   {selectedBed.room && (
                     <span className="text-muted-foreground font-normal text-sm ml-1.5">
                       — {selectedBed.room.name}
                     </span>
                   )}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
+                </SheetTitle>
+                <SheetDescription className="text-xs text-muted-foreground">
                   {selectedBed.bunk_position === 'top'
                     ? t('beds.bunkTop')
                     : selectedBed.bunk_position === 'bottom'
                     ? t('beds.bunkBottom')
                     : t('beds.bed')}
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-widest text-[oklch(0.60_0_0)]">
+                  {t('beds.changeStatus')}
                 </p>
-              </div>
-              <button
-                onClick={() => setSelectedBed(null)}
-                className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-widest text-[oklch(0.60_0_0)]">
-                {t('beds.changeStatus')}
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                {STATUS_OPTIONS.map((opt) => {
-                  const isActive = selectedBed.status === opt.value
-                  const Icon = opt.icon
-                  return (
-                    <button
-                      key={opt.value}
-                      onClick={() => !isActive && handleStatusChange(selectedBed.id, opt.value)}
-                      disabled={isActive}
-                      className={[
-                        'relative flex items-center gap-3 rounded-2xl border px-3 py-3 text-left transition-all duration-150',
-                        'focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F6E56]/50',
-                        isActive
-                          ? `${opt.activeBg} cursor-default shadow-sm`
-                          : `${opt.idleBg} cursor-pointer active:scale-[0.97]`,
-                      ].join(' ')}
-                    >
-                      <div className={[
-                        'flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center',
-                        isActive ? opt.activeBg : 'bg-slate-100',
-                      ].join(' ')}>
-                        <Icon className={['w-4 h-4', isActive ? opt.activeIcon : opt.idleIcon].join(' ')} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className={['text-[13px] font-semibold leading-tight', isActive ? opt.activeText : opt.idleText].join(' ')}>
-                          {opt.label}
-                        </p>
-                        <p className="text-[11px] text-[oklch(0.62_0_0)] leading-tight mt-0.5">
-                          {opt.description}
-                        </p>
-                      </div>
-                      {isActive && (
-                        <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#0F6E56] flex items-center justify-center">
-                          <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                <div className="grid grid-cols-2 gap-2">
+                  {STATUS_OPTIONS.map((opt) => {
+                    const isActive = selectedBed.status === opt.value
+                    const Icon = opt.icon
+                    return (
+                      <button
+                        key={opt.value}
+                        onClick={() => !isActive && handleStatusChange(selectedBed.id, opt.value)}
+                        disabled={isActive}
+                        className={[
+                          'relative flex items-center gap-3 rounded-2xl border px-3 py-3 text-left transition-all duration-150',
+                          'focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F6E56]/50',
+                          isActive
+                            ? `${opt.activeBg} cursor-default shadow-sm`
+                            : `${opt.idleBg} cursor-pointer active:scale-[0.97]`,
+                        ].join(' ')}
+                      >
+                        <div className={[
+                          'flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center',
+                          isActive ? opt.activeBg : 'bg-slate-100',
+                        ].join(' ')}>
+                          <Icon className={['w-4 h-4', isActive ? opt.activeIcon : opt.idleIcon].join(' ')} />
                         </div>
-                      )}
-                    </button>
-                  )
-                })}
+                        <div className="min-w-0 flex-1">
+                          <p className={['text-[13px] font-semibold leading-tight', isActive ? opt.activeText : opt.idleText].join(' ')}>
+                            {opt.label}
+                          </p>
+                          <p className="text-[11px] text-[oklch(0.62_0_0)] leading-tight mt-0.5">
+                            {opt.description}
+                          </p>
+                        </div>
+                        {isActive && (
+                          <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#0F6E56] flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
 
-            {selectedBed.status === 'available' && canCheckIn && (
-              <Link href={`/guests/new?bed=${selectedBed.id}`} className="block">
-                <Button className="w-full bg-[#0F6E56] hover:bg-[#0c5a46]">
-                  <Plus className="w-4 h-4 mr-2" />
-                  {t('beds.newCheckinHere')}
-                </Button>
-              </Link>
-            )}
-          </div>
-        </div>
-      )}
+              {selectedBed.status === 'available' && canCheckIn && (
+                <Link href={`/guests/new?bed=${selectedBed.id}`} className="block">
+                  <Button className="w-full bg-[#0F6E56] hover:bg-[#0c5a46]">
+                    <Plus className="w-4 h-4 mr-2" />
+                    {t('beds.newCheckinHere')}
+                  </Button>
+                </Link>
+              )}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
 
       {/* Swap confirmation dialog */}
       <Dialog open={!!swapTarget} onOpenChange={(o) => !o && setSwapTarget(null)}>

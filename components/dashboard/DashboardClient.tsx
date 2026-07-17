@@ -199,7 +199,7 @@ function ForecastStrip({ days }: { days: ForecastDay[] }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="pb-6 px-6">
-        <div className="grid grid-cols-7 gap-3">
+        <div className="grid grid-cols-7 gap-1.5 sm:gap-3">
           {days.map((d, i) => {
             const pct = d.total > 0 ? Math.round((d.occupied / d.total) * 100) : 0
             const isToday = i === 0

@@ -209,10 +209,17 @@ export function PaymentsClient({ propertyId, todayPayments, pendingBookings, cur
     .filter((p) => p.method === 'cmi')
     .reduce((s, p) => s + (p.type === 'refund' ? -p.amount : p.amount), 0)
 
-  const cashDiff = actualCash ? parseFloat(actualCash) - cashToday : null
+  const cashDiff =
+    actualCash && Number.isFinite(parseFloat(actualCash))
+      ? parseFloat(actualCash) - cashToday
+      : null
 
   async function handleAddPayment() {
-    if (!form.amount) return
+    const amountValue = parseFloat(form.amount)
+    if (!Number.isFinite(amountValue) || amountValue <= 0) {
+      toast.error(t('payments.invalidAmount'))
+      return
+    }
     setLoading(true)
     try {
       const supabase = createClient()
@@ -222,7 +229,7 @@ export function PaymentsClient({ propertyId, todayPayments, pendingBookings, cur
         // Link the payment to the booking's guest so it counts toward
         // guests.total_spent (migration 025 keys the recompute on guest_id).
         guest_id: selectedBooking?.guest_id ?? null,
-        amount: parseFloat(form.amount),
+        amount: amountValue,
         method: form.method,
         type: 'payment',
         status: 'completed',
@@ -238,8 +245,8 @@ export function PaymentsClient({ propertyId, todayPayments, pendingBookings, cur
         staffName: session?.staffName ?? null,
         actionType: 'payment',
         entityType: 'payment',
-        description: `Paiement ${parseFloat(form.amount)} MAD (${form.method})${guestName ? ` — ${guestName}` : ''}`,
-        meta: { amount: parseFloat(form.amount), method: form.method, guest_name: guestName },
+        description: `Paiement ${amountValue} MAD (${form.method})${guestName ? ` — ${guestName}` : ''}`,
+        meta: { amount: amountValue, method: form.method, guest_name: guestName },
       })
       toast.success(t('payments.saved'))
       setDialogOpen(false)
@@ -331,6 +338,8 @@ export function PaymentsClient({ propertyId, todayPayments, pendingBookings, cur
                 <Label>{t('payments.amountMad')} *</Label>
                 <Input
                   type="number"
+                  min="0"
+                  step="0.01"
                   value={form.amount}
                   onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))}
                   placeholder="0"

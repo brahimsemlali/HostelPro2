@@ -250,7 +250,7 @@ export function AddArrivalModal({
       />
 
       {/* Modal */}
-      <div className="relative bg-white w-full max-w-lg rounded-t-[28px] sm:rounded-[28px] shadow-2xl animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-2 fade-in duration-300 max-h-[90vh] flex flex-col">
+      <div className="relative bg-white w-full max-w-lg rounded-t-[28px] sm:rounded-[28px] shadow-2xl animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-2 fade-in duration-300 max-h-[calc(90vh-62px)] sm:max-h-[90vh] mb-[calc(62px+env(safe-area-inset-bottom))] sm:mb-0 flex flex-col">
         {/* Drag handle (mobile) */}
         <div className="flex justify-center pt-3 sm:hidden">
           <div className="w-9 h-[4px] rounded-full bg-black/10" />
