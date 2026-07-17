@@ -6,14 +6,22 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import {
   Shield, Search, TrendingUp, Users, CheckCircle2,
-  Clock, AlertTriangle, MoreHorizontal, X, Copy,
+  Clock, MoreHorizontal, X, Copy,
   ChevronDown, RefreshCw,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { BILLING_PLANS } from '@/lib/constants'
 import { format, differenceInDays } from 'date-fns'
 import { fr } from 'date-fns/locale'
+
+// Plan options for manual-wire attribution (drives MRR).
+const PLAN_OPTIONS = BILLING_PLANS.map((p) => ({
+  id: p.ls_variant_id,
+  name: p.name.replace(/ \(.*\)$/, ''),
+  price: p.price,
+}))
 
 interface Subscription {
   status: string
@@ -157,14 +165,19 @@ export function AdminClient({ properties, stats, signupsByWeek }: Props) {
     return true
   })
 
-  async function handleAction(propertyId: string, action: 'extend' | 'trial' | 'cancel', months?: number) {
+  async function handleAction(
+    propertyId: string,
+    action: 'extend' | 'trial' | 'cancel' | 'set_plan',
+    months?: number,
+    variantId?: string,
+  ) {
     setLoadingId(propertyId)
     setOpenMenuId(null)
     try {
       const res = await fetch('/api/admin/subscription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ propertyId, action, months }),
+        body: JSON.stringify({ propertyId, action, months, variantId }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Erreur inconnue')
@@ -173,6 +186,7 @@ export function AdminClient({ properties, stats, signupsByWeek }: Props) {
         extend: `Abonnement prolongé de ${months} mois`,
         trial: 'Essai 14 jours activé',
         cancel: 'Abonnement annulé',
+        set_plan: 'Plan mis à jour',
       }
       toast.success(msgs[action])
       router.refresh()
@@ -460,6 +474,23 @@ export function AdminClient({ properties, stats, signupsByWeek }: Props) {
                                 <ChevronDown className="w-3.5 h-3.5 rotate-180" />
                                 Prolonger 24m
                               </button>
+                              <div className="h-px bg-[#F1F5F9] my-1" />
+                              <div className="px-3 pt-1 pb-1 text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider">
+                                Plan (MRR)
+                              </div>
+                              {PLAN_OPTIONS.map((opt) => {
+                                const isCurrent = p.subscription?.ls_variant_id === opt.id
+                                return (
+                                  <button
+                                    key={opt.id}
+                                    onClick={() => handleAction(p.id, 'set_plan', undefined, opt.id)}
+                                    className="w-full text-left px-3 py-2 text-xs text-[#475569] hover:bg-[#F8FAFC] rounded-lg transition-colors flex items-center justify-between gap-2"
+                                  >
+                                    <span>{opt.name} · ${opt.price}</span>
+                                    {isCurrent && <CheckCircle2 className="w-3.5 h-3.5 text-[#0F6E56] shrink-0" />}
+                                  </button>
+                                )
+                              })}
                               <div className="h-px bg-[#F1F5F9] my-1" />
                               <button
                                 onClick={() => handleAction(p.id, 'cancel')}
