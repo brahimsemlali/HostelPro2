@@ -1,6 +1,9 @@
-import { createAdminClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { BILLING_PLANS } from '@/lib/constants'
 import { AdminClient } from './AdminClient'
+
+const SUPERADMIN_EMAILS = (process.env.SUPERADMIN_EMAILS ?? '').split(',').map((e) => e.trim()).filter(Boolean)
 
 // Derived from BILLING_PLANS so the superadmin MRR always matches real pricing
 const PLAN_PRICES: Record<string, { name: string; price: number }> = Object.fromEntries(
@@ -8,6 +11,15 @@ const PLAN_PRICES: Record<string, { name: string; price: number }> = Object.from
 )
 
 export default async function AdminPage() {
+  // Superadmin gate — this page loads every tenant's data via the service-role
+  // client, so it must never render for a non-superadmin. Verify the user
+  // server-side (getUser makes a network check) before any data is fetched.
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user || !SUPERADMIN_EMAILS.includes(user.email ?? '')) {
+    redirect('/dashboard')
+  }
+
   const admin = createAdminClient()
 
   // Fetch all data in parallel using service-role (bypasses RLS)

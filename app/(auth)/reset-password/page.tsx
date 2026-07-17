@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { resetPasswordAction } from '@/app/actions/auth'
+import { useState, useEffect, useRef } from 'react'
+import type { EmailOtpType } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,41 +19,59 @@ export default function ResetPasswordPage() {
   const [sessionReady, setSessionReady] = useState(false)
   const [sessionError, setSessionError] = useState(false)
 
-  // Supabase sends the recovery token as a hash fragment (#access_token=...&type=recovery)
-  // or as a query param (?code=...) depending on auth flow config.
-  // We listen for the PASSWORD_RECOVERY auth event, which fires automatically when
-  // @supabase/ssr detects the recovery token in the URL.
+  // The recovery one-time token. When the email template links to
+  //   /reset-password?token_hash=...&type=recovery
+  // we DO NOT verify it on load — we only consume it when the user submits the
+  // form below. Passive link scanners (Gmail, corporate mail security) do a GET
+  // but never submit, so they can no longer burn the token before the real click.
+  const tokenHashRef = useRef<string | null>(null)
+  const recoveryTypeRef = useRef<EmailOtpType>('recovery')
+  const readyRef = useRef(false)
+
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const th = params.get('token_hash')
+    const ty = params.get('type')
+
+    // Preferred, prefetch-safe path: a token_hash is present in the URL.
+    if (th) {
+      tokenHashRef.current = th
+      if (ty) recoveryTypeRef.current = ty as EmailOtpType
+      readyRef.current = true
+      // The token lives only in the client URL (absent during SSR), so we reveal
+      // the form once on mount. One extra render is fine here.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSessionReady(true)
+      return
+    }
+
+    // Legacy fallback: older links deliver the session via a URL hash
+    // (#access_token=...) or a ?code=... that @supabase/ssr exchanges on load.
     const supabase = createClient()
 
-    // Check if we already have a recovery session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
+        readyRef.current = true
         setSessionReady(true)
       }
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setSessionReady(true)
-      } else if (event === 'SIGNED_IN' && session) {
-        // May fire after code exchange
+      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+        readyRef.current = true
         setSessionReady(true)
       }
     })
 
-    // If no auth event within 3s, the link is invalid/expired
+    // If no recovery session materialised, the link is genuinely invalid/expired.
     const timeout = setTimeout(() => {
-      if (!sessionReady) {
-        setSessionError(true)
-      }
-    }, 3000)
+      if (!readyRef.current) setSessionError(true)
+    }, 4000)
 
     return () => {
       subscription.unsubscribe()
       clearTimeout(timeout)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -66,18 +84,39 @@ export default function ResetPasswordPage() {
       toast.error('Le mot de passe doit contenir au moins 8 caractères')
       return
     }
+
     setLoading(true)
-    const formData = new FormData(e.currentTarget)
-    const result = await resetPasswordAction(formData)
-    if (result?.error) {
-      toast.error(result.error)
-      setLoading(false)
-    } else {
+    const supabase = createClient()
+
+    try {
+      // Consume the recovery token now (only on explicit submit).
+      if (tokenHashRef.current) {
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          type: recoveryTypeRef.current,
+          token_hash: tokenHashRef.current,
+        })
+        if (verifyError) {
+          setSessionError(true)
+          setLoading(false)
+          return
+        }
+      }
+
+      const { error } = await supabase.auth.updateUser({ password })
+      if (error) {
+        toast.error('Impossible de mettre à jour le mot de passe. Le lien a peut-être expiré.')
+        setLoading(false)
+        return
+      }
+
       setDone(true)
       toast.success('Mot de passe mis à jour!')
       setTimeout(() => {
         window.location.href = '/'
       }, 2000)
+    } catch {
+      toast.error('Une erreur est survenue. Réessayez.')
+      setLoading(false)
     }
   }
 
