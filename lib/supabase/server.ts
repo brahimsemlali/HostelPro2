@@ -42,10 +42,22 @@ export function createAdminClient() {
 }
 
 /**
- * Read the Supabase auth cookie directly and decode the user ID from the JWT.
- * Does NOT make any network call.
+ * Identity decoded locally from the Supabase auth cookie's JWT.
+ * `sub` is the user id; `email` powers the superadmin check.
  */
-export const getUserId = cache(async (): Promise<string | null> => {
+type CookieIdentity = { userId: string; email: string | null }
+
+/**
+ * Read the Supabase auth cookie and decode the access-token JWT payload.
+ * Makes NO network call. Returns null if absent, malformed, or expired.
+ *
+ * SECURITY: the signature is NOT verified here. This is safe because every
+ * caller runs behind `proxy.ts`, which calls `supabase.auth.getUser()` (full
+ * signature validation + token refresh) on every non-public request before the
+ * server component renders. A forged/expired token never reaches this code.
+ * The `exp` check below is belt-and-suspenders against a stale cookie.
+ */
+const decodeCookieIdentity = cache(async (): Promise<CookieIdentity | null> => {
   const cookieStore = await cookies()
   const allCookies = cookieStore.getAll()
 
@@ -88,14 +100,27 @@ export const getUserId = cache(async (): Promise<string | null> => {
     const accessToken: string = parsed.access_token
     if (!accessToken) return null
 
-    // Decode JWT payload (no verification needed — proxy already validated)
+    // Decode JWT payload (signature validated upstream by proxy.ts — see note above)
     const payload = JSON.parse(
       Buffer.from(accessToken.split('.')[1], 'base64url').toString('utf8')
     )
-    return payload.sub as string
+    if (!payload.sub) return null
+    // Reject expired tokens (exp is in seconds)
+    if (typeof payload.exp === 'number' && payload.exp * 1000 < Date.now()) return null
+
+    return { userId: payload.sub as string, email: (payload.email as string) ?? null }
   } catch {
     return null
   }
+})
+
+/**
+ * Read the Supabase auth cookie directly and decode the user ID from the JWT.
+ * Does NOT make any network call.
+ */
+export const getUserId = cache(async (): Promise<string | null> => {
+  const identity = await decodeCookieIdentity()
+  return identity?.userId ?? null
 })
 
 /**
@@ -190,27 +215,40 @@ export async function getRouteHandlerSession(): Promise<UserSession | null> {
 export const getUserSession = cache(async (): Promise<UserSession | null> => {
   const supabase = await createClient()
 
-  // Use Supabase's validated getUser() — more reliable than manual JWT decoding
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) return null
+  // Identity is decoded locally from the cookie (no network round-trip). This is
+  // safe because proxy.ts already ran supabase.auth.getUser() — full signature
+  // validation + token refresh — for every request that reaches a dashboard
+  // server component. The data queries below still go through Supabase RLS, which
+  // independently validates the JWT signature server-side.
+  //
+  // Fallback: if the cookie can't be decoded locally (unexpected format), fall
+  // back to the network getUser() rather than returning null — a false negative
+  // here would bounce a valid session into a /dashboard <-> /login redirect loop.
+  let identity = await decodeCookieIdentity()
+  if (!identity) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
+    identity = { userId: user.id, email: user.email ?? null }
+  }
 
-  const userId = user.id
+  const userId = identity.userId
 
-  // 1. Property owner? Fetch ALL properties so we can power the multi-property switcher.
-  const { data: properties } = await supabase
-    .from('properties')
-    .select('id, name, city')
-    .eq('owner_id', userId)
-    .order('created_at', { ascending: true })
-
-  // 2. Active staff member?
-  const { data: staffMember } = await supabase
-    .from('staff')
-    .select('id, property_id, role, name, hide_revenue')
-    .eq('user_id', userId)
-    .eq('is_active', true)
-    .limit(1)
-    .maybeSingle()
+  // 1. Property owner (ALL properties for the switcher) + 2. active staff member.
+  //    These are independent — run them in parallel instead of a sequential waterfall.
+  const [{ data: properties }, { data: staffMember }] = await Promise.all([
+    supabase
+      .from('properties')
+      .select('id, name, city')
+      .eq('owner_id', userId)
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('staff')
+      .select('id, property_id, role, name, hide_revenue')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle(),
+  ])
 
   // 3. Determine active property from cookie (for multi-property switcher)
   //    BEFORE the subscription query so billing status matches the active property.
@@ -234,7 +272,7 @@ export const getUserSession = cache(async (): Promise<UserSession | null> => {
   const isSuperAdmin = (process.env.SUPERADMIN_EMAILS ?? '')
     .split(',')
     .filter(Boolean)
-    .includes(user.email ?? '')
+    .includes(identity.email ?? '')
 
   if (properties && properties.length > 0 && activeProperty) {
     return {
