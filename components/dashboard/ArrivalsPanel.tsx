@@ -19,6 +19,7 @@ import {
   ChevronRight,
   Plane,
   Send,
+  Phone,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useT } from '@/app/context/LanguageContext'
@@ -459,6 +460,16 @@ function ArrivalCard({
           >
             <MessageSquare className="w-3 h-3" />
             WhatsApp
+          </a>
+
+          {/* Call */}
+          <a
+            href={`tel:${contactNum.replace(/[^\d+]/g, '')}`}
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-700 hover:text-white bg-emerald-50 hover:bg-emerald-600 px-3 py-1.5 rounded-lg transition-all"
+          >
+            <Phone className="w-3 h-3" />
+            {t('arrival.call')}
           </a>
 
           {/* Send pre-checkin form */}

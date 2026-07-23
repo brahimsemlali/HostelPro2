@@ -77,6 +77,17 @@ export function PaymentsClient({ propertyId, todayPayments, pendingBookings, cur
   const [dialogOpen, setDialogOpen] = useState(false)
   const [loading, setLoading] = useState(false)
 
+  // Land on the tab requested via ?tab= (e.g. the dashboard's "voir tout" link
+  // deep-links to ?tab=pending). Read from the URL client-side to avoid the
+  // useSearchParams Suspense requirement (same pattern as BillingClient).
+  const [initialTab] = useState(() => {
+    if (typeof window === 'undefined') return 'today'
+    const requested = new URLSearchParams(window.location.search).get('tab')
+    return ['today', 'pending', 'extras', 'reconciliation'].includes(requested ?? '')
+      ? (requested as string)
+      : 'today'
+  })
+
   // Extras (Suppléments tab)
   const [currentGuests, setCurrentGuests] = useState<CurrentGuestBooking[]>(initialCurrentGuests)
   const [extraCustomOpen, setExtraCustomOpen] = useState<string | null>(null) // booking id
@@ -388,7 +399,7 @@ export function PaymentsClient({ propertyId, todayPayments, pendingBookings, cur
         </Dialog>
       </div>
 
-      <Tabs defaultValue="today">
+      <Tabs defaultValue={initialTab}>
         <TabsList className="bg-white border border-[#E8ECF0] rounded-[14px] p-1 flex gap-1 h-auto flex-wrap">
           <TabsTrigger value="today" className="rounded-[10px] px-4 py-2 text-sm data-[state=active]:bg-[#0F6E56] data-[state=active]:text-white data-[state=inactive]:text-[#94A3B8] transition-colors">{t('payments.tabToday')} ({todayPayments.length})</TabsTrigger>
           <TabsTrigger value="pending" className="rounded-[10px] px-4 py-2 text-sm data-[state=active]:bg-[#0F6E56] data-[state=active]:text-white data-[state=inactive]:text-[#94A3B8] transition-colors">{t('payments.tabPending')} ({pendingBookings.length})</TabsTrigger>

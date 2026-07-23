@@ -323,6 +323,20 @@ export function BookingDetailClient({ booking, payments, extras, property, total
       msg = WHATSAPP_TEMPLATES.payment_reminder.fr(guest, dynamicBalance) + extrasNote
     }
 
+    // Log the message so it appears in the WhatsApp hub history — fire-and-forget.
+    createClient()
+      .from('whatsapp_messages')
+      .insert({
+        property_id: property.id,
+        guest_id: guest.id,
+        booking_id: booking.id,
+        template_key: templateKey,
+        phone,
+        message: msg,
+        status: 'sent',
+      })
+      .then(() => {}, () => {})
+
     window.open(buildWhatsAppLink(phone, msg), '_blank')
   }
 

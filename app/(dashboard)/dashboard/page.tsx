@@ -84,7 +84,7 @@ export default async function DashboardPage() {
 
     supabase
       .from('bookings')
-      .select('id, bed_id, status, check_out_date, total_price, guest:guest_id(first_name, last_name), bed:bed_id(name)')
+      .select('id, bed_id, status, check_out_date, total_price, guest:guest_id(first_name, last_name, phone, whatsapp), bed:bed_id(name)')
       .eq('property_id', property.id)
       .eq('check_out_date', today)
       .eq('status', 'checked_in'),
@@ -143,7 +143,7 @@ export default async function DashboardPage() {
     // Checked-in bookings with payments embedded — eliminates the sequential N+1 fetch
     supabase
       .from('bookings')
-      .select('id, total_price, check_out_date, guest:guest_id(first_name, last_name), extras:booking_extras(quantity, unit_price), booking_payments:payments(booking_id, amount, type, status)')
+      .select('id, guest_id, total_price, check_out_date, guest:guest_id(first_name, last_name, phone, whatsapp), extras:booking_extras(quantity, unit_price), booking_payments:payments(booking_id, amount, type, status)')
       .eq('property_id', property.id)
       .eq('status', 'checked_in'),
 
@@ -186,11 +186,12 @@ export default async function DashboardPage() {
   const pendingPayments = (allCheckedInRes.data ?? [])
     .map((b) => ({
       id: b.id,
+      guest_id: b.guest_id ?? null,
       total_price: b.total_price + (extrasTotalByBooking[b.id] ?? 0),
       total_paid: totalPaidByBooking[b.id] ?? 0,
       balance: (b.total_price + (extrasTotalByBooking[b.id] ?? 0)) - (totalPaidByBooking[b.id] ?? 0),
       check_out_date: b.check_out_date,
-      guest: b.guest as unknown as { first_name: string; last_name: string } | null,
+      guest: b.guest as unknown as { first_name: string; last_name: string; phone: string | null; whatsapp: string | null } | null,
     }))
     .filter((b) => b.balance > 0.01)
     .sort((a, b) => a.check_out_date.localeCompare(b.check_out_date))
