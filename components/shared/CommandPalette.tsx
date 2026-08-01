@@ -22,6 +22,7 @@ import {
   UserPlus, User, CalendarRange,
 } from 'lucide-react'
 import type { StaffRole } from '@/types'
+import { sanitizeSearchTerm } from '@/lib/utils'
 
 interface GuestHit {
   id: string
@@ -99,19 +100,20 @@ export function CommandPalette() {
         return
       }
       const supabase = createClient()
+      const s = sanitizeSearchTerm(q)
       try {
         const [guestRes, bookingRes] = await Promise.all([
           supabase
             .from('guests')
             .select('id, first_name, last_name, phone, nationality')
             .eq('property_id', propertyId)
-            .or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,phone.ilike.%${q}%,document_number.ilike.%${q}%`)
+            .or(`first_name.ilike.%${s}%,last_name.ilike.%${s}%,phone.ilike.%${s}%,document_number.ilike.%${s}%`)
             .limit(5),
           supabase
             .from('bookings')
             .select('id, status, check_in_date, check_out_date, guest:guest_id!inner(first_name, last_name)')
             .eq('property_id', propertyId)
-            .or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%`, { referencedTable: 'guest' })
+            .or(`first_name.ilike.%${s}%,last_name.ilike.%${s}%`, { referencedTable: 'guest' })
             .order('check_in_date', { ascending: false })
             .limit(5),
         ])

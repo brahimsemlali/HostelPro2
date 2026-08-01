@@ -5,6 +5,17 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/**
+ * Sanitise a user search term before interpolating it into a PostgREST `.or()`
+ * filter string. `.or()` parses commas, parentheses, dots, and `*` as filter
+ * syntax, so raw user input can inject extra clauses. We strip those
+ * metacharacters (and `%`/`\` used in LIKE patterns) and cap the length,
+ * leaving a plain substring safe to embed in an `ilike.%…%` expression.
+ */
+export function sanitizeSearchTerm(input: string): string {
+  return input.replace(/[(),.*:\\%]/g, ' ').trim().slice(0, 100)
+}
+
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('fr-MA', {
     style: 'currency',

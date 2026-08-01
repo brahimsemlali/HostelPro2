@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getRouteHandlerSession } from '@/lib/supabase/server'
 import { isSessionBlocked } from '@/lib/billing'
+import { rateLimit } from '@/lib/rate-limit'
 
 interface IcalEvent {
   uid: string
@@ -82,6 +83,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Abonnement inactif' }, { status: 402 })
     }
 
+    // Throttle: this route is an authenticated outbound-fetch primitive — cap it
+    // so it can't be abused as an SSRF-probe / amplification tool.
+    const rl = rateLimit({ key: `sync-ical:${session.propertyId}`, limit: 20, windowSeconds: 300 })
+    if (!rl.allowed) {
+      return NextResponse.json({ error: 'Trop de requêtes. Réessayez dans quelques minutes.' }, { status: 429 })
+    }
+
     const { icalUrl } = await req.json() as { icalUrl: string }
 
     if (!icalUrl || !icalUrl.startsWith('http')) {
@@ -105,11 +113,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Domaine non autorisé. Utilisez un lien iCal de Booking.com, Hostelworld ou Airbnb.' }, { status: 400 })
     }
 
+    // SSRF hardening: the allowlist above only validates the INITIAL host.
+    // With redirect:'follow' (the default), an open redirect on any allowed OTA
+    // host would let fetch pivot to an internal/metadata endpoint that is never
+    // re-checked. redirect:'manual' stops that — any 3xx from the allowed host is
+    // treated as a failure rather than followed to an unvalidated target.
     const response = await fetch(icalUrl, {
       headers: { 'User-Agent': 'SweetReservation/1.0' },
       signal: AbortSignal.timeout(10000),
+      redirect: 'manual',
     })
 
+    if (response.status >= 300 && response.status < 400) {
+      return NextResponse.json({ error: 'Redirection non autorisée sur le lien iCal.' }, { status: 400 })
+    }
     if (!response.ok) {
       return NextResponse.json({ error: `Impossible de récupérer le calendrier (${response.status})` }, { status: 400 })
     }

@@ -7,8 +7,17 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get('code')
   const rawNext = req.nextUrl.searchParams.get('next') ?? '/dashboard'
-  // Only allow relative paths to prevent open redirect attacks
-  const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/dashboard'
+  // Prevent open redirect: resolve `next` against our origin and only keep it
+  // if it stays same-origin. A string prefix check is insufficient — the URL
+  // parser normalises backslashes/control chars (e.g. `/\evil.com` → an external
+  // origin), so we compare parsed origins instead.
+  let next = '/dashboard'
+  try {
+    const dest = new URL(rawNext, req.url)
+    if (dest.origin === req.nextUrl.origin) next = dest.pathname + dest.search
+  } catch {
+    // malformed → keep the safe default
+  }
 
   if (code) {
     const cookieStore = await cookies()

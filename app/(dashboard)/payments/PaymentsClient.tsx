@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { formatCurrency, formatTime } from '@/lib/utils'
+import { formatCurrency, formatTime, sanitizeSearchTerm } from '@/lib/utils'
 import { PAYMENT_METHODS } from '@/lib/constants'
 import { buildWhatsAppLink, WHATSAPP_TEMPLATES } from '@/lib/whatsapp/templates'
 import { Plus, DollarSign, MessageSquare, Loader2, Banknote, CheckCircle2, ShoppingBag, Trash2, X } from 'lucide-react'
@@ -191,7 +191,8 @@ export function PaymentsClient({ propertyId, todayPayments, pendingBookings, cur
           .order('check_in_date', { ascending: false })
           .limit(20)
         if (q.length >= 2) {
-          query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%`, { referencedTable: 'guest' })
+          const s = sanitizeSearchTerm(q)
+          query = query.or(`first_name.ilike.%${s}%,last_name.ilike.%${s}%`, { referencedTable: 'guest' })
         }
         const { data } = await query
         setBookingResults((data as unknown as ModalBooking[]) ?? [])

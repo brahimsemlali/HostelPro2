@@ -6,14 +6,14 @@ import { rateLimit } from '@/lib/rate-limit'
 
 const RATE_LIMITED_MSG = 'Trop de tentatives. Réessayez dans quelques minutes.'
 
-// Same header precedence as getClientIp() in lib/rate-limit.ts: Vercel
-// sanitizes x-forwarded-for / x-real-ip; cf-connecting-ip is spoofable
-// and only a last resort.
+// Same header precedence as getClientIp() in lib/rate-limit.ts: prefer the
+// single, proxy-overwritten x-real-ip (a client can prepend to x-forwarded-for);
+// cf-connecting-ip is unsanitized and only a last resort.
 async function isRateLimited(route: string, limit: number, windowSeconds: number): Promise<boolean> {
   const h = await headers()
   const ip =
+    h.get('x-real-ip')?.trim() ||
     h.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    h.get('x-real-ip') ||
     h.get('cf-connecting-ip') ||
     'unknown'
   return !rateLimit({ key: `${route}:${ip}`, limit, windowSeconds }).allowed
@@ -82,7 +82,15 @@ export async function registerAction(formData: FormData) {
   const supabase = await getSupabase()
   const { data, error } = await supabase.auth.signUp({ email, password })
 
-  if (error) return { error: error.message }
+  if (error) {
+    // Anti-enumeration: never let the response reveal that an email is already
+    // registered. Return the same neutral "check your email" outcome a brand-new
+    // signup gets, so an attacker can't probe which emails have accounts.
+    if (/already|exist|registered/i.test(error.message)) {
+      return { needsConfirmation: true }
+    }
+    return { error: error.message }
+  }
 
   if (data.session) {
     return { success: true, redirect: '/onboarding' }

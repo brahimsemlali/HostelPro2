@@ -50,22 +50,43 @@ export async function GET(
   if (data.status === 'cancelled' || data.status === 'no_show') {
     return NextResponse.json({ error: 'Réservation annulée' }, { status: 410 })
   }
+  // Token expiry: it is a permanent bearer to guest PII in the URL. Once the stay
+  // is over it must stop serving anything — otherwise anyone who ever obtained the
+  // link (WhatsApp forward, link-preview bot, browser history) has an indefinite
+  // read handle on the guest's passport/DOB. Valid through the checkout day only.
+  const today = new Date().toISOString().slice(0, 10)
+  if (data.check_out_date < today) {
+    return NextResponse.json({ error: 'Ce lien de pré-enregistrement a expiré.' }, { status: 410 })
+  }
 
   // Supabase returns single-record joins as arrays — normalise server-side
   const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? null) : v)
   const rawBed = one(data.bed) as { name: string; room: { name: string } | { name: string }[] | null } | null
+  const property = one(data.property) as
+    | { name: string; wifi_password: string | null; check_in_time: string; check_out_time: string }
+    | null
+
+  // Minimise PII in the response to exactly what the current step needs:
+  //  - not completed → the form pre-fills from guest data, but never shows WiFi
+  //    (strip wifi_password until the guest has actually submitted)
+  //  - completed → the confirmation screen shows WiFi but no guest data at all
+  //    (stop re-serving the passport number to any future holder of the link)
+  const completed = data.pre_checkin_completed
+  const safeProperty = property
+    ? { ...property, wifi_password: completed ? property.wifi_password : null }
+    : null
 
   return NextResponse.json({
     booking: {
       id: data.id,
       guest_id: data.guest_id,
-      pre_checkin_completed: data.pre_checkin_completed,
+      pre_checkin_completed: completed,
       check_in_date: data.check_in_date,
       check_out_date: data.check_out_date,
-      property: one(data.property),
+      property: safeProperty,
       bed: rawBed ? { name: rawBed.name, room: one(rawBed.room) } : null,
     },
-    guest: one(data.guest),
+    guest: completed ? null : one(data.guest),
   })
 }
 
@@ -97,7 +118,7 @@ export async function POST(
   // Validate the token — fetch the booking
   const { data: booking, error: bookingError } = await supabase
     .from('bookings')
-    .select('id, guest_id, pre_checkin_completed, property_id, status')
+    .select('id, guest_id, pre_checkin_completed, property_id, status, check_out_date')
     .eq('pre_checkin_token', token)
     .single()
 
@@ -109,6 +130,10 @@ export async function POST(
   // pre-check-in submission (would rewrite guest PII + mark it complete).
   if (booking.status === 'cancelled' || booking.status === 'no_show') {
     return NextResponse.json({ error: 'Réservation annulée' }, { status: 410 })
+  }
+  // Mirror the GET expiry guard — no writes through an expired link.
+  if (booking.check_out_date < new Date().toISOString().slice(0, 10)) {
+    return NextResponse.json({ error: 'Ce lien de pré-enregistrement a expiré.' }, { status: 410 })
   }
 
   if (booking.pre_checkin_completed) {
