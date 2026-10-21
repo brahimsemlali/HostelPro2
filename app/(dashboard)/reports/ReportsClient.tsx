@@ -12,6 +12,7 @@ import { FlaskConical, Download, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { addDaysISO, dateOfInstant, diffDaysISO, formatISODate, rangeUTC, todayISO } from '@/lib/dates'
 import { toast } from 'sonner'
+import { netReceived } from '@/lib/money'
 import { useT } from '@/app/context/LanguageContext'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -240,7 +241,8 @@ export function ReportsClient({
 
   const { from, to, days } = getDateBounds(selectedRange)
 
-  const totalRevenue = payments.filter((p) => p.type !== 'refund').reduce((s, p) => s + p.amount, 0)
+  // Net of refunds, like the dashboard (lib/money)
+  const totalRevenue = netReceived(payments)
   const avgLOS = bookings.length
     ? bookings.reduce((s, b) => s + (b.nights ?? 0), 0) / bookings.length
     : 0

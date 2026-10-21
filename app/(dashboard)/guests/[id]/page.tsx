@@ -1,6 +1,7 @@
 import { redirect, notFound } from 'next/navigation'
 import { createClient, getUserSession } from '@/lib/supabase/server'
 import { GuestDetailClient } from '@/components/guests/GuestDetailClient'
+import { netReceived, signedAmount } from '@/lib/money'
 
 export default async function GuestDetailPage({
   params,
@@ -47,17 +48,16 @@ export default async function GuestDetailPage({
 
   if (!guest) notFound()
 
-  // Group payment amounts by booking_id (exclude refunds)
+  // Net received per booking — refunds subtract (they used to be dropped,
+  // overstating what a refunded guest had paid). See lib/money.
   const amountPaidByBooking: Record<string, number> = {}
   payments?.forEach((p) => {
-    if (p.booking_id && p.type !== 'refund') {
-      amountPaidByBooking[p.booking_id] = (amountPaidByBooking[p.booking_id] ?? 0) + p.amount
+    if (p.booking_id) {
+      amountPaidByBooking[p.booking_id] = (amountPaidByBooking[p.booking_id] ?? 0) + signedAmount(p)
     }
   })
 
-  const totalPaid = payments
-    ?.filter((p) => p.type !== 'refund')
-    .reduce((s, p) => s + p.amount, 0) ?? 0
+  const totalPaid = netReceived(payments)
 
   // Normalize Supabase join shape (bed can come back as object or array)
   type NormalizedBed = { name: string; room: { name: string } | null } | null

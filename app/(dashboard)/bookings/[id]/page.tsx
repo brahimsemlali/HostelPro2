@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { createClient, getUserSession } from '@/lib/supabase/server'
 import { BookingDetailClient } from './BookingDetailClient'
 import { PROPERTY_PUBLIC_COLUMNS } from '@/lib/constants'
+import { netReceived } from '@/lib/money'
 
 export default async function BookingDetailPage({
   params,
@@ -36,7 +37,8 @@ export default async function BookingDetailPage({
     supabase.from('beds').select('id, name, base_price, status, room:room_id(name)').eq('property_id', session.propertyId).order('name'),
   ])
 
-  const totalPaid = payments?.reduce((s, p) => p.type === 'refund' ? s - p.amount : s + p.amount, 0) ?? 0
+  // Completed payments only — a pending/failed payment is not money received.
+  const totalPaid = netReceived(payments)
   const extrasTotal = extras?.reduce((s, e) => s + (e.quantity * e.unit_price), 0) ?? 0
   const balance = (booking.total_price + extrasTotal) - totalPaid
 

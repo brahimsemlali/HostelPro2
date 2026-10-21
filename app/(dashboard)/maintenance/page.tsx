@@ -14,7 +14,8 @@ export default async function MaintenancePage() {
       .from('maintenance')
       .select('*, room:room_id(name), bed:bed_id(name)')
       .eq('property_id', session.propertyId)
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false })
+      .limit(500),
 
     supabase.from('rooms').select('id, name').eq('property_id', session.propertyId),
 
