@@ -57,16 +57,18 @@ export function rateLimit({ key, limit, windowSeconds }: RateLimitOptions): Rate
 
 /**
  * Get the real client IP from Next.js request headers.
- * Deployment is Vercel: x-forwarded-for / x-real-ip are set (and sanitized)
- * by Vercel's proxy, so they must take precedence over cf-connecting-ip,
- * which Vercel does NOT sanitize — a client can spoof it freely to bypass
- * per-IP rate limits. Only fall back to cf-connecting-ip last.
+ * Deployment is Vercel. Prefer `x-real-ip`: it is a SINGLE value overwritten by
+ * Vercel's proxy, so a client cannot influence it. `x-forwarded-for` is a list a
+ * client can prepend to (the leftmost token is attacker-controllable), so it is a
+ * secondary source; `cf-connecting-ip` is unsanitized by Vercel and only a last
+ * resort. This ordering stops an attacker rotating a spoofed header to defeat the
+ * per-IP limiter.
  */
 export function getClientIp(req: Request): string {
   const headers = req instanceof Request ? req.headers : new Headers()
   return (
+    headers.get('x-real-ip')?.trim() ||
     headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    headers.get('x-real-ip') ||
     headers.get('cf-connecting-ip') ||
     'unknown'
   )

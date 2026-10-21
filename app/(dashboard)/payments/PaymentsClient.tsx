@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { formatCurrency, formatTime } from '@/lib/utils'
+import { formatCurrency, formatTime, sanitizeSearchTerm } from '@/lib/utils'
 import { PAYMENT_METHODS } from '@/lib/constants'
 import { buildWhatsAppLink, WHATSAPP_TEMPLATES } from '@/lib/whatsapp/templates'
 import { Plus, DollarSign, MessageSquare, Loader2, Banknote, CheckCircle2, ShoppingBag, Trash2, X } from 'lucide-react'
@@ -77,6 +77,17 @@ export function PaymentsClient({ propertyId, todayPayments, pendingBookings, cur
   const [dialogOpen, setDialogOpen] = useState(false)
   const [loading, setLoading] = useState(false)
 
+  // Land on the tab requested via ?tab= (e.g. the dashboard's "voir tout" link
+  // deep-links to ?tab=pending). Read from the URL client-side to avoid the
+  // useSearchParams Suspense requirement (same pattern as BillingClient).
+  const [initialTab] = useState(() => {
+    if (typeof window === 'undefined') return 'today'
+    const requested = new URLSearchParams(window.location.search).get('tab')
+    return ['today', 'pending', 'extras', 'reconciliation'].includes(requested ?? '')
+      ? (requested as string)
+      : 'today'
+  })
+
   // Extras (Suppléments tab)
   const [currentGuests, setCurrentGuests] = useState<CurrentGuestBooking[]>(initialCurrentGuests)
   const [extraCustomOpen, setExtraCustomOpen] = useState<string | null>(null) // booking id
@@ -106,6 +117,12 @@ export function PaymentsClient({ propertyId, todayPayments, pendingBookings, cur
 
   async function handleAddCustomExtra(bookingId: string) {
     if (!customForm.name || !customForm.unit_price) return
+    const qty = customForm.quantity.trim() === '' ? 1 : parseFloat(customForm.quantity)
+    const unitPrice = parseFloat(customForm.unit_price)
+    if (!Number.isFinite(qty) || qty <= 0 || !Number.isFinite(unitPrice) || unitPrice < 0) {
+      toast.error(t('payments.invalidAmount'))
+      return
+    }
     setExtraAdding(bookingId)
     try {
       const supabase = createClient()
@@ -115,8 +132,8 @@ export function PaymentsClient({ propertyId, todayPayments, pendingBookings, cur
           booking_id: bookingId,
           property_id: propertyId,
           name: customForm.name,
-          quantity: parseFloat(customForm.quantity) || 1,
-          unit_price: parseFloat(customForm.unit_price),
+          quantity: qty,
+          unit_price: unitPrice,
         })
         .select()
         .single()
@@ -180,7 +197,8 @@ export function PaymentsClient({ propertyId, todayPayments, pendingBookings, cur
           .order('check_in_date', { ascending: false })
           .limit(20)
         if (q.length >= 2) {
-          query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%`, { referencedTable: 'guest' })
+          const s = sanitizeSearchTerm(q)
+          query = query.or(`first_name.ilike.%${s}%,last_name.ilike.%${s}%`, { referencedTable: 'guest' })
         }
         const { data } = await query
         setBookingResults((data as unknown as ModalBooking[]) ?? [])
@@ -198,20 +216,21 @@ export function PaymentsClient({ propertyId, todayPayments, pendingBookings, cur
     setSelectedBooking(null)
   }
 
-  const totalToday = todayPayments.reduce((s, p) => s + (p.type === 'refund' ? -p.amount : p.amount), 0)
-  const cashToday = todayPayments
-    .filter((p) => p.method === 'cash')
-    .reduce((s, p) => s + (p.type === 'refund' ? -p.amount : p.amount), 0)
-  const virementToday = todayPayments
-    .filter((p) => p.method === 'virement')
-    .reduce((s, p) => s + (p.type === 'refund' ? -p.amount : p.amount), 0)
-  const cmiToday = todayPayments
-    .filter((p) => p.method === 'cmi')
-    .reduce((s, p) => s + (p.type === 'refund' ? -p.amount : p.amount), 0)
+  // Totals and the cash reconciliation count completed payments only (the
+  // list still shows pending/failed ones). Refunds subtract.
+  const signed = (p: { type: string; amount: number }) => (p.type === 'refund' ? -p.amount : p.amount)
+  const completedToday = todayPayments.filter((p) => p.status === 'completed')
+  const sumBy = (method?: string) =>
+    completedToday.filter((p) => !method || p.method === method).reduce((s, p) => s + signed(p), 0)
+  const totalToday = sumBy()
+  const cashToday = sumBy('cash')
+  const virementToday = sumBy('virement')
+  const cmiToday = sumBy('cmi')
 
+  // Compare in centimes so float sums can't show a phantom "0,00 MAD" gap.
   const cashDiff =
     actualCash && Number.isFinite(parseFloat(actualCash))
-      ? parseFloat(actualCash) - cashToday
+      ? Math.round((parseFloat(actualCash) - cashToday) * 100) / 100
       : null
 
   async function handleAddPayment() {
@@ -388,7 +407,7 @@ export function PaymentsClient({ propertyId, todayPayments, pendingBookings, cur
         </Dialog>
       </div>
 
-      <Tabs defaultValue="today">
+      <Tabs defaultValue={initialTab}>
         <TabsList className="bg-white border border-[#E8ECF0] rounded-[14px] p-1 flex gap-1 h-auto flex-wrap">
           <TabsTrigger value="today" className="rounded-[10px] px-4 py-2 text-sm data-[state=active]:bg-[#0F6E56] data-[state=active]:text-white data-[state=inactive]:text-[#94A3B8] transition-colors">{t('payments.tabToday')} ({todayPayments.length})</TabsTrigger>
           <TabsTrigger value="pending" className="rounded-[10px] px-4 py-2 text-sm data-[state=active]:bg-[#0F6E56] data-[state=active]:text-white data-[state=inactive]:text-[#94A3B8] transition-colors">{t('payments.tabPending')} ({pendingBookings.length})</TabsTrigger>

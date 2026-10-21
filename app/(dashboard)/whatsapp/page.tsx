@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient, getUserSession } from '@/lib/supabase/server'
+import { todayISO } from '@/lib/dates'
 import { WhatsAppClient } from './WhatsAppClient'
 
 export default async function WhatsAppPage() {
@@ -8,7 +9,7 @@ export default async function WhatsAppPage() {
   if (session.role === 'housekeeping' || session.role === 'receptionist') redirect('/dashboard')
 
   const supabase = await createClient()
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayISO()
 
   const [propertyRes, messagesRes, activeBookingsRes] = await Promise.all([
     supabase.from('properties').select('id, name, phone, wifi_password, check_out_time').eq('id', session.propertyId).single(),

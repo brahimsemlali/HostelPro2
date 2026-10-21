@@ -83,10 +83,12 @@ LemonSqueezy is the payment processor. Stripe is NOT used.
   - Pro: `1633110`
 
 ### Environment variables (all set in Vercel + `.env.local`)
+> ⚠️ Never paste real secret VALUES in this file — it is committed to git. Use
+> placeholders only; the real values live in Vercel env + `.env.local` (gitignored).
 ```env
-LEMONSQUEEZY_API_KEY=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...
+LEMONSQUEEZY_API_KEY=<in Vercel env>
 LEMONSQUEEZY_STORE_ID=370406
-LEMONSQUEEZY_WEBHOOK_SECRET=sweetreservation2026secret
+LEMONSQUEEZY_WEBHOOK_SECRET=<in Vercel env — rotated 2026-07-30 after being found committed>
 LEMONSQUEEZY_STARTER_VARIANT_ID=1633090
 LEMONSQUEEZY_PRO_VARIANT_ID=1633110
 ```
@@ -539,7 +541,7 @@ WHATSAPP_PHONE_NUMBER_ID=
 WHATSAPP_BUSINESS_ACCOUNT_ID=
 LEMONSQUEEZY_API_KEY=
 LEMONSQUEEZY_STORE_ID=370406
-LEMONSQUEEZY_WEBHOOK_SECRET=sweetreservation2026secret
+LEMONSQUEEZY_WEBHOOK_SECRET=
 LEMONSQUEEZY_STARTER_VARIANT_ID=1633090
 LEMONSQUEEZY_PRO_VARIANT_ID=1633110
 

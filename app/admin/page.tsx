@@ -2,8 +2,8 @@ import { redirect } from 'next/navigation'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { BILLING_PLANS } from '@/lib/constants'
 import { AdminClient } from './AdminClient'
+import { isSuperAdmin } from '@/lib/superadmin'
 
-const SUPERADMIN_EMAILS = (process.env.SUPERADMIN_EMAILS ?? '').split(',').map((e) => e.trim()).filter(Boolean)
 
 // Derived from BILLING_PLANS so the superadmin MRR always matches real pricing
 const PLAN_PRICES: Record<string, { name: string; price: number }> = Object.fromEntries(
@@ -16,7 +16,7 @@ export default async function AdminPage() {
   // server-side (getUser makes a network check) before any data is fetched.
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user || !SUPERADMIN_EMAILS.includes(user.email ?? '')) {
+  if (!user || !isSuperAdmin(user)) {
     redirect('/dashboard')
   }
 

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient, getUserSession } from '@/lib/supabase/server'
 import { IntegrationsClient } from './IntegrationsClient'
+import { withoutSecrets } from '@/lib/constants'
 
 export default async function IntegrationsPage() {
   const session = await getUserSession()
@@ -16,7 +17,8 @@ export default async function IntegrationsPage() {
     supabase.from('bookings').select('external_booking_id').eq('property_id', session.propertyId).eq('source', 'booking_com').not('external_booking_id', 'is', null),
   ])
 
-  const { data: property, error: propError } = propertyRes
+  const property = propertyRes.data ? withoutSecrets(propertyRes.data) : null
+  const propError = propertyRes.error
   if (!property) {
     if (propError?.code === 'PGRST116') redirect('/onboarding')
     else redirect('/login?error=service_unavailable')

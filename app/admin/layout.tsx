@@ -3,14 +3,13 @@ import { createClient } from '@/lib/supabase/server'
 import { Toaster } from '@/components/ui/sonner'
 import { Shield, LayoutDashboard } from 'lucide-react'
 import Link from 'next/link'
+import { isSuperAdmin } from '@/lib/superadmin'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const superadminEmails = (process.env.SUPERADMIN_EMAILS ?? '').split(',').filter(Boolean)
-
-  if (!user || !superadminEmails.includes(user.email ?? '')) {
+  if (!user || !isSuperAdmin(user)) {
     redirect('/login')
   }
 

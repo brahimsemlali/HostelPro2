@@ -37,17 +37,26 @@ import {
   Loader2,
   TrendingUp,
   AlertCircle,
+  MessageCircle,
+  Phone,
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { BOOKING_SOURCES } from '@/lib/constants'
+import { BOOKING_SOURCES, PAYMENT_METHODS } from '@/lib/constants'
 import type { Property } from '@/types'
 import { AppLogo } from '@/components/shared/AppLogo'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { WHATSAPP_TEMPLATES, buildWhatsAppLink } from '@/lib/whatsapp/templates'
+import type { Guest } from '@/types'
 
 import { useSession, useCanDo } from '@/app/context/SessionContext'
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
 import { useT } from '@/app/context/LanguageContext'
 import { logActivity } from '@/lib/activity'
+import { addDaysISO, dateOfInstant, dayRangeUTC, formatISODate, todayISO } from '@/lib/dates'
+import { bedHasOtherOccupant } from '@/lib/bed-status'
 
 type DashboardProperty = Pick<Property, 'id' | 'name' | 'city' | 'check_in_time' | 'check_out_time' | 'currency' | 'review_url'>
 
@@ -95,26 +104,12 @@ interface DepartureBooking {
 
 interface PendingPaymentBooking {
   id: string
+  guest_id: string | null
   total_price: number
   total_paid: number
   balance: number
   check_out_date: string
-  guest: { first_name: string; last_name: string } | null
-}
-
-interface RecentBookingItem {
-  id: string
-  status: string
-  created_at: string
-  guest: unknown
-}
-
-interface RecentPaymentItem {
-  id: string
-  amount: number
-  method: string
-  created_at: string
-  guest: unknown
+  guest: { first_name: string; last_name: string; phone: string | null; whatsapp: string | null } | null
 }
 
 export interface ActivityEntry {
@@ -148,8 +143,6 @@ export interface DashboardInitialData {
   arrivalsTomorrow: ArrivalBooking[]
   arrivalsWeek: ArrivalBooking[]
   departuresToday: DepartureBooking[]
-  recentBookings: RecentBookingItem[]
-  recentPayments: RecentPaymentItem[]
   chartData: ChartDayData[]
   dirtyBedsWithArrivalsCount: number
   forecastDays: ForecastDay[]
@@ -264,12 +257,6 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft, l
   const [departuresToday, setDeparturesToday] = useState<DepartureBooking[]>(
     initialData.departuresToday,
   )
-  const [recentBookings, setRecentBookings] = useState<RecentBookingItem[]>(
-    initialData.recentBookings,
-  )
-  const [recentPayments, setRecentPayments] = useState<RecentPaymentItem[]>(
-    initialData.recentPayments,
-  )
   const [chartData, setChartData] = useState<ChartDayData[]>(initialData.chartData)
   const [forecastDays, setForecastDays] = useState<ForecastDay[]>(initialData.forecastDays)
   const [recentActivity, setRecentActivity] = useState<ActivityEntry[]>(initialData.recentActivity)
@@ -281,6 +268,12 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft, l
 
   // ── Add arrival modal state ──
   const [addArrivalOpen, setAddArrivalOpen] = useState(false)
+
+  // ── Record-payment modal state (unpaid-balance quick collect) ──
+  const [payingBooking, setPayingBooking] = useState<PendingPaymentBooking | null>(null)
+  const [payAmount, setPayAmount] = useState('')
+  const [payMethod, setPayMethod] = useState('cash')
+  const [paySaving, setPaySaving] = useState(false)
 
   // ── Seed store with initial dirty count ──
   useEffect(() => {
@@ -405,13 +398,16 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft, l
 
       try {
         const now = new Date().toISOString()
+        // Same-day turnover: if the next guest is already checked in on this
+        // bed, leave it occupied instead of marking it dirty.
+        const keepBed = booking.bed_id ? await bedHasOtherOccupant(supabase, booking.bed_id, booking.id) : true
         const [bkErr, bedErr] = await Promise.all([
           supabase
             .from('bookings')
             .update({ status: 'checked_out', check_out_time: now })
             .eq('id', booking.id)
             .then(({ error }) => error),
-          booking.bed_id
+          booking.bed_id && !keepBed
             ? supabase
                 .from('beds')
                 .update({ status: 'dirty' })
@@ -450,11 +446,92 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft, l
     [checkingOut, supabase],
   )
 
+  // ── Record-payment modal ──
+
+  function openPaymentModal(p: PendingPaymentBooking) {
+    setPayingBooking(p)
+    setPayAmount(p.balance > 0 ? String(Math.round(p.balance * 100) / 100) : '')
+    setPayMethod('cash')
+  }
+
+  function sendPaymentReminder(p: PendingPaymentBooking) {
+    const phone = p.guest?.whatsapp ?? p.guest?.phone
+    if (!p.guest || !phone) {
+      toast.error('Aucun numéro WhatsApp pour ce client')
+      return
+    }
+    const msg = WHATSAPP_TEMPLATES.payment_reminder.fr(p.guest as unknown as Guest, Math.round(p.balance))
+    // Log the reminder so the owner has a record of who was chased and when —
+    // fire-and-forget, never block opening WhatsApp.
+    supabase
+      .from('whatsapp_messages')
+      .insert({
+        property_id: property.id,
+        guest_id: p.guest_id,
+        booking_id: p.id,
+        template_key: 'payment_reminder',
+        phone,
+        message: msg,
+        status: 'sent',
+      })
+      .then(() => {}, () => {})
+    window.open(buildWhatsAppLink(phone, msg), '_blank')
+  }
+
+  async function handleRecordPayment() {
+    if (!payingBooking) return
+    const amountValue = parseFloat(payAmount)
+    if (!Number.isFinite(amountValue) || amountValue <= 0) {
+      toast.error('Montant invalide')
+      return
+    }
+    setPaySaving(true)
+    try {
+      const { error } = await supabase.from('payments').insert({
+        property_id: property.id,
+        booking_id: payingBooking.id,
+        // Link to the guest so the payment counts toward guests.total_spent (migration 025).
+        guest_id: payingBooking.guest_id,
+        amount: amountValue,
+        method: payMethod,
+        type: 'payment',
+        status: 'completed',
+        payment_date: new Date().toISOString(),
+      })
+      if (error) throw error
+      const guestName = payingBooking.guest
+        ? `${payingBooking.guest.first_name} ${payingBooking.guest.last_name}`
+        : null
+      logActivity({
+        propertyId: property.id,
+        userId: session?.userId ?? null,
+        staffName: session?.staffName ?? null,
+        actionType: 'payment',
+        entityType: 'payment',
+        entityId: payingBooking.id,
+        description: `Paiement ${amountValue} MAD (${PAYMENT_METHODS[payMethod] ?? payMethod})${guestName ? ` — ${guestName}` : ''}`,
+        meta: { amount: amountValue, method: payMethod, guest_name: guestName },
+      })
+      toast.success('Paiement enregistré')
+      setPayingBooking(null)
+      // Immediate refresh — don't wait on the realtime debounce so the row
+      // clears and any same-day checkout guard unblocks right away.
+      refreshPendingPayments()
+      refreshDepartures()
+      refreshRevenue()
+      refreshChart()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('common.error'))
+    } finally {
+      setPaySaving(false)
+    }
+  }
+
   // ── Re-fetch helpers ──
 
   const refreshOccupancy = useCallback(async () => {
     // Local date — matches the server page (avoids UTC off-by-one at midnight in UTC+1)
-    const today = new Date().toLocaleDateString('en-CA')
+    const today = todayISO()
     const [bedsRes, arrivalsRes] = await Promise.all([
       supabase.from('beds').select('id, status').eq('property_id', property.id),
       supabase
@@ -478,30 +555,24 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft, l
   }, [property.id, setDirtyBedsCount, supabase])
 
   const refreshRevenue = useCallback(async () => {
-    const today = new Date().toLocaleDateString('en-CA')
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    const tomorrowStr = tomorrow.toLocaleDateString('en-CA')
+    const today = todayISO()
+    const tomorrowStr = addDaysISO(today, 1)
     const { data } = await supabase
       .from('payments')
       .select('amount, method, type')
       .eq('property_id', property.id)
       .eq('status', 'completed')
-      .gte('payment_date', `${today}T00:00:00`)
-      .lt('payment_date', `${tomorrowStr}T00:00:00`)
+      .gte('payment_date', dayRangeUTC(today).start)
+      .lt('payment_date', dayRangeUTC(today).end)
     if (data) setTodayPayments(data)
   }, [property.id, supabase])
 
   const arrivalSelect = 'id, bed_id, status, source, check_in_date, check_out_date, pre_checkin_completed, pre_checkin_token, arrival_notes, expected_arrival_time, guest:guest_id(first_name, last_name, nationality, phone, whatsapp), bed:bed_id(name, room:room_id(name))'
 
   const refreshArrivals = useCallback(async () => {
-    const today = new Date().toLocaleDateString('en-CA')
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    const tomorrowStr = tomorrow.toLocaleDateString('en-CA')
-    const weekEnd = new Date()
-    weekEnd.setDate(weekEnd.getDate() + 7)
-    const weekEndStr = weekEnd.toLocaleDateString('en-CA')
+    const today = todayISO()
+    const tomorrowStr = addDaysISO(today, 1)
+    const weekEndStr = addDaysISO(today, 7)
 
     const [todayRes, tomorrowRes, weekRes] = await Promise.all([
       supabase
@@ -534,11 +605,11 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft, l
   }, [property.id, supabase])
 
   const refreshDepartures = useCallback(async () => {
-    const today = new Date().toLocaleDateString('en-CA')
+    const today = todayISO()
     const { data } = await supabase
       .from('bookings')
       .select(
-        'id, bed_id, status, check_out_date, total_price, guest:guest_id(first_name, last_name), bed:bed_id(name), extras:booking_extras(quantity, unit_price), booking_payments:payments(amount, type, status)',
+        'id, bed_id, status, check_out_date, total_price, guest:guest_id(first_name, last_name, phone, whatsapp), bed:bed_id(name), extras:booking_extras(quantity, unit_price), booking_payments:payments(amount, type, status)',
       )
       .eq('property_id', property.id)
       .eq('check_out_date', today)
@@ -558,6 +629,38 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft, l
     }
   }, [property.id, supabase])
 
+  const refreshPendingPayments = useCallback(async () => {
+    const { data } = await supabase
+      .from('bookings')
+      .select(
+        'id, guest_id, total_price, check_out_date, guest:guest_id(first_name, last_name, phone, whatsapp), extras:booking_extras(quantity, unit_price), booking_payments:payments(amount, type, status)',
+      )
+      .eq('property_id', property.id)
+      .eq('status', 'checked_in')
+    if (!data) return
+    const rebuilt = data
+      .map((b) => {
+        const paid = ((b.booking_payments as { amount: number; type: string; status: string }[] | null) ?? [])
+          .filter((p) => p.status === 'completed')
+          .reduce((s, p) => (p.type === 'refund' ? s - p.amount : s + p.amount), 0)
+        const extras = ((b.extras as { quantity: number; unit_price: number }[] | null) ?? [])
+          .reduce((s, e) => s + e.quantity * e.unit_price, 0)
+        const total = ((b.total_price as number) ?? 0) + extras
+        return {
+          id: b.id as string,
+          guest_id: (b.guest_id as string | null) ?? null,
+          total_price: total,
+          total_paid: paid,
+          balance: total - paid,
+          check_out_date: b.check_out_date as string,
+          guest: b.guest as unknown as { first_name: string; last_name: string; phone: string | null; whatsapp: string | null } | null,
+        }
+      })
+      .filter((b) => b.balance > 0.01)
+      .sort((a, b) => a.check_out_date.localeCompare(b.check_out_date))
+    setPendingPayments(rebuilt)
+  }, [property.id, supabase])
+
   const refreshActivity = useCallback(async () => {
     const { data } = await supabase
       .from('activity_log')
@@ -569,24 +672,20 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft, l
   }, [property.id, supabase])
 
   const refreshChart = useCallback(async () => {
-    const sevenDaysAgo = new Date()
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6)
-    sevenDaysAgo.setHours(0, 0, 0, 0)
+    const sevenDaysAgo = addDaysISO(todayISO(), -6)
     const { data } = await supabase
       .from('payments')
       .select('amount, method, type, payment_date')
       .eq('property_id', property.id)
       .eq('status', 'completed')
-      .gte('payment_date', sevenDaysAgo.toISOString())
+      .gte('payment_date', dayRangeUTC(sevenDaysAgo).start)
     if (data) {
       const signed = (p: { amount: number; type: string }) => (p.type === 'refund' ? -p.amount : p.amount)
       const built = Array.from({ length: 7 }, (_, i) => {
-        const d = new Date()
-        d.setDate(d.getDate() - (6 - i))
-        const dayStr = d.toLocaleDateString('en-CA')
-        const dayPayments = data.filter((p) => p.payment_date.startsWith(dayStr))
+        const dayStr = addDaysISO(sevenDaysAgo, i)
+        const dayPayments = data.filter((p) => dateOfInstant(p.payment_date) === dayStr)
         return {
-          day: d.toLocaleDateString('fr-FR', { weekday: 'short' }),
+          day: formatISODate(dayStr, { weekday: 'short' }),
           revenue: dayPayments.reduce((s, p) => s + signed(p), 0),
           cash: dayPayments.filter((p) => p.method === 'cash').reduce((s, p) => s + signed(p), 0),
           virement: dayPayments
@@ -600,28 +699,25 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft, l
   }, [property.id, supabase])
 
   const refreshForecast = useCallback(async () => {
-    const today = new Date().toLocaleDateString('en-CA')
-    const sevenDaysLater = new Date()
-    sevenDaysLater.setDate(sevenDaysLater.getDate() + 6)
+    const today = todayISO()
+    const sevenDaysLater = addDaysISO(today, 6)
     const { data } = await supabase
       .from('bookings')
       .select('check_in_date, check_out_date')
       .eq('property_id', property.id)
       .in('status', ['confirmed', 'checked_in'])
-      .lte('check_in_date', sevenDaysLater.toLocaleDateString('en-CA'))
+      .lte('check_in_date', sevenDaysLater)
       .gt('check_out_date', today)
     if (data) {
       const total = bedsLengthRef.current
       const days = Array.from({ length: 7 }, (_, i) => {
-        const d = new Date()
-        d.setDate(d.getDate() + i)
-        const dayStr = d.toLocaleDateString('en-CA')
+        const dayStr = addDaysISO(today, i)
         const occupied = data.filter(
           (b) => b.check_in_date <= dayStr && b.check_out_date > dayStr,
         ).length
         return {
           date: dayStr,
-          label: i === 0 ? t('dashboard.todayShort') : d.toLocaleDateString('fr-FR', { weekday: 'short' }),
+          label: i === 0 ? t('dashboard.todayShort') : formatISODate(dayStr, { weekday: 'short' }),
           occupied,
           total,
         }
@@ -643,7 +739,11 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft, l
   const refreshPaymentData = useCallback(() => {
     refreshRevenue()
     refreshChart()
-  }, [refreshRevenue, refreshChart])
+    refreshPendingPayments()
+    // A payment can clear a same-day checkout's unpaid-balance guard; the
+    // payments realtime event doesn't otherwise touch the departures list.
+    refreshDepartures()
+  }, [refreshRevenue, refreshChart, refreshPendingPayments, refreshDepartures])
   const debouncedBookingRefresh = useDebouncedCallback(refreshBookingData)
   const debouncedPaymentRefresh = useDebouncedCallback(refreshPaymentData)
   const debouncedActivityRefresh = useDebouncedCallback(refreshActivity)
@@ -886,19 +986,54 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft, l
                 </p>
               </div>
             </div>
-            <div className="space-y-1.5 pl-16">
-              {pendingPayments.slice(0, 5).map((p) => (
-                <Link key={p.id} href={`/bookings/${p.id}`} className="flex items-center justify-between group">
-                  <span className="text-sm font-semibold text-orange-800 group-hover:underline">
-                    {p.guest?.first_name} {p.guest?.last_name}
-                  </span>
-                  <span className="text-sm font-black text-orange-700">
-                    {formatCurrency(p.balance)}
-                    {' '}
-                    <span className="text-xs font-medium text-orange-500">→ checkout {new Date(p.check_out_date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}</span>
-                  </span>
+            <div className="space-y-1 pl-16">
+              {pendingPayments.slice(0, 5).map((p) => {
+                const hasPhone = Boolean(p.guest?.whatsapp ?? p.guest?.phone)
+                return (
+                  <div
+                    key={p.id}
+                    className="flex items-center gap-1.5 rounded-xl px-2 py-1 -mx-2 transition-colors hover:bg-orange-100/60"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => openPaymentModal(p)}
+                      className="flex flex-1 min-w-0 items-center justify-between gap-3 text-left focus:outline-none"
+                    >
+                      <span className="text-sm font-semibold text-orange-800 truncate">
+                        {p.guest?.first_name} {p.guest?.last_name}
+                      </span>
+                      <span className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-sm font-black text-orange-700">
+                          {formatCurrency(p.balance)}
+                          {' '}
+                          <span className="text-xs font-medium text-orange-500">→ checkout {new Date(p.check_out_date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}</span>
+                        </span>
+                        <span className="text-[11px] font-bold uppercase tracking-wide text-white bg-orange-600 rounded-full px-2 py-0.5">Encaisser</span>
+                      </span>
+                    </button>
+                    {hasPhone && (
+                      <button
+                        type="button"
+                        onClick={() => sendPaymentReminder(p)}
+                        title="Relancer sur WhatsApp"
+                        aria-label={`Relancer ${p.guest?.first_name ?? ''} sur WhatsApp`}
+                        className="flex-shrink-0 grid place-items-center w-7 h-7 rounded-full bg-white text-[#25D366] border border-orange-200 hover:bg-[#25D366] hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+              {pendingPayments.length > 5 && (
+                <Link
+                  href="/payments?tab=pending"
+                  className="flex items-center justify-center gap-1 pt-1 text-xs font-bold text-orange-700 hover:text-orange-900 hover:underline"
+                >
+                  + {pendingPayments.length - 5} {pendingPayments.length - 5 > 1 ? 'autres clients' : 'autre client'} · voir tout
+                  <ArrowRight className="w-3 h-3" />
                 </Link>
-              ))}
+              )}
             </div>
           </div>
         )}
@@ -989,19 +1124,47 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft, l
                                )}
                             </div>
                          </div>
-                         <Button
-                           variant="outline"
-                           size="sm"
-                           disabled={isLoading}
-                           onClick={() => handleQuickCheckOut(booking)}
-                           className={cn("border-2 rounded-xl h-9 font-black text-[10px] uppercase tracking-wider transition-all",
-                             (booking.balance_due ?? 0) > 0.01
-                               ? 'border-orange-200 text-orange-600 hover:bg-orange-600 hover:text-white'
-                               : 'border-indigo-100 text-indigo-600 hover:bg-indigo-600 hover:text-white'
-                           )}
-                         >
-                           {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (booking.balance_due ?? 0) > 0.01 ? '💰 Impayé' : t('dashboard.checkoutNow')}
-                         </Button>
+                         <div className="flex items-center gap-1.5 flex-shrink-0">
+                           {(() => {
+                             const num = (guest?.whatsapp ?? guest?.phone)?.trim()
+                             if (!num) return null
+                             return (
+                               <>
+                                 <a
+                                   href={buildWhatsAppLink(num, '')}
+                                   target="_blank"
+                                   rel="noreferrer"
+                                   title="WhatsApp"
+                                   aria-label={`WhatsApp ${guest?.first_name ?? ''}`}
+                                   className="grid place-items-center w-8 h-8 rounded-full bg-white text-[#25D366] border border-[#E8ECF0] hover:bg-[#25D366] hover:text-white transition-colors"
+                                 >
+                                   <MessageCircle className="w-4 h-4" />
+                                 </a>
+                                 <a
+                                   href={`tel:${num.replace(/[^\d+]/g, '')}`}
+                                   title={t('arrival.call')}
+                                   aria-label={`${t('arrival.call')} ${guest?.first_name ?? ''}`}
+                                   className="grid place-items-center w-8 h-8 rounded-full bg-white text-emerald-700 border border-[#E8ECF0] hover:bg-emerald-600 hover:text-white transition-colors"
+                                 >
+                                   <Phone className="w-4 h-4" />
+                                 </a>
+                               </>
+                             )
+                           })()}
+                           <Button
+                             variant="outline"
+                             size="sm"
+                             disabled={isLoading}
+                             onClick={() => handleQuickCheckOut(booking)}
+                             className={cn("border-2 rounded-xl h-9 font-black text-[10px] uppercase tracking-wider transition-all",
+                               (booking.balance_due ?? 0) > 0.01
+                                 ? 'border-orange-200 text-orange-600 hover:bg-orange-600 hover:text-white'
+                                 : 'border-indigo-100 text-indigo-600 hover:bg-indigo-600 hover:text-white'
+                             )}
+                           >
+                             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (booking.balance_due ?? 0) > 0.01 ? '💰 Impayé' : t('dashboard.checkoutNow')}
+                           </Button>
+                         </div>
                       </div>
                     )
                   })
@@ -1069,6 +1232,109 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft, l
           refreshActivity()
         }}
       />
+
+      {/* Record-payment modal — collect an unpaid balance in one tap */}
+      <Dialog open={payingBooking !== null} onOpenChange={(o) => { if (!o) setPayingBooking(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Encaisser un paiement</DialogTitle>
+          </DialogHeader>
+          {payingBooking && (
+            <div className="space-y-4">
+              <div className="rounded-2xl bg-orange-50 border border-orange-200 p-4">
+                <p className="text-sm font-black text-orange-900">
+                  {payingBooking.guest?.first_name} {payingBooking.guest?.last_name}
+                </p>
+                <div className="mt-2 flex items-center justify-between text-xs font-medium text-orange-700">
+                  <span>Total : {formatCurrency(payingBooking.total_price)}</span>
+                  <span>Payé : {formatCurrency(payingBooking.total_paid)}</span>
+                  <span className="font-black">Reste : {formatCurrency(payingBooking.balance)}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Montant à encaisser (MAD) *</Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+                  value={payAmount}
+                  onChange={(e) => setPayAmount(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !paySaving) {
+                      e.preventDefault()
+                      handleRecordPayment()
+                    }
+                  }}
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setPayAmount(String(Math.round(payingBooking.balance * 100) / 100))}
+                  className="text-xs font-semibold text-[#0F6E56] hover:underline"
+                >
+                  Régler le solde entier ({formatCurrency(payingBooking.balance)})
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Méthode de paiement</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['cash', 'virement', 'cmi', 'wave', 'other'] as const).map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setPayMethod(k)}
+                      className={cn(
+                        'rounded-xl border px-3 py-2 text-sm font-semibold transition-colors',
+                        payMethod === k
+                          ? 'border-[#0F6E56] bg-[#0F6E56] text-white'
+                          : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300',
+                      )}
+                    >
+                      {PAYMENT_METHODS[k]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {(() => {
+                const n = parseFloat(payAmount)
+                if (!Number.isFinite(n) || n <= 0) return null
+                const remaining = payingBooking.balance - n
+                if (payMethod === 'cash' && remaining < -0.01) {
+                  return (
+                    <p className="text-sm font-bold text-blue-700 bg-blue-50 rounded-xl px-3 py-2 text-center">
+                      💵 Rendu à donner : {formatCurrency(-remaining)}
+                    </p>
+                  )
+                }
+                if (remaining > 0.01) {
+                  return (
+                    <p className="text-sm font-semibold text-orange-700 bg-orange-50 rounded-xl px-3 py-2 text-center">
+                      Restera à payer : {formatCurrency(remaining)}
+                    </p>
+                  )
+                }
+                return (
+                  <p className="text-sm font-bold text-green-700 bg-green-50 rounded-xl px-3 py-2 text-center">
+                    ✓ Solde entièrement réglé
+                  </p>
+                )
+              })()}
+
+              <Button
+                className="w-full bg-[#0F6E56] hover:bg-[#0c5a46]"
+                onClick={handleRecordPayment}
+                disabled={paySaving}
+              >
+                {paySaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Enregistrer le paiement'}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

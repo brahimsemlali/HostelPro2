@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import type { UserSession } from '@/types'
 import { useT } from '@/app/context/LanguageContext'
+import { addDaysISO, todayISO } from '@/lib/dates'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -93,9 +94,7 @@ export function AddArrivalModal({
   // ── Reset on open ──────────────────────────────────────────────────────
   useEffect(() => {
     if (open) {
-      const today = new Date().toLocaleDateString('en-CA')
-      const tomorrow = new Date()
-      tomorrow.setDate(tomorrow.getDate() + 1)
+      const today = todayISO()
       setFirstName('')
       setLastName('')
       setPhone('')
@@ -104,7 +103,7 @@ export function AddArrivalModal({
       setSelectedRoomId('')
       setSelectedBedId('')
       setCheckInDate(today)
-      setCheckOutDate(tomorrow.toLocaleDateString('en-CA'))
+      setCheckOutDate(addDaysISO(today, 1))
       setTotalPrice('')
       setArrivalNotes('')
       setExpectedTime('')

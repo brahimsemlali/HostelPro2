@@ -3,8 +3,8 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/server'
 import { BILLING_PLANS } from '@/lib/constants'
+import { isSuperAdmin } from '@/lib/superadmin'
 
-const SUPERADMIN_EMAILS = (process.env.SUPERADMIN_EMAILS ?? '').split(',').filter(Boolean)
 
 // Manual-wire subscriptions must carry a variant so they count toward MRR.
 // Default to the first plan (Starter) when the caller doesn't specify one.
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   )
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user || !SUPERADMIN_EMAILS.includes(user.email ?? '')) {
+  if (!user || !isSuperAdmin(user)) {
     return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
   }
 

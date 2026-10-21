@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient, getUserSession } from '@/lib/supabase/server'
+import { addDaysISO, dayRangeUTC, todayISO } from '@/lib/dates'
 import { ReportsClient } from './ReportsClient'
 
 export default async function ReportsPage() {
@@ -10,9 +11,7 @@ export default async function ReportsPage() {
 
   const supabase = await createClient()
 
-  const thirtyDaysAgo = new Date()
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29)
-  const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0]
+  const thirtyDaysAgoStr = addDaysISO(todayISO(), -29)
 
   const [propertyRes, bedsRes, paymentsRes, bookingsRes] = await Promise.all([
     supabase.from('properties').select('id, name, currency').eq('id', session.propertyId).single(),
@@ -24,7 +23,7 @@ export default async function ReportsPage() {
       .select('amount, method, payment_date, type')
       .eq('property_id', session.propertyId)
       .eq('status', 'completed')
-      .gte('payment_date', `${thirtyDaysAgoStr}T00:00:00`),
+      .gte('payment_date', dayRangeUTC(thirtyDaysAgoStr).start),
 
     supabase
       .from('bookings')

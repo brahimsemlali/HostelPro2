@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient, getUserSession } from '@/lib/supabase/server'
+import { addDaysISO, businessDateISO, dayRangeUTC } from '@/lib/dates'
 import { NightAuditClient } from './NightAuditClient'
 
 export default async function NightAuditPage() {
@@ -17,56 +18,67 @@ export default async function NightAuditPage() {
     else redirect('/login?error=service_unavailable')
   }
 
-  // Use local date to avoid UTC off-by-one at midnight in UTC+1 (Morocco)
-  const today = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD
+  // The audit closes a *business* day in Morocco: an audit finished at 01:30
+  // still belongs to the previous day (the server runs in UTC — lib/dates).
+  const today = businessDateISO()
+  const dayRange = dayRangeUTC(today)
 
-  const { data: beds } = await supabase
-    .from('beds').select('id, status').eq('property_id', property.id)
+  // Every column the fiche-de-police PDF prints (lib/pdf/fiche-police.ts)
+  const ficheGuest =
+    'guest:guest_id(first_name, last_name, nationality, document_type, document_number, gender, date_of_birth, country_of_residence, profession, address_in_morocco, next_destination)'
+  const bookingCols = 'id, bed_id, guest_id, status, check_in_date, check_out_date, source, total_price'
 
-  const { data: todayCheckIns } = await supabase
-    .from('bookings')
-    .select('*, guest:guest_id(first_name, last_name, nationality, document_number, gender, date_of_birth, country_of_residence)')
-    .eq('property_id', property.id)
-    .eq('check_in_date', today)
-    .in('status', ['checked_in', 'confirmed'])
+  const [bedsRes, checkInsRes, checkOutsRes, paymentsRes, tomorrowRes, auditRes] = await Promise.all([
+    supabase.from('beds').select('id, status').eq('property_id', property.id),
+    supabase
+      .from('bookings')
+      .select(`${bookingCols}, ${ficheGuest}`)
+      .eq('property_id', property.id)
+      .eq('check_in_date', today)
+      .in('status', ['checked_in', 'confirmed']),
+    supabase
+      .from('bookings')
+      .select('id')
+      .eq('property_id', property.id)
+      .eq('check_out_date', today)
+      .in('status', ['checked_out', 'checked_in']),
+    supabase
+      .from('payments')
+      .select('amount, method, type')
+      .eq('property_id', property.id)
+      .eq('status', 'completed')
+      .gte('payment_date', dayRange.start)
+      .lt('payment_date', dayRange.end),
+    supabase
+      .from('bookings')
+      .select(`${bookingCols}, guest:guest_id(first_name, last_name), bed:bed_id(name, room:room_id(name))`)
+      .eq('property_id', property.id)
+      .eq('check_in_date', addDaysISO(today, 1))
+      .in('status', ['confirmed', 'checked_in']),
+    // limit(1): without the unique key from migration 023 two colleagues can
+    // both have inserted; maybeSingle() would then error and offer a re-run.
+    supabase
+      .from('night_audits')
+      .select('id, created_at')
+      .eq('property_id', property.id)
+      .eq('audit_date', today)
+      .limit(1),
+  ])
 
-  const { data: todayCheckOuts } = await supabase
-    .from('bookings')
-    .select('*, guest:guest_id(first_name, last_name, nationality, document_number, gender, date_of_birth, country_of_residence)')
-    .eq('property_id', property.id)
-    .eq('check_out_date', today)
-    .in('status', ['checked_out', 'checked_in'])
+  const beds = bedsRes.data
+  const todayCheckIns = checkInsRes.data
+  const todayCheckOuts = checkOutsRes.data
+  const todayPayments = paymentsRes.data
+  const tomorrowArrivals = tomorrowRes.data
+  const existingAudit = auditRes.data?.[0] ?? null
 
-  const { data: todayPayments } = await supabase
-    .from('payments')
-    .select('amount, method, type')
-    .eq('property_id', property.id)
-    .eq('status', 'completed')
-    .gte('payment_date', `${today}T00:00:00`)
-
-  const { data: tomorrowArrivals } = await supabase
-    .from('bookings')
-    .select('*, guest:guest_id(first_name, last_name), bed:bed_id(name, room:room_id(name))')
-    .eq('property_id', property.id)
-    // eslint-disable-next-line react-hooks/purity
-    .eq('check_in_date', new Date(Date.now() + 86400000).toISOString().split('T')[0])
-    .in('status', ['confirmed', 'checked_in'])
-
-  // Foreign guests checked in today
-  const { data: foreignGuestsToday } = await supabase
-    .from('bookings')
-    .select('*, guest:guest_id(first_name, last_name, nationality, document_number, gender, date_of_birth, country_of_residence)')
-    .eq('property_id', property.id)
-    .eq('check_in_date', today)
-    .eq('status', 'checked_in')
-
-  // Check if tonight's audit was already completed
-  const { data: existingAudit } = await supabase
-    .from('night_audits')
-    .select('id, created_at')
-    .eq('property_id', property.id)
-    .eq('audit_date', today)
-    .maybeSingle()
+  // Police report: foreign guests who checked in today (Moroccan nationals
+  // are not on the fiche-de-police register)
+  const isMoroccan = (n: string | null | undefined) => !!n && /^(maroc|morocco|ma|marocaine?|moroccan|المغرب)$/i.test(n.trim())
+  const foreignGuestsToday = (todayCheckIns ?? []).filter((b) => {
+    const g = b.guest as unknown as { nationality?: string | null } | null
+    return b.status === 'checked_in' && !isMoroccan(g?.nationality)
+  })
 
   // Dirty beds
   const dirtyBeds = beds?.filter((b) => b.status === 'dirty') ?? []
@@ -93,9 +105,9 @@ export default async function NightAuditPage() {
         cashToday,
         totalRevenue,
       }}
-      tomorrowArrivals={tomorrowArrivals ?? []}
+      tomorrowArrivals={(tomorrowArrivals ?? []) as unknown as Parameters<typeof NightAuditClient>[0]['tomorrowArrivals']}
       dirtyBedsCount={dirtyBeds.length}
-      foreignGuestsToday={foreignGuestsToday ?? []}
+      foreignGuestsToday={foreignGuestsToday as unknown as Parameters<typeof NightAuditClient>[0]['foreignGuestsToday']}
     />
   )
 }

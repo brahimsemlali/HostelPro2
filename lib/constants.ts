@@ -75,3 +75,15 @@ export const BANK_WIRE_DETAILS = {
   rib: '022010000277002837541725',
   city: 'Casablanca',
 }
+
+/**
+ * Strip server-only secrets from a properties row before it is passed to a
+ * client component. Pages select('*') (the production schema may lack optional
+ * columns such as whatsapp_*), so the secret is removed here rather than by
+ * naming columns.
+ */
+export function withoutSecrets<T extends object>(row: T): Omit<T, 'whatsapp_access_token'> {
+  const copy = { ...row } as T & { whatsapp_access_token?: unknown }
+  delete copy.whatsapp_access_token
+  return copy
+}

@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
+import type { Property } from '@/types'
 import { createClient, getUserSession } from '@/lib/supabase/server'
 import { CheckInWizard } from '@/components/guests/CheckInWizard'
+import { withoutSecrets } from '@/lib/constants'
 
 export default async function NewGuestPage({
   searchParams,
@@ -38,7 +40,7 @@ export default async function NewGuestPage({
 
   return (
     <CheckInWizard
-      property={property}
+      property={withoutSecrets(property) as Property}
       rooms={rooms ?? []}
       beds={beds ?? []}
       preselectedBedId={params.bed}

@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
+import type { Property } from '@/types'
 import { createClient, getUserSession } from '@/lib/supabase/server'
 import { SettingsClient } from './SettingsClient'
+import { withoutSecrets } from '@/lib/constants'
 
 export default async function SettingsPage() {
   const session = await getUserSession()
@@ -16,5 +18,5 @@ export default async function SettingsPage() {
     else redirect('/login?error=service_unavailable')
   }
 
-  return <SettingsClient property={property} />
+  return <SettingsClient property={withoutSecrets(property) as Property} />
 }

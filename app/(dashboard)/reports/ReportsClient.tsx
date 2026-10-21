@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import {
@@ -10,6 +10,9 @@ import {
 import { formatCurrency } from '@/lib/utils'
 import { FlaskConical, Download, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { addDaysISO, dateOfInstant, diffDaysISO, formatISODate, rangeUTC, todayISO } from '@/lib/dates'
+import { toast } from 'sonner'
+import { netReceived } from '@/lib/money'
 import { useT } from '@/app/context/LanguageContext'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -38,41 +41,31 @@ type RangeKey = (typeof DATE_RANGE_VALUES)[number]
 
 
 function getDateBounds(range: RangeKey): { from: string; to: string; days: number } {
-  const now = new Date()
-  let from: Date
-  let to: Date = new Date(now)
-  to.setHours(23, 59, 59, 999)
-
+  // Morocco calendar dates (lib/dates) — no local Date arithmetic.
+  const today = todayISO()
+  const [y, m] = today.split('-').map(Number)
+  const firstOfMonth = `${y}-${String(m).padStart(2, '0')}-01`
+  let from: string
+  let to = today
   switch (range) {
     case '7d':
-      from = new Date(now)
-      from.setDate(from.getDate() - 6)
+      from = addDaysISO(today, -6)
       break
     case '30d':
-      from = new Date(now)
-      from.setDate(from.getDate() - 29)
+      from = addDaysISO(today, -29)
       break
     case 'month':
-      from = new Date(now.getFullYear(), now.getMonth(), 1)
+      from = firstOfMonth
       break
     case 'last_month':
-      from = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-      to = new Date(now.getFullYear(), now.getMonth(), 0)
-      to.setHours(23, 59, 59, 999)
+      to = addDaysISO(firstOfMonth, -1)
+      from = `${to.slice(0, 7)}-01`
       break
     case '90d':
-      from = new Date(now)
-      from.setDate(from.getDate() - 89)
+      from = addDaysISO(today, -89)
       break
   }
-  from.setHours(0, 0, 0, 0)
-  const diffMs = to.getTime() - from.getTime()
-  const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
-  return {
-    from: from.toISOString().split('T')[0],
-    to: to.toISOString().split('T')[0],
-    days,
-  }
+  return { from, to, days: diffDaysISO(from, to) + 1 }
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -195,9 +188,13 @@ export function ReportsClient({
 
   // ── Fetch when range changes ──────────────────────────────────────────────
 
+  // Only the latest range request may write state (a slow 90-day response must
+  // not land after a newer 7-day one and show under the wrong label).
+  const requestSeq = useRef(0)
   const fetchRange = useCallback(
     async (range: RangeKey) => {
       const { from, to } = getDateBounds(range)
+      const seq = ++requestSeq.current
       setLoading(true)
       try {
         const [pmRes, bkRes] = await Promise.all([
@@ -206,8 +203,8 @@ export function ReportsClient({
             .select('amount, method, payment_date, type')
             .eq('property_id', propertyId)
             .eq('status', 'completed')
-            .gte('payment_date', `${from}T00:00:00`)
-            .lte('payment_date', `${to}T23:59:59`),
+            .gte('payment_date', rangeUTC(from, to).start)
+            .lt('payment_date', rangeUTC(from, to).end),
           supabase
             .from('bookings')
             .select('id, source, commission_rate, total_price, net_revenue, nights, check_in_date')
@@ -216,13 +213,20 @@ export function ReportsClient({
             .gte('check_in_date', from)
             .lte('check_in_date', to),
         ])
-        if (pmRes.data) setPayments(pmRes.data as Payment[])
-        if (bkRes.data) setBookings(bkRes.data as Booking[])
+        if (seq !== requestSeq.current) return
+        if (pmRes.error || bkRes.error) {
+          toast.error(t('common.error'))
+          return
+        }
+        setPayments((pmRes.data ?? []) as Payment[])
+        setBookings((bkRes.data ?? []) as Booking[])
+      } catch {
+        if (seq === requestSeq.current) toast.error(t('common.error'))
       } finally {
-        setLoading(false)
+        if (seq === requestSeq.current) setLoading(false)
       }
     },
-    [propertyId, supabase],
+    [propertyId, supabase, t],
   )
 
   const handleRangeChange = useCallback(
@@ -237,7 +241,8 @@ export function ReportsClient({
 
   const { from, to, days } = getDateBounds(selectedRange)
 
-  const totalRevenue = payments.filter((p) => p.type !== 'refund').reduce((s, p) => s + p.amount, 0)
+  // Net of refunds, like the dashboard (lib/money)
+  const totalRevenue = netReceived(payments)
   const avgLOS = bookings.length
     ? bookings.reduce((s, b) => s + (b.nights ?? 0), 0) / bookings.length
     : 0
@@ -251,15 +256,13 @@ export function ReportsClient({
 
   const dailyData = useMemo(() => {
     if (isEmpty) return buildSampleDailyData()
-    const { days: numDays } = getDateBounds(selectedRange)
+    const { from: start, days: numDays } = getDateBounds(selectedRange)
     const count = Math.min(numDays, 90)
     return Array.from({ length: count }, (_, i) => {
-      const d = new Date()
-      d.setDate(d.getDate() - (count - 1 - i))
-      const dayStr = d.toISOString().split('T')[0]
-      const dayPayments = payments.filter((p) => p.payment_date.startsWith(dayStr))
+      const dayStr = addDaysISO(start, i)
+      const dayPayments = payments.filter((p) => dateOfInstant(p.payment_date) === dayStr)
       return {
-        day: d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
+        day: formatISODate(dayStr, { day: '2-digit', month: '2-digit' }),
         revenue: dayPayments.filter((p) => p.type !== 'refund').reduce((s, p) => s + p.amount, 0),
         cash: dayPayments.filter((p) => p.method === 'cash').reduce((s, p) => s + p.amount, 0),
       }

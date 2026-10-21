@@ -13,13 +13,24 @@ function getServiceClient() {
 export async function POST(request: Request) {
   const rawBody = await request.text()
   const signature = request.headers.get('X-Signature') ?? ''
-  const secret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET ?? ''
+  const secret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET
+
+  // Fail closed: an HMAC keyed with an empty secret is forgeable by anyone.
+  if (!secret) {
+    return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 })
+  }
 
   if (!verifyWebhookSignature(rawBody, signature, secret)) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
   }
 
-  const payload = JSON.parse(rawBody) as {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(rawBody)
+  } catch {
+    return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
+  }
+  const payload = parsed as {
     meta: {
       event_name: string
       custom_data?: { property_id?: string }
@@ -65,13 +76,37 @@ export async function POST(request: Request) {
   // but lifecycle events (cancel/expire/update) can arrive WITHOUT it — so fall
   // back to the row we already keyed on the unique ls_subscription_id. Without
   // this a cancellation silently no-ops and the account stays active forever.
-  const { data: existing } = await supabase
-    .from('subscriptions')
-    .select('property_id, ls_updated_at')
-    .eq('ls_subscription_id', lsSubscriptionId)
-    .maybeSingle()
+  // ls_updated_at / customer_portal_url come from migration 028. If it isn't
+  // applied yet, fall back to the pre-028 columns instead of failing every
+  // event (a failed select must never be silently treated as "no row").
+  let hardened = true
+  let existing: { property_id: string; ls_updated_at?: string | null } | null = null
+  {
+    const res = await supabase
+      .from('subscriptions')
+      .select('property_id, ls_updated_at')
+      .eq('ls_subscription_id', lsSubscriptionId)
+      .maybeSingle()
+    if (res.error?.code === '42703') {
+      hardened = false
+      const legacy = await supabase
+        .from('subscriptions')
+        .select('property_id')
+        .eq('ls_subscription_id', lsSubscriptionId)
+        .maybeSingle()
+      if (legacy.error) return NextResponse.json({ error: 'DB error' }, { status: 500 })
+      existing = legacy.data
+    } else if (res.error) {
+      return NextResponse.json({ error: 'DB error' }, { status: 500 })
+    } else {
+      existing = res.data
+    }
+  }
 
-  const propertyId = custom_data?.property_id ?? existing?.property_id
+  // The row already keyed on this LS subscription is authoritative: custom_data
+  // is only trusted when the subscription is new, so a crafted checkout can't
+  // re-point an existing subscription at another tenant.
+  const propertyId = existing?.property_id ?? custom_data?.property_id
   if (!propertyId) {
     // Unknown subscription and no custom_data — nothing to update. Ack so LS
     // stops retrying (a 4xx/5xx would just be redelivered forever).
@@ -106,8 +141,8 @@ export async function POST(request: Request) {
   }
   // Only write these when the event actually carries them, so an event that
   // omits them can't wipe a previously-stored value.
-  if (attrs.urls?.customer_portal) row.customer_portal_url = attrs.urls.customer_portal
-  if (attrs.updated_at) row.ls_updated_at = attrs.updated_at
+  if (hardened && attrs.urls?.customer_portal) row.customer_portal_url = attrs.urls.customer_portal
+  if (hardened && attrs.updated_at) row.ls_updated_at = attrs.updated_at
 
   const { error } = await supabase.from('subscriptions').upsert(row, { onConflict: 'property_id' })
 

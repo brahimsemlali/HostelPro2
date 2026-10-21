@@ -49,6 +49,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { useT } from '@/app/context/LanguageContext'
+import { todayISO } from '@/lib/dates'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -174,7 +175,7 @@ function ExpenseModal({
   const t = useT()
   const [saving, setSaving] = useState(false)
   const supabase = createClient()
-  const today = new Date().toLocaleDateString('en-CA')
+  const today = todayISO()
 
   const {
     register,

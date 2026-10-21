@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient, getUserSession } from '@/lib/supabase/server'
+import { addDaysISO, todayISO } from '@/lib/dates'
 import { CalendarClient } from './CalendarClient'
 
 export default async function CalendarPage({
@@ -22,18 +23,14 @@ export default async function CalendarPage({
   }
 
   // Default: today, show 14 days. Validate `from` is a real ISO date to prevent bad input.
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = todayISO()
   const isValidDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(new Date(s).getTime())
   const startDate = (from && isValidDate(from)) ? from : todayStr
   
   const daysNum = parseInt(days ?? '14', 10)
   const safeDays = [7, 14, 30].includes(daysNum) ? daysNum : 14
 
-  const endDate = (() => {
-    const d = new Date(startDate)
-    d.setDate(d.getDate() + safeDays - 1)
-    return d.toISOString().split('T')[0]
-  })()
+  const endDate = addDaysISO(startDate, safeDays - 1)
 
   const { data: rooms } = await supabase
     .from('rooms')

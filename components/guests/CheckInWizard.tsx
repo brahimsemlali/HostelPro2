@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { cn, formatCurrency, formatDateShort, daysBetween, todayISO, tomorrowISO, isBedConflictError } from '@/lib/utils'
+import { cn, formatCurrency, formatDateShort, daysBetween, todayISO, tomorrowISO, isBedConflictError, sanitizeSearchTerm } from '@/lib/utils'
 import { generateFicheDePolice } from '@/lib/pdf/fiche-police'
 import { buildWhatsAppLink, WHATSAPP_TEMPLATES } from '@/lib/whatsapp/templates'
 import { NATIONALITIES, COUNTRIES, BOOKING_SOURCES, PAYMENT_METHODS } from '@/lib/constants'
@@ -117,6 +117,49 @@ export function CheckInWizard({ property, beds, preselectedBedId }: Props) {
   const createdGuestRef = useRef<Guest | null>(null)
   const paymentDoneRef = useRef(false)
 
+  // Draft persistence: one mis-tap on the bottom nav used to throw away a
+  // 12-field passport entry. The draft lives in sessionStorage (this tab only,
+  // cleared when the tab closes or the check-in completes) and the browser
+  // warns before leaving with unsaved data.
+  const draftKey = `checkin-draft:${property.id}`
+  const draftRestored = useRef(false)
+  useEffect(() => {
+    if (draftRestored.current) return
+    draftRestored.current = true
+    try {
+      const raw = window.sessionStorage.getItem(draftKey)
+      if (!raw) return
+      const d = JSON.parse(raw) as { step?: Step; guestForm?: typeof guestForm; bookingForm?: typeof bookingForm; selectedGuest?: Guest | null; isNewGuest?: boolean }
+      if (d.guestForm) setGuestForm(d.guestForm)
+      if (d.bookingForm) setBookingForm((p) => ({ ...p, ...d.bookingForm, bed_id: preselectedBedId ?? d.bookingForm?.bed_id ?? p.bed_id }))
+      if (d.selectedGuest !== undefined) setSelectedGuest(d.selectedGuest)
+      if (d.isNewGuest !== undefined) setIsNewGuest(d.isNewGuest)
+      if (d.step && d.step < 5) setStep(d.step)
+    } catch {
+      // corrupt or unavailable storage — start fresh
+    }
+  }, [draftKey, preselectedBedId])
+
+  const hasDraft = !createdBooking && (step > 1 || !!guestForm.first_name || !!guestForm.document_number)
+  useEffect(() => {
+    if (!draftRestored.current) return
+    try {
+      if (createdBooking) window.sessionStorage.removeItem(draftKey)
+      else if (hasDraft) window.sessionStorage.setItem(draftKey, JSON.stringify({ step, guestForm, bookingForm, selectedGuest, isNewGuest }))
+    } catch {
+      // storage full / disabled — the unload warning still protects the entry
+    }
+  }, [draftKey, hasDraft, step, guestForm, bookingForm, selectedGuest, isNewGuest, createdBooking])
+
+  useEffect(() => {
+    if (!hasDraft) return
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+    }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [hasDraft])
+
   // Returning guest info (fetched lazily when a guest is selected)
   const [returningInfo, setReturningInfo] = useState<{
     stays: number
@@ -131,14 +174,22 @@ export function CheckInWizard({ property, beds, preselectedBedId }: Props) {
     setSearching(true)
     try {
       const supabase = createClient()
-      const { data } = await supabase
+      // Strip PostgREST filter syntax (commas, parentheses…) — "Dupont, Jean"
+      // used to break the .or() filter and show "no results".
+      const term = sanitizeSearchTerm(searchQuery)
+      if (!term) {
+        setSearchResults([])
+        return
+      }
+      const { data, error } = await supabase
         .from('guests')
         .select('id, property_id, first_name, last_name, email, phone, whatsapp, nationality, document_type, document_number, date_of_birth, gender, country_of_residence, profession, address_in_morocco, next_destination, total_stays, total_spent, notes, is_flagged, flag_reason, created_at')
         .eq('property_id', property.id)
         .or(
-          `first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%,document_number.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%`,
+          `first_name.ilike.%${term}%,last_name.ilike.%${term}%,document_number.ilike.%${term}%,phone.ilike.%${term}%`,
         )
         .limit(5)
+      if (error) toast.error(t('common.error'))
       setSearchResults(data ?? [])
     } finally {
       setSearching(false)
@@ -221,6 +272,45 @@ export function CheckInWizard({ property, beds, preselectedBedId }: Props) {
       ? daysBetween(bookingForm.check_in_date, bookingForm.check_out_date)
       : 0
 
+  // Beds already booked on the chosen dates (any overlapping confirmed or
+  // checked-in stay). The picker used to filter on *today's* bed status, which
+  // hid beds that are only busy tonight and offered beds booked next week.
+  const [busyBedIds, setBusyBedIds] = useState<Set<string> | null>(null)
+  const rangeFrom = bookingForm.check_in_date
+  const rangeTo = bookingForm.check_out_date
+  useEffect(() => {
+    const from = rangeFrom
+    const to = rangeTo
+    if (!from || !to || to <= from) return
+    let cancelled = false
+    const supabase = createClient()
+    supabase
+      .from('bookings')
+      .select('bed_id')
+      .eq('property_id', property.id)
+      .in('status', ['confirmed', 'checked_in'])
+      .lt('check_in_date', to)
+      .gt('check_out_date', from)
+      .not('bed_id', 'is', null)
+      .limit(2000)
+      .then(({ data, error }) => {
+        if (cancelled) return
+        // On error fall back to today's status rather than offering every bed.
+        setBusyBedIds(error ? null : new Set((data ?? []).map((b) => b.bed_id as string)))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [rangeFrom, rangeTo, property.id])
+
+  const isBedSelectable = (b: BedWithRoom) => {
+    if (b.id === bookingForm.bed_id) return true
+    if (b.status === 'maintenance' || b.status === 'blocked') return false
+    if (busyBedIds) return !busyBedIds.has(b.id)
+    return b.status === 'available'
+  }
+  const selectableBeds = beds.filter(isBedSelectable)
+
   const selectedBed = beds.find((b) => b.id === bookingForm.bed_id)
   const autoPrice = selectedBed ? selectedBed.base_price * nights : 0
 
@@ -228,7 +318,10 @@ export function CheckInWizard({ property, beds, preselectedBedId }: Props) {
     setLoading(true)
     try {
       const supabase = createClient()
-      const price = parseFloat(bookingForm.total_price) || autoPrice
+      // An explicit 0 MAD (free stay) is kept; only a blank field falls back.
+      const typedPrice = parseFloat(bookingForm.total_price)
+      const price = bookingForm.total_price.trim() !== '' && Number.isFinite(typedPrice) ? typedPrice : autoPrice
+      if (price < 0) throw new Error(t('payments.invalidAmount'))
 
       // A stay starting after today is an advance reservation, not a check-in:
       // it must not occupy the bed today nor mark the guest as checked-in.
@@ -261,7 +354,21 @@ export function CheckInWizard({ property, beds, preselectedBedId }: Props) {
           notes: guestForm.notes || null,
         }
 
-        if (isNewGuest || !selectedGuest) {
+        // A retry after a failed booking insert must reuse the guest created on
+        // the first attempt instead of inserting a duplicate.
+        const priorGuestId = createdGuestRef.current?.id
+        if (priorGuestId) {
+          const { data: updatedGuest, error: updErr } = await supabase
+            .from('guests')
+            .update(guestPayload)
+            .eq('id', priorGuestId)
+            .select()
+            .single()
+          if (updErr) throw updErr
+          guestId = updatedGuest.id
+          guestData = updatedGuest
+          createdGuestRef.current = updatedGuest
+        } else if (isNewGuest || !selectedGuest) {
           const { data: newGuest, error: guestErr } = await supabase
             .from('guests')
             .insert({ property_id: property.id, ...guestPayload })
@@ -311,10 +418,12 @@ export function CheckInWizard({ property, beds, preselectedBedId }: Props) {
         createdBookingRef.current = newBooking
 
         if (bookingForm.bed_id && !isFutureReservation) {
-          await supabase
+          const { error: bedErr } = await supabase
             .from('beds')
             .update({ status: 'occupied' })
             .eq('id', bookingForm.bed_id)
+          // The booking is saved; only the bed-map colour is stale — say so.
+          if (bedErr) toast.warning(t('common.error'))
         }
       }
 
@@ -885,8 +994,7 @@ export function CheckInWizard({ property, beds, preselectedBedId }: Props) {
               <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" /> {t('checkin.step3.bedAssign')}
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-56 overflow-y-auto px-1 pb-1">
-              {beds
-                .filter((b) => b.status === 'available' || b.id === bookingForm.bed_id)
+              {selectableBeds
                 .map((bed) => (
                   <button
                     key={bed.id}
@@ -912,7 +1020,7 @@ export function CheckInWizard({ property, beds, preselectedBedId }: Props) {
                     <div className="text-xs font-medium mt-1.5 opacity-80">{formatCurrency(bed.base_price)} / n</div>
                   </button>
                 ))}
-                {beds.filter((b) => b.status === 'available' || b.id === bookingForm.bed_id).length === 0 && (
+                {selectableBeds.length === 0 && (
                   <div className="col-span-full py-4 text-center text-sm text-muted-foreground">
                     {t('checkin.step3.noBeds')}
                   </div>

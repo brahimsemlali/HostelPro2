@@ -14,7 +14,8 @@ export type Property = {
   police_prefecture: string | null
   review_url: string | null
   whatsapp_phone_number_id: string | null
-  whatsapp_access_token: string | null
+  /** Server-only secret (Meta API token). Never select it into client-bound data. */
+  whatsapp_access_token?: string | null
   booking_com_ical_url: string | null
   last_ical_sync: string | null
   created_at: string

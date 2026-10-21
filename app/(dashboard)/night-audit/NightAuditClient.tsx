@@ -56,15 +56,21 @@ export function NightAuditClient({
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(false)
 
-  const cashDiff =
-    actualCash && Number.isFinite(parseFloat(actualCash))
-      ? parseFloat(actualCash) - stats.cashToday
-      : null
+  // The counted cash is required — a blank count used to be saved as "exact".
+  const countedCash = actualCash.trim() === '' ? null : parseFloat(actualCash)
+  const hasCount = countedCash !== null && Number.isFinite(countedCash) && countedCash >= 0
+  // Compare in centimes: float sums like 0.1 + 0.2 must not show a phantom gap.
+  const cashDiff = hasCount ? Math.round((countedCash - stats.cashToday) * 100) / 100 : null
   const occupancyRate = stats.totalBeds
     ? Math.round((stats.occupiedBeds / stats.totalBeds) * 100)
     : 0
 
   async function handleFinalize() {
+    if (!hasCount) {
+      toast.error(t('nightAudit.actual'))
+      setStep(2)
+      return
+    }
     setSaving(true)
     try {
       const supabase = createClient()
@@ -73,7 +79,7 @@ export function NightAuditClient({
         audit_date: today,
         performed_by: userId,
         expected_cash: stats.cashToday,
-        actual_cash: Number.isFinite(parseFloat(actualCash)) ? parseFloat(actualCash) : stats.cashToday,
+        actual_cash: countedCash,
         total_revenue: stats.totalRevenue,
         occupancy_rate: occupancyRate,
         notes: notes || null,
@@ -236,7 +242,7 @@ export function NightAuditClient({
               <Button variant="outline" className="border-[#E8ECF0] rounded-[10px]" onClick={() => setStep(1)}>
                 <ChevronLeft className="w-4 h-4 mr-1" /> {t('common.back')}
               </Button>
-              <Button className="bg-[#0F6E56] hover:bg-[#0c5a46] rounded-[10px]" onClick={() => setStep(3)}>
+              <Button className="bg-[#0F6E56] hover:bg-[#0c5a46] rounded-[10px]" disabled={!hasCount} onClick={() => setStep(3)}>
                 {t('common.next')} <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             </div>

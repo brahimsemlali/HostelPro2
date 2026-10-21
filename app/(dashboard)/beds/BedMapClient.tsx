@@ -35,6 +35,7 @@ const BookingDetailSheet = dynamic(
 )
 import { useT } from '@/app/context/LanguageContext'
 import { useCanDo } from '@/app/context/SessionContext'
+import { BED_MAP_BOOKING_SELECT } from '@/lib/bed-status'
 
 interface BedWithBooking extends Bed {
   room?: Room
@@ -140,11 +141,11 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
     const supabase = createClient()
     const { data } = await supabase
       .from('bookings')
-      .select('*, guest:guest_id(*)')
+      .select(BED_MAP_BOOKING_SELECT)
       .eq('property_id', propertyId)
       .eq('status', 'checked_in')
       .gte('check_out_date', today)
-    if (data) setActiveBookings(data as (Booking & { guest?: Guest })[])
+    if (data) setActiveBookings(data as unknown as (Booking & { guest?: Guest })[])
   }, [propertyId])
 
   // ── Bed swap ──
@@ -162,7 +163,15 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
 
     setSwapping(false)
     if (error) {
-      toast.error(isBedConflictError(error) ? t('checkin.bedConflict') : t('beds.swapError'))
+      // PGRST202 / 42883: swap_booking_beds (migration 023) isn't installed yet
+      const missingRpc = error.code === 'PGRST202' || error.code === '42883'
+      toast.error(
+        isBedConflictError(error)
+          ? t('checkin.bedConflict')
+          : missingRpc
+            ? 'Échange de lits indisponible : mise à jour de la base de données requise (migration 023).'
+            : t('beds.swapError'),
+      )
     } else {
       toast.success(`${t('beds.swapSuccess')}: ${swapSource.name} - ${swapTarget.name}`)
       await Promise.all([refreshBeds(), refreshBookings()])

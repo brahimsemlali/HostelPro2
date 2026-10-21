@@ -22,13 +22,25 @@ export async function POST(req: Request) {
 
     const admin = createAdminClient()
 
-    const { error } = await admin
+    const { data: revoked, error } = await admin
       .from('staff')
       .update({ is_active: false })
       .eq('id', staffId)
       .eq('property_id', session.propertyId)
+      .select('user_id')
+      .maybeSingle()
 
     if (error) throw error
+    if (!revoked) return NextResponse.json({ error: 'Introuvable' }, { status: 404 })
+
+    // is_active=false only hides them from RLS checks that test it; the auth
+    // account itself stayed usable. Ban it so a revoked employee can no longer
+    // sign in or refresh a session (there is no re-activation flow — the owner
+    // creates a new account instead).
+    if (revoked.user_id) {
+      const { error: banErr } = await admin.auth.admin.updateUserById(revoked.user_id, { ban_duration: '876000h' })
+      if (banErr) return NextResponse.json({ error: 'Accès révoqué, mais la session n’a pas pu être bloquée' }, { status: 500 })
+    }
 
     return NextResponse.json({ ok: true })
   } catch {
