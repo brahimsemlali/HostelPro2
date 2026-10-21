@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { notFound } from 'next/navigation'
 import { createClient, getUserSession } from '@/lib/supabase/server'
 import { BookingDetailClient } from './BookingDetailClient'
-import { PROPERTY_PUBLIC_COLUMNS } from '@/lib/constants'
+import { withoutSecrets } from '@/lib/constants'
 import { netReceived } from '@/lib/money'
 
 export default async function BookingDetailPage({
@@ -19,11 +19,11 @@ export default async function BookingDetailPage({
 
   // Fetch property + booking in parallel (security check via session.propertyId)
   const [propertyRes, bookingRes] = await Promise.all([
-    supabase.from('properties').select(PROPERTY_PUBLIC_COLUMNS).eq('id', session.propertyId).single(),
+    supabase.from('properties').select('*').eq('id', session.propertyId).single(),
     supabase.from('bookings').select('id, status, source, external_booking_id, check_in_date, check_out_date, nights, adults, total_price, commission_rate, net_revenue, special_requests, internal_notes, check_in_time, check_out_time, police_fiche_generated, police_fiche_url, pre_checkin_completed, pre_checkin_token, arrival_notes, expected_arrival_time, bed_id, guest_id, property_id, created_at, guest:guest_id(id, first_name, last_name, email, phone, whatsapp, nationality, document_type, document_number, date_of_birth, gender, country_of_residence, profession, address_in_morocco, next_destination, notes, total_stays, total_spent, is_flagged, flag_reason, created_at), bed:bed_id(id, name, base_price, room_id, bunk_position, status, notes, property_id, created_at, room:room_id(id, name, type, gender_policy, floor, property_id, created_at))').eq('id', id).eq('property_id', session.propertyId).single(),
   ])
 
-  const property = propertyRes.data
+  const property = propertyRes.data ? withoutSecrets(propertyRes.data) : null
   if (!property) {
     if (propertyRes.error?.code === 'PGRST116') redirect('/onboarding')
     else redirect('/login?error=service_unavailable')

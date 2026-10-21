@@ -52,11 +52,9 @@ export async function sendWhatsAppBroadcast(phones: string[], messageText: strin
   // service role after the session/role checks above. Until 031 is applied it
   // falls back to the legacy properties column.
   const admin = createAdminClient()
-  const { data: propertyResponse } = await admin
-    .from('properties')
-    .select('whatsapp_phone_number_id, whatsapp_access_token')
-    .eq('id', propertyId)
-    .single()
+  // select('*'): the whatsapp_* columns (migration 011) may not exist yet.
+  const { data: propertyRow } = await admin.from('properties').select('*').eq('id', propertyId).single()
+  const propertyResponse = propertyRow as { whatsapp_phone_number_id?: string | null; whatsapp_access_token?: string | null } | null
   const { data: secretRow, error: secretErr } = await admin
     .from('property_secrets')
     .select('whatsapp_access_token')

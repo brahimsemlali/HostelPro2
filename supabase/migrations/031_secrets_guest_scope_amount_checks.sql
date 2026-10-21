@@ -19,7 +19,8 @@
 -- b) Negative or zero extras / negative booking prices:
 --      SELECT id, quantity, unit_price FROM booking_extras WHERE quantity <= 0 OR unit_price < 0;
 --      SELECT id, total_price FROM bookings WHERE total_price < 0;
--- c) Helpers exist:
+-- c) Helpers exist (both rows must come back — 026 provides get_my_role_rank;
+--    if it is missing, apply 026 first or section 2 below will fail):
 --      SELECT proname FROM pg_proc WHERE proname IN ('get_my_property_id', 'get_my_role_rank');
 
 BEGIN;
@@ -42,13 +43,25 @@ CREATE POLICY "owner_all_secrets" ON property_secrets FOR ALL
   USING (property_id IN (SELECT id FROM properties WHERE owner_id = (SELECT auth.uid())))
   WITH CHECK (property_id IN (SELECT id FROM properties WHERE owner_id = (SELECT auth.uid())));
 
-INSERT INTO property_secrets (property_id, whatsapp_access_token)
-SELECT id, whatsapp_access_token
-FROM properties
-WHERE whatsapp_access_token IS NOT NULL AND whatsapp_access_token <> ''
-ON CONFLICT (property_id) DO UPDATE
-  SET whatsapp_access_token = EXCLUDED.whatsapp_access_token,
-      updated_at = NOW();
+-- Copy existing tokens — only if the legacy column exists (migration 011 may
+-- never have been applied, in which case there is nothing to move).
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'properties' AND column_name = 'whatsapp_access_token'
+  ) THEN
+    EXECUTE $copy$
+      INSERT INTO property_secrets (property_id, whatsapp_access_token)
+      SELECT id, whatsapp_access_token
+      FROM properties
+      WHERE whatsapp_access_token IS NOT NULL AND whatsapp_access_token <> ''
+      ON CONFLICT (property_id) DO UPDATE
+        SET whatsapp_access_token = EXCLUDED.whatsapp_access_token,
+            updated_at = NOW()
+    $copy$;
+  END IF;
+END $$;
 
 -- ── 2. guests: housekeeping only sees today's guests ────────────────────────
 -- Housekeeping needs guest names for today's departures/arrivals and the beds
@@ -93,4 +106,5 @@ COMMIT;
 --   ALTER TABLE bookings VALIDATE CONSTRAINT bookings_total_price_nonneg;
 
 -- ── Step 2 (after the new code is live and WhatsApp sends are confirmed) ────
+-- Only if properties.whatsapp_access_token exists (skip if 011 was never applied):
 --   UPDATE properties SET whatsapp_access_token = NULL WHERE whatsapp_access_token IS NOT NULL;

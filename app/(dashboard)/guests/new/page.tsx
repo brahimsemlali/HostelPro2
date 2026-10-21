@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
+import type { Property } from '@/types'
 import { createClient, getUserSession } from '@/lib/supabase/server'
 import { CheckInWizard } from '@/components/guests/CheckInWizard'
-import { PROPERTY_PUBLIC_COLUMNS } from '@/lib/constants'
+import { withoutSecrets } from '@/lib/constants'
 
 export default async function NewGuestPage({
   searchParams,
@@ -17,7 +18,7 @@ export default async function NewGuestPage({
 
   const { data: property, error: propertyError } = await supabase
     .from('properties')
-    .select(PROPERTY_PUBLIC_COLUMNS)
+    .select('*')
     .eq('id', session.propertyId)
     .single()
   if (!property) {
@@ -39,7 +40,7 @@ export default async function NewGuestPage({
 
   return (
     <CheckInWizard
-      property={property}
+      property={withoutSecrets(property) as Property}
       rooms={rooms ?? []}
       beds={beds ?? []}
       preselectedBedId={params.bed}

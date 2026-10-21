@@ -76,6 +76,14 @@ export const BANK_WIRE_DETAILS = {
   city: 'Casablanca',
 }
 
-/** properties columns safe to send to the browser (excludes whatsapp_access_token). */
-export const PROPERTY_PUBLIC_COLUMNS =
-  'id, owner_id, name, address, city, phone, email, wifi_password, check_in_time, check_out_time, currency, default_language, police_prefecture, review_url, whatsapp_phone_number_id, booking_com_ical_url, last_ical_sync, created_at'
+/**
+ * Strip server-only secrets from a properties row before it is passed to a
+ * client component. Pages select('*') (the production schema may lack optional
+ * columns such as whatsapp_*), so the secret is removed here rather than by
+ * naming columns.
+ */
+export function withoutSecrets<T extends object>(row: T): Omit<T, 'whatsapp_access_token'> {
+  const copy = { ...row } as T & { whatsapp_access_token?: unknown }
+  delete copy.whatsapp_access_token
+  return copy
+}
