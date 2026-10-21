@@ -44,11 +44,18 @@ function isPurelyPublic(pathname: string): boolean {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  // Expose the pathname to server components (subscription gating in the
+  // dashboard layout reads it via headers()). It must be set on the *request*
+  // headers — response headers never reach headers() — and any client-sent
+  // copy is dropped first so the paywall can't be skipped by spoofing it.
+  const forwarded = new Headers(request.headers)
+  forwarded.delete('x-pathname')
+  forwarded.set('x-pathname', pathname)
+  const next = () => NextResponse.next({ request: { headers: forwarded } })
+
   // Fast path: pure-public routes skip Supabase entirely (no auth round-trip).
   if (isPurelyPublic(pathname)) {
-    const res = NextResponse.next({ request })
-    res.headers.set('x-pathname', pathname)
-    return res
+    return next()
   }
 
   // Allow public routes and Next.js internals
@@ -66,7 +73,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/google')
 
   // Create a response that we can mutate cookies on
-  let response = NextResponse.next({ request })
+  let response = next()
 
   // Always refresh the Supabase session (keeps JWT fresh)
   const supabase = createServerClient(
@@ -81,7 +88,9 @@ export async function proxy(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           )
-          response = NextResponse.next({ request })
+          // Keep the refreshed cookies on the forwarded request headers too
+          forwarded.set('cookie', request.cookies.toString())
+          response = next()
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)
           )
@@ -112,13 +121,10 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(homeUrl)
   }
 
-  // Expose pathname to server components via header (used for subscription gating)
-  response.headers.set('x-pathname', pathname)
-
   return response
 }
 
 export const config = {
   // Match everything except static files and PWA assets
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|manifest.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json)$).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|manifest.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|glb)$).*)'],
 }

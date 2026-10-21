@@ -210,20 +210,21 @@ export function PaymentsClient({ propertyId, todayPayments, pendingBookings, cur
     setSelectedBooking(null)
   }
 
-  const totalToday = todayPayments.reduce((s, p) => s + (p.type === 'refund' ? -p.amount : p.amount), 0)
-  const cashToday = todayPayments
-    .filter((p) => p.method === 'cash')
-    .reduce((s, p) => s + (p.type === 'refund' ? -p.amount : p.amount), 0)
-  const virementToday = todayPayments
-    .filter((p) => p.method === 'virement')
-    .reduce((s, p) => s + (p.type === 'refund' ? -p.amount : p.amount), 0)
-  const cmiToday = todayPayments
-    .filter((p) => p.method === 'cmi')
-    .reduce((s, p) => s + (p.type === 'refund' ? -p.amount : p.amount), 0)
+  // Totals and the cash reconciliation count completed payments only (the
+  // list still shows pending/failed ones). Refunds subtract.
+  const signed = (p: { type: string; amount: number }) => (p.type === 'refund' ? -p.amount : p.amount)
+  const completedToday = todayPayments.filter((p) => p.status === 'completed')
+  const sumBy = (method?: string) =>
+    completedToday.filter((p) => !method || p.method === method).reduce((s, p) => s + signed(p), 0)
+  const totalToday = sumBy()
+  const cashToday = sumBy('cash')
+  const virementToday = sumBy('virement')
+  const cmiToday = sumBy('cmi')
 
+  // Compare in centimes so float sums can't show a phantom "0,00 MAD" gap.
   const cashDiff =
     actualCash && Number.isFinite(parseFloat(actualCash))
-      ? parseFloat(actualCash) - cashToday
+      ? Math.round((parseFloat(actualCash) - cashToday) * 100) / 100
       : null
 
   async function handleAddPayment() {

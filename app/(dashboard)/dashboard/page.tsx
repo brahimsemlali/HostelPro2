@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient, getUserSession } from '@/lib/supabase/server'
+import { addDaysISO, dateOfInstant, dayRangeUTC, formatISODate, todayISO } from '@/lib/dates'
 import { DashboardCommandCenter } from '@/components/dashboard/DashboardClient'
 import type { DashboardInitialData } from '@/components/dashboard/DashboardClient'
 
@@ -25,22 +26,17 @@ export default async function DashboardPage() {
     else redirect('/login?error=service_unavailable')
   }
 
-  // Local date to avoid UTC off-by-one at midnight in UTC+1 (Morocco)
-  const today = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD
-  const tomorrow = new Date()
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  const tomorrowStr = tomorrow.toLocaleDateString('en-CA')
-  const weekEnd = new Date()
-  weekEnd.setDate(weekEnd.getDate() + 7)
-  const weekEndStr = weekEnd.toLocaleDateString('en-CA')
+  // Morocco business dates (the server runs in UTC) — see lib/dates
+  const today = todayISO()
+  const tomorrowStr = addDaysISO(today, 1)
+  const weekEndStr = addDaysISO(today, 7)
+  const todayRange = dayRangeUTC(today)
 
   // Arrivals select — includes new arrival pipeline fields
   const arrivalSelect =
     'id, bed_id, status, source, check_in_date, check_out_date, pre_checkin_completed, pre_checkin_token, arrival_notes, expected_arrival_time, guest:guest_id(first_name, last_name, nationality, phone, whatsapp), bed:bed_id(name, room:room_id(name))'
 
-  const sevenDaysAgo = new Date()
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6)
-  sevenDaysAgo.setHours(0, 0, 0, 0)
+  const sevenDaysAgo = addDaysISO(today, -6)
 
   // All data fetched in a single parallel round-trip.
   // Arrivals: one query covering today → weekEnd, split in JS below (saves 2 round-trips).
@@ -68,8 +64,8 @@ export default async function DashboardPage() {
       .select('amount, method, type')
       .eq('property_id', property.id)
       .eq('status', 'completed')
-      .gte('payment_date', `${today}T00:00:00`)
-      .lt('payment_date', `${tomorrowStr}T00:00:00`),
+      .gte('payment_date', todayRange.start)
+      .lt('payment_date', todayRange.end),
 
     // Single arrivals query — today through end of week — split by date in JS
     supabase
@@ -108,7 +104,7 @@ export default async function DashboardPage() {
       .select('amount, method, type, payment_date')
       .eq('property_id', property.id)
       .eq('status', 'completed')
-      .gte('payment_date', sevenDaysAgo.toISOString()),
+      .gte('payment_date', dayRangeUTC(sevenDaysAgo).start),
 
     // Forecast: all active bookings overlapping the next 7 days
     supabase
@@ -116,7 +112,7 @@ export default async function DashboardPage() {
       .select('check_in_date, check_out_date')
       .eq('property_id', property.id)
       .in('status', ['confirmed', 'checked_in'])
-      .lte('check_in_date', (() => { const d = new Date(); d.setDate(d.getDate() + 6); return d.toLocaleDateString('en-CA') })())
+      .lte('check_in_date', addDaysISO(today, 6))
       .gt('check_out_date', today),
 
     supabase
@@ -198,12 +194,10 @@ export default async function DashboardPage() {
 
   // Build chart data server-side for initial render
   const chartData = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date()
-    d.setDate(d.getDate() - (6 - i))
-    const dayStr = d.toLocaleDateString('en-CA')
-    const dayPayments = (weekPaymentsRes.data ?? []).filter((p) => p.payment_date.startsWith(dayStr))
+    const dayStr = addDaysISO(sevenDaysAgo, i)
+    const dayPayments = (weekPaymentsRes.data ?? []).filter((p) => dateOfInstant(p.payment_date) === dayStr)
     return {
-      day: d.toLocaleDateString('fr-FR', { weekday: 'short' }),
+      day: formatISODate(dayStr, { weekday: 'short' }),
       revenue: dayPayments.reduce((s, p) => s + (p.type === 'refund' ? -p.amount : p.amount), 0),
       cash: dayPayments
         .filter((p) => p.method === 'cash')
@@ -221,15 +215,13 @@ export default async function DashboardPage() {
   const forecastBookings = forecastRes.data ?? []
   const totalBeds = bedsRes.data?.length ?? 0
   const forecastDays = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date()
-    d.setDate(d.getDate() + i)
-    const dayStr = d.toLocaleDateString('en-CA')
+    const dayStr = addDaysISO(today, i)
     const occupied = forecastBookings.filter(
       (b) => b.check_in_date <= dayStr && b.check_out_date > dayStr,
     ).length
     return {
       date: dayStr,
-      label: i === 0 ? "Auj'" : d.toLocaleDateString('fr-FR', { weekday: 'short' }),
+      label: i === 0 ? "Auj'" : formatISODate(dayStr, { weekday: 'short' }),
       occupied,
       total: totalBeds,
     }

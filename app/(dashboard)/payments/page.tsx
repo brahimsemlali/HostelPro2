@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient, getUserSession } from '@/lib/supabase/server'
+import { dayRangeUTC, todayISO } from '@/lib/dates'
 import { PaymentsClient, CurrentGuestBooking } from './PaymentsClient'
 
 export default async function PaymentsPage() {
@@ -9,7 +10,7 @@ export default async function PaymentsPage() {
 
   const supabase = await createClient()
 
-  const today = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD local time
+  const todayRange = dayRangeUTC(todayISO())
 
   const [
     propertyRes,
@@ -28,9 +29,10 @@ export default async function PaymentsPage() {
       .from('payments')
       .select('*, guest:guest_id(first_name, last_name), booking:booking_id(check_in_date, check_out_date)')
       .eq('property_id', session.propertyId)
-      .gte('payment_date', `${today}T00:00:00`)
+      .gte('payment_date', todayRange.start)
+      .lt('payment_date', todayRange.end)
       .order('payment_date', { ascending: false })
-      .limit(100),
+      .limit(1000),
 
     // Pending balances: payments embedded per booking so the computation is
     // always complete — a windowed bulk payments fetch silently drops rows

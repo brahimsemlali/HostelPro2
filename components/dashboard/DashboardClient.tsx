@@ -55,6 +55,7 @@ import { useSession, useCanDo } from '@/app/context/SessionContext'
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
 import { useT } from '@/app/context/LanguageContext'
 import { logActivity } from '@/lib/activity'
+import { addDaysISO, dateOfInstant, dayRangeUTC, formatISODate, todayISO } from '@/lib/dates'
 
 type DashboardProperty = Pick<Property, 'id' | 'name' | 'city' | 'check_in_time' | 'check_out_time' | 'currency' | 'review_url'>
 
@@ -549,7 +550,7 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft, l
 
   const refreshOccupancy = useCallback(async () => {
     // Local date — matches the server page (avoids UTC off-by-one at midnight in UTC+1)
-    const today = new Date().toLocaleDateString('en-CA')
+    const today = todayISO()
     const [bedsRes, arrivalsRes] = await Promise.all([
       supabase.from('beds').select('id, status').eq('property_id', property.id),
       supabase
@@ -573,30 +574,24 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft, l
   }, [property.id, setDirtyBedsCount, supabase])
 
   const refreshRevenue = useCallback(async () => {
-    const today = new Date().toLocaleDateString('en-CA')
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    const tomorrowStr = tomorrow.toLocaleDateString('en-CA')
+    const today = todayISO()
+    const tomorrowStr = addDaysISO(today, 1)
     const { data } = await supabase
       .from('payments')
       .select('amount, method, type')
       .eq('property_id', property.id)
       .eq('status', 'completed')
-      .gte('payment_date', `${today}T00:00:00`)
-      .lt('payment_date', `${tomorrowStr}T00:00:00`)
+      .gte('payment_date', dayRangeUTC(today).start)
+      .lt('payment_date', dayRangeUTC(today).end)
     if (data) setTodayPayments(data)
   }, [property.id, supabase])
 
   const arrivalSelect = 'id, bed_id, status, source, check_in_date, check_out_date, pre_checkin_completed, pre_checkin_token, arrival_notes, expected_arrival_time, guest:guest_id(first_name, last_name, nationality, phone, whatsapp), bed:bed_id(name, room:room_id(name))'
 
   const refreshArrivals = useCallback(async () => {
-    const today = new Date().toLocaleDateString('en-CA')
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    const tomorrowStr = tomorrow.toLocaleDateString('en-CA')
-    const weekEnd = new Date()
-    weekEnd.setDate(weekEnd.getDate() + 7)
-    const weekEndStr = weekEnd.toLocaleDateString('en-CA')
+    const today = todayISO()
+    const tomorrowStr = addDaysISO(today, 1)
+    const weekEndStr = addDaysISO(today, 7)
 
     const [todayRes, tomorrowRes, weekRes] = await Promise.all([
       supabase
@@ -629,7 +624,7 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft, l
   }, [property.id, supabase])
 
   const refreshDepartures = useCallback(async () => {
-    const today = new Date().toLocaleDateString('en-CA')
+    const today = todayISO()
     const { data } = await supabase
       .from('bookings')
       .select(
@@ -696,24 +691,20 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft, l
   }, [property.id, supabase])
 
   const refreshChart = useCallback(async () => {
-    const sevenDaysAgo = new Date()
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6)
-    sevenDaysAgo.setHours(0, 0, 0, 0)
+    const sevenDaysAgo = addDaysISO(todayISO(), -6)
     const { data } = await supabase
       .from('payments')
       .select('amount, method, type, payment_date')
       .eq('property_id', property.id)
       .eq('status', 'completed')
-      .gte('payment_date', sevenDaysAgo.toISOString())
+      .gte('payment_date', dayRangeUTC(sevenDaysAgo).start)
     if (data) {
       const signed = (p: { amount: number; type: string }) => (p.type === 'refund' ? -p.amount : p.amount)
       const built = Array.from({ length: 7 }, (_, i) => {
-        const d = new Date()
-        d.setDate(d.getDate() - (6 - i))
-        const dayStr = d.toLocaleDateString('en-CA')
-        const dayPayments = data.filter((p) => p.payment_date.startsWith(dayStr))
+        const dayStr = addDaysISO(sevenDaysAgo, i)
+        const dayPayments = data.filter((p) => dateOfInstant(p.payment_date) === dayStr)
         return {
-          day: d.toLocaleDateString('fr-FR', { weekday: 'short' }),
+          day: formatISODate(dayStr, { weekday: 'short' }),
           revenue: dayPayments.reduce((s, p) => s + signed(p), 0),
           cash: dayPayments.filter((p) => p.method === 'cash').reduce((s, p) => s + signed(p), 0),
           virement: dayPayments
@@ -727,28 +718,25 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft, l
   }, [property.id, supabase])
 
   const refreshForecast = useCallback(async () => {
-    const today = new Date().toLocaleDateString('en-CA')
-    const sevenDaysLater = new Date()
-    sevenDaysLater.setDate(sevenDaysLater.getDate() + 6)
+    const today = todayISO()
+    const sevenDaysLater = addDaysISO(today, 6)
     const { data } = await supabase
       .from('bookings')
       .select('check_in_date, check_out_date')
       .eq('property_id', property.id)
       .in('status', ['confirmed', 'checked_in'])
-      .lte('check_in_date', sevenDaysLater.toLocaleDateString('en-CA'))
+      .lte('check_in_date', sevenDaysLater)
       .gt('check_out_date', today)
     if (data) {
       const total = bedsLengthRef.current
       const days = Array.from({ length: 7 }, (_, i) => {
-        const d = new Date()
-        d.setDate(d.getDate() + i)
-        const dayStr = d.toLocaleDateString('en-CA')
+        const dayStr = addDaysISO(today, i)
         const occupied = data.filter(
           (b) => b.check_in_date <= dayStr && b.check_out_date > dayStr,
         ).length
         return {
           date: dayStr,
-          label: i === 0 ? t('dashboard.todayShort') : d.toLocaleDateString('fr-FR', { weekday: 'short' }),
+          label: i === 0 ? t('dashboard.todayShort') : formatISODate(dayStr, { weekday: 'short' }),
           occupied,
           total,
         }

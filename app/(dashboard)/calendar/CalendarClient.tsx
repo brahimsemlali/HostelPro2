@@ -9,6 +9,7 @@ import { useAppStore } from '@/stores/app.store'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { cn, isBedConflictError, todayISO } from '@/lib/utils'
+import { addDaysISO, diffDaysISO } from '@/lib/dates'
 import { toast } from 'sonner'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useT } from '@/app/context/LanguageContext'
@@ -47,16 +48,13 @@ const CELL_WIDTH = 64
 const ROW_HEIGHT = 48
 const SIDEBAR_WIDTH = 200
 
-function addDays(dateStr: string, n: number): string {
-  const d = new Date(dateStr)
-  d.setDate(d.getDate() + n)
-  return d.toISOString().split('T')[0]
-}
+// UTC-only calendar arithmetic (lib/dates): local setDate() returned the same
+// date across Morocco's post-Ramadan offset change, which made getDates() loop
+// forever and froze the tab.
+const addDays = addDaysISO
 
 function daysBetween(start: string, end: string) {
-  const d1 = new Date(start)
-  const d2 = new Date(end)
-  return Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24))
+  return diffDaysISO(start, end)
 }
 
 function getDates(start: string, end: string): string[] {

@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient, getUserSession } from '@/lib/supabase/server'
+import { todayISO } from '@/lib/dates'
 import { BedMapClient } from './BedMapClient'
 
 export default async function BedsPage() {
@@ -7,7 +8,7 @@ export default async function BedsPage() {
   if (!session) redirect('/login')
 
   const supabase = await createClient()
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayISO()
 
   const [propertyRes, roomsRes, bedsRes, activeBookingsRes] = await Promise.all([
     supabase.from('properties').select('id, name').eq('id', session.propertyId).single(),

@@ -19,6 +19,7 @@ import { MessageCircle, CheckCircle2, PhoneForwarded } from 'lucide-react'
 import { buildWhatsAppLink } from '@/lib/whatsapp/templates'
 import { cn } from '@/lib/utils'
 import { useT } from '@/app/context/LanguageContext'
+import { todayISO } from '@/lib/dates'
 
 interface Props {
   isOpen: boolean
@@ -136,7 +137,7 @@ export function CreateActivityModal({ isOpen, onClose, onSuccess, propertyId }: 
                     name="activity_date" 
                     type="date" 
                     required 
-                    min={new Date().toISOString().split('T')[0]} 
+                    min={todayISO()} 
                     className="h-12 rounded-xl border-2 bg-muted/5 font-semibold"
                   />
                 </div>

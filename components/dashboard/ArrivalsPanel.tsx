@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useT } from '@/app/context/LanguageContext'
+import { todayISO } from '@/lib/dates'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -270,7 +271,7 @@ export function ArrivalsPanel({
                     booking={booking}
                     isLoading={checkingIn.has(booking.id)}
                     onCheckIn={() => onQuickCheckIn(booking)}
-                    canCheckIn={date <= new Date().toLocaleDateString('en-CA')}
+                    canCheckIn={date <= todayISO()}
                     appUrl={appUrl}
                     index={i}
                     t={t}

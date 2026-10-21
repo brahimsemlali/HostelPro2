@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 import { logActivityServer } from '@/lib/activity'
+import { todayISO } from '@/lib/dates'
 
 // Service-role client bypasses RLS — used only after token validation
 function getServiceClient() {
@@ -54,7 +55,7 @@ export async function GET(
   // is over it must stop serving anything — otherwise anyone who ever obtained the
   // link (WhatsApp forward, link-preview bot, browser history) has an indefinite
   // read handle on the guest's passport/DOB. Valid through the checkout day only.
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayISO()
   if (data.check_out_date < today) {
     return NextResponse.json({ error: 'Ce lien de pré-enregistrement a expiré.' }, { status: 410 })
   }
@@ -132,7 +133,7 @@ export async function POST(
     return NextResponse.json({ error: 'Réservation annulée' }, { status: 410 })
   }
   // Mirror the GET expiry guard — no writes through an expired link.
-  if (booking.check_out_date < new Date().toISOString().slice(0, 10)) {
+  if (booking.check_out_date < todayISO()) {
     return NextResponse.json({ error: 'Ce lien de pré-enregistrement a expiré.' }, { status: 410 })
   }
 

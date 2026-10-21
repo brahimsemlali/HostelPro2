@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient, getUserSession } from '@/lib/supabase/server'
+import { todayISO } from '@/lib/dates'
 import { ActivitiesClient } from './ActivitiesClient'
 
 export default async function ActivitiesPage() {
@@ -17,7 +18,7 @@ export default async function ActivitiesPage() {
   }
 
   // Fetch upcoming activities
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayISO()
   
   const { data: activities } = await supabase
     .from('activities')

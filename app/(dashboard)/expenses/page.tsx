@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient, getUserSession } from '@/lib/supabase/server'
+import { addDaysISO, todayISO } from '@/lib/dates'
 import { ExpensesClient } from './ExpensesClient'
 
 export default async function ExpensesPage() {
@@ -21,9 +22,7 @@ export default async function ExpensesPage() {
   }
 
   // Fetch last 90 days of expenses + all inventory items in parallel
-  const ninetyDaysAgo = new Date()
-  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
-  const since = ninetyDaysAgo.toISOString().split('T')[0]
+  const since = addDaysISO(todayISO(), -90)
 
   const [expensesRes, inventoryRes] = await Promise.all([
     supabase

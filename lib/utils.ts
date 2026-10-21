@@ -1,4 +1,5 @@
 import { clsx, type ClassValue } from "clsx"
+import { addDaysISO, diffDaysISO, todayISO as moroccoTodayISO } from './dates'
 import { twMerge } from "tailwind-merge"
 
 export function cn(...inputs: ClassValue[]) {
@@ -48,28 +49,18 @@ export function formatTime(date: string | Date): string {
   return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
 
+// Calendar-date helpers live in lib/dates (Morocco time, offset-change safe);
+// these keep the historical names used across the app.
 export function daysBetween(from: string, to: string): number {
-  const d1 = new Date(from)
-  const d2 = new Date(to)
-  return Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24))
-}
-
-function toLocalISODate(d: Date): string {
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${d.getFullYear()}-${m}-${day}`
+  return diffDaysISO(from.slice(0, 10), to.slice(0, 10))
 }
 
 export function todayISO(): string {
-  // Local date, not UTC — Morocco is UTC+1, so toISOString() would return
-  // yesterday's date between 00:00 and 01:00 local time.
-  return toLocalISODate(new Date())
+  return moroccoTodayISO()
 }
 
 export function tomorrowISO(): string {
-  const d = new Date()
-  d.setDate(d.getDate() + 1)
-  return toLocalISODate(d)
+  return addDaysISO(moroccoTodayISO(), 1)
 }
 
 /** True when a Postgres error is an exclusion-constraint violation (23P01) —
