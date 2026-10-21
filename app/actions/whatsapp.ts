@@ -2,7 +2,7 @@
 
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { getUserSession } from '@/lib/supabase/server'
+import { createAdminClient, getUserSession } from '@/lib/supabase/server'
 
 // Guardrails: this action sends through the property's Meta WhatsApp token —
 // abuse (arbitrary numbers, huge lists) risks a permanent token ban.
@@ -47,14 +47,24 @@ export async function sendWhatsAppBroadcast(phones: string[], messageText: strin
 
   const supabase = await getSupabase()
 
-  // Check property configuration first for Meta Custom API Keys
-  const { data: propertyResponse } = await supabase
+  // Meta credentials. The access token is a server-only secret: it lives in
+  // property_secrets (migration 031, owner-only RLS) and is read here with the
+  // service role after the session/role checks above. Until 031 is applied it
+  // falls back to the legacy properties column.
+  const admin = createAdminClient()
+  const { data: propertyResponse } = await admin
     .from('properties')
     .select('whatsapp_phone_number_id, whatsapp_access_token')
     .eq('id', propertyId)
     .single()
+  const { data: secretRow, error: secretErr } = await admin
+    .from('property_secrets')
+    .select('whatsapp_access_token')
+    .eq('property_id', propertyId)
+    .maybeSingle()
+  const storedToken = (!secretErr && secretRow?.whatsapp_access_token) || propertyResponse?.whatsapp_access_token
 
-  const token = propertyResponse?.whatsapp_access_token || process.env.WHATSAPP_API_TOKEN
+  const token = storedToken || process.env.WHATSAPP_API_TOKEN
   const phoneId = propertyResponse?.whatsapp_phone_number_id || process.env.WHATSAPP_PHONE_NUMBER_ID
 
   if (!token || !phoneId || token === 'your_token') {

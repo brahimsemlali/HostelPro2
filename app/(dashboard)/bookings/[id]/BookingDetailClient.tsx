@@ -247,6 +247,11 @@ export function BookingDetailClient({ booking, payments, extras, property, total
 
       // If dynamicBalance is negative, this is a refund being processed.
       const isRefund = dynamicBalance < 0
+      // A refund can't exceed what was overpaid.
+      if (isRefund && amount > Math.abs(dynamicBalance) + 0.005) {
+        toast.error(t('payments.invalidAmount'))
+        return
+      }
       const paymentType = isRefund ? 'refund' : (amount < dynamicBalance ? 'deposit' : 'payment')
 
       const { error } = await supabase.from('payments').insert({

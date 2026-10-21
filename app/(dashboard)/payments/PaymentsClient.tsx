@@ -117,6 +117,12 @@ export function PaymentsClient({ propertyId, todayPayments, pendingBookings, cur
 
   async function handleAddCustomExtra(bookingId: string) {
     if (!customForm.name || !customForm.unit_price) return
+    const qty = customForm.quantity.trim() === '' ? 1 : parseFloat(customForm.quantity)
+    const unitPrice = parseFloat(customForm.unit_price)
+    if (!Number.isFinite(qty) || qty <= 0 || !Number.isFinite(unitPrice) || unitPrice < 0) {
+      toast.error(t('payments.invalidAmount'))
+      return
+    }
     setExtraAdding(bookingId)
     try {
       const supabase = createClient()
@@ -126,8 +132,8 @@ export function PaymentsClient({ propertyId, todayPayments, pendingBookings, cur
           booking_id: bookingId,
           property_id: propertyId,
           name: customForm.name,
-          quantity: parseFloat(customForm.quantity) || 1,
-          unit_price: parseFloat(customForm.unit_price),
+          quantity: qty,
+          unit_price: unitPrice,
         })
         .select()
         .single()
