@@ -138,7 +138,9 @@ export function CalendarClient({ propertyId, rooms, beds: initialBeds, bookings:
 
     if (data) {
       setBookings(data.map((b) => ({ ...b, guest: normalizeGuest(b.guest) })))
+      return true
     }
+    return false
   }, [propertyId, startDate, endDate])
 
   function handlePointerDown(e: React.PointerEvent, booking: Booking, type: 'move' | 'resize-start' | 'resize-end') {
@@ -273,7 +275,9 @@ export function CalendarClient({ propertyId, rooms, beds: initialBeds, bookings:
 
         if (error) {
           toast.error(isBedConflictError(error) ? t('calendar.slotOccupied') : t('calendar.updateError'))
-          refreshBookings() // Rollback
+          // Rollback; if the refetch also fails, reload so no phantom move stays on screen
+          const rolledBack = await refreshBookings()
+          if (!rolledBack) router.refresh()
         } else {
           const priceInfo = priceChanged ? ` · ${newNights} ${newNights > 1 ? t('common.nights') : t('common.night')} = ${newTotalPrice} MAD` : ''
           toast.success(`${t('calendar.bookingUpdated')}${priceInfo}`)
@@ -295,19 +299,33 @@ export function CalendarClient({ propertyId, rooms, beds: initialBeds, bookings:
   const debouncedRefreshBeds = useDebouncedCallback(refreshBeds)
   const calWasDisconnectedRef = useRef(false)
 
+  // The refresh callbacks change identity with the visible date window. Read
+  // them through refs so the realtime effect does not tear down and recreate
+  // the same channel topic on every prev/next — removeChannel() is async, and
+  // re-subscribing to a topic that is still leaving silently ended live updates.
+  const refreshRefs = useRef({ refreshBookings, refreshBeds, debouncedRefreshBookings, debouncedRefreshBeds })
+  useEffect(() => {
+    refreshRefs.current = { refreshBookings, refreshBeds, debouncedRefreshBookings, debouncedRefreshBeds }
+  })
+
+  // Prev/next can keep this component mounted with new server props.
+  useEffect(() => {
+    setBookings(initialBookings)
+  }, [initialBookings])
+
   useEffect(() => {
     const supabase = createClient()
     const channel = supabase
       .channel(`calendar-live-${propertyId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings', filter: `property_id=eq.${propertyId}` }, () => debouncedRefreshBookings())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'beds', filter: `property_id=eq.${propertyId}` }, () => debouncedRefreshBeds())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings', filter: `property_id=eq.${propertyId}` }, () => refreshRefs.current.debouncedRefreshBookings())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'beds', filter: `property_id=eq.${propertyId}` }, () => refreshRefs.current.debouncedRefreshBeds())
       .subscribe((status) => {
         const connected = status === 'SUBSCRIBED'
         if (connected && calWasDisconnectedRef.current) {
           // Realtime never replays missed events — refetch after a reconnect
           calWasDisconnectedRef.current = false
-          refreshBookings()
-          refreshBeds()
+          refreshRefs.current.refreshBookings()
+          refreshRefs.current.refreshBeds()
         } else if (!connected) {
           calWasDisconnectedRef.current = true
         }
@@ -315,7 +333,7 @@ export function CalendarClient({ propertyId, rooms, beds: initialBeds, bookings:
       })
 
     return () => { supabase.removeChannel(channel); setRealtimeConnected(null) }
-  }, [propertyId, refreshBookings, refreshBeds, debouncedRefreshBookings, debouncedRefreshBeds, setRealtimeConnected])
+  }, [propertyId, setRealtimeConnected])
 
   const currentDays = daysBetween(startDate, endDate) + 1
   function navigate(direction: 'prev' | 'next') {

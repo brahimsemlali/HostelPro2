@@ -32,6 +32,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Property not found' }, { status: 404 })
   }
 
+  // One live LemonSqueezy subscription per property: a second checkout would
+  // bill the owner twice and overwrite ls_subscription_id, so cancelling one
+  // would leave the other charging. Plan changes go through the LS portal.
+  const { data: existingSub } = await supabase
+    .from('subscriptions')
+    .select('status, provider, ls_subscription_id')
+    .eq('property_id', property.id)
+    .maybeSingle()
+  if (
+    existingSub?.provider === 'lemonsqueezy' &&
+    existingSub.ls_subscription_id &&
+    ['active', 'trialing', 'past_due'].includes(existingSub.status)
+  ) {
+    return NextResponse.json({ error: 'Un abonnement est déjà actif — gérez-le depuis le portail client.' }, { status: 409 })
+  }
+
   const apiKey = process.env.LEMONSQUEEZY_API_KEY
   const storeId = process.env.LEMONSQUEEZY_STORE_ID
 
@@ -69,8 +85,6 @@ export async function POST(request: Request) {
   })
 
   if (!res.ok) {
-    const err = await res.text()
-    console.error('LemonSqueezy checkout error:', err)
     return NextResponse.json({ error: 'Failed to create checkout' }, { status: 502 })
   }
 

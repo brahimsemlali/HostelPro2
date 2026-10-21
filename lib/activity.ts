@@ -18,7 +18,7 @@ export interface LogActivityParams {
   userId: string | null
   staffName: string | null
   actionType: ActivityActionType
-  entityType?: 'booking' | 'payment' | 'maintenance' | 'bed'
+  entityType?: 'booking' | 'payment' | 'maintenance' | 'bed' | 'guest'
   entityId?: string
   description: string
   meta?: Record<string, unknown>

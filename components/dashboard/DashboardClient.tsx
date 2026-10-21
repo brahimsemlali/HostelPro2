@@ -112,21 +112,6 @@ interface PendingPaymentBooking {
   guest: { first_name: string; last_name: string; phone: string | null; whatsapp: string | null } | null
 }
 
-interface RecentBookingItem {
-  id: string
-  status: string
-  created_at: string
-  guest: unknown
-}
-
-interface RecentPaymentItem {
-  id: string
-  amount: number
-  method: string
-  created_at: string
-  guest: unknown
-}
-
 export interface ActivityEntry {
   id: string
   action_type: string
@@ -158,8 +143,6 @@ export interface DashboardInitialData {
   arrivalsTomorrow: ArrivalBooking[]
   arrivalsWeek: ArrivalBooking[]
   departuresToday: DepartureBooking[]
-  recentBookings: RecentBookingItem[]
-  recentPayments: RecentPaymentItem[]
   chartData: ChartDayData[]
   dirtyBedsWithArrivalsCount: number
   forecastDays: ForecastDay[]
@@ -273,12 +256,6 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft, l
   const [arrivalsWeek, setArrivalsWeek] = useState<ArrivalBooking[]>(initialData.arrivalsWeek)
   const [departuresToday, setDeparturesToday] = useState<DepartureBooking[]>(
     initialData.departuresToday,
-  )
-  const [recentBookings, setRecentBookings] = useState<RecentBookingItem[]>(
-    initialData.recentBookings,
-  )
-  const [recentPayments, setRecentPayments] = useState<RecentPaymentItem[]>(
-    initialData.recentPayments,
   )
   const [chartData, setChartData] = useState<ChartDayData[]>(initialData.chartData)
   const [forecastDays, setForecastDays] = useState<ForecastDay[]>(initialData.forecastDays)

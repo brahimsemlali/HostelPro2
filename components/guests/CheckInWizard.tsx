@@ -117,6 +117,49 @@ export function CheckInWizard({ property, beds, preselectedBedId }: Props) {
   const createdGuestRef = useRef<Guest | null>(null)
   const paymentDoneRef = useRef(false)
 
+  // Draft persistence: one mis-tap on the bottom nav used to throw away a
+  // 12-field passport entry. The draft lives in sessionStorage (this tab only,
+  // cleared when the tab closes or the check-in completes) and the browser
+  // warns before leaving with unsaved data.
+  const draftKey = `checkin-draft:${property.id}`
+  const draftRestored = useRef(false)
+  useEffect(() => {
+    if (draftRestored.current) return
+    draftRestored.current = true
+    try {
+      const raw = window.sessionStorage.getItem(draftKey)
+      if (!raw) return
+      const d = JSON.parse(raw) as { step?: Step; guestForm?: typeof guestForm; bookingForm?: typeof bookingForm; selectedGuest?: Guest | null; isNewGuest?: boolean }
+      if (d.guestForm) setGuestForm(d.guestForm)
+      if (d.bookingForm) setBookingForm((p) => ({ ...p, ...d.bookingForm, bed_id: preselectedBedId ?? d.bookingForm?.bed_id ?? p.bed_id }))
+      if (d.selectedGuest !== undefined) setSelectedGuest(d.selectedGuest)
+      if (d.isNewGuest !== undefined) setIsNewGuest(d.isNewGuest)
+      if (d.step && d.step < 5) setStep(d.step)
+    } catch {
+      // corrupt or unavailable storage — start fresh
+    }
+  }, [draftKey, preselectedBedId])
+
+  const hasDraft = !createdBooking && (step > 1 || !!guestForm.first_name || !!guestForm.document_number)
+  useEffect(() => {
+    if (!draftRestored.current) return
+    try {
+      if (createdBooking) window.sessionStorage.removeItem(draftKey)
+      else if (hasDraft) window.sessionStorage.setItem(draftKey, JSON.stringify({ step, guestForm, bookingForm, selectedGuest, isNewGuest }))
+    } catch {
+      // storage full / disabled — the unload warning still protects the entry
+    }
+  }, [draftKey, hasDraft, step, guestForm, bookingForm, selectedGuest, isNewGuest, createdBooking])
+
+  useEffect(() => {
+    if (!hasDraft) return
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+    }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [hasDraft])
+
   // Returning guest info (fetched lazily when a guest is selected)
   const [returningInfo, setReturningInfo] = useState<{
     stays: number

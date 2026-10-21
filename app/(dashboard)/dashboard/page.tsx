@@ -46,8 +46,6 @@ export default async function DashboardPage() {
     todayPaymentsRes,
     allArrivalsRes,
     departuresRes,
-    recentBookingsRes,
-    recentPaymentsRes,
     weekPaymentsRes,
     forecastRes,
     activityRes,
@@ -84,20 +82,6 @@ export default async function DashboardPage() {
       .eq('property_id', property.id)
       .eq('check_out_date', today)
       .eq('status', 'checked_in'),
-
-    supabase
-      .from('bookings')
-      .select('id, status, created_at, guest:guest_id(first_name, last_name)')
-      .eq('property_id', property.id)
-      .order('created_at', { ascending: false })
-      .limit(5),
-
-    supabase
-      .from('payments')
-      .select('id, amount, method, created_at, guest:guest_id(first_name, last_name)')
-      .eq('property_id', property.id)
-      .order('created_at', { ascending: false })
-      .limit(5),
 
     supabase
       .from('payments')
@@ -248,8 +232,6 @@ export default async function DashboardPage() {
     arrivalsTomorrow: (arrivalsTomorrowRes.data ?? []) as unknown as DashboardInitialData['arrivalsTomorrow'],
     arrivalsWeek: (arrivalsWeekRes.data ?? []) as unknown as DashboardInitialData['arrivalsWeek'],
     departuresToday: departuresWithBalance as unknown as DashboardInitialData['departuresToday'],
-    recentBookings: (recentBookingsRes.data ?? []) as DashboardInitialData['recentBookings'],
-    recentPayments: (recentPaymentsRes.data ?? []) as DashboardInitialData['recentPayments'],
     chartData,
     dirtyBedsWithArrivalsCount,
     forecastDays,

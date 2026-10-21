@@ -163,7 +163,15 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
 
     setSwapping(false)
     if (error) {
-      toast.error(isBedConflictError(error) ? t('checkin.bedConflict') : t('beds.swapError'))
+      // PGRST202 / 42883: swap_booking_beds (migration 023) isn't installed yet
+      const missingRpc = error.code === 'PGRST202' || error.code === '42883'
+      toast.error(
+        isBedConflictError(error)
+          ? t('checkin.bedConflict')
+          : missingRpc
+            ? 'Échange de lits indisponible : mise à jour de la base de données requise (migration 023).'
+            : t('beds.swapError'),
+      )
     } else {
       toast.success(`${t('beds.swapSuccess')}: ${swapSource.name} - ${swapTarget.name}`)
       await Promise.all([refreshBeds(), refreshBookings()])
