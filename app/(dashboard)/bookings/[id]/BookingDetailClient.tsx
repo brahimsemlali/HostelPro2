@@ -31,6 +31,7 @@ import type { Booking, Guest, Bed, Room, Payment, Property, BookingExtra } from 
 import { useSession } from '@/app/context/SessionContext'
 import { logActivity } from '@/lib/activity'
 import { useT } from '@/app/context/LanguageContext'
+import { bedHasOtherOccupant } from '@/lib/bed-status'
 
 type BedOption = { id: string; name: string; base_price: number; status: string; room: { name: string } | null }
 
@@ -159,11 +160,14 @@ export function BookingDetailClient({ booking, payments, extras, property, total
         }
         throw statusErr
       }
-      // update bed status accordingly
+      // Update the bed — but only when this booking is the one using it: a
+      // cancelled future reservation or a departure after the next guest was
+      // already checked in must not free/dirty an occupied bed.
       if (booking.bed_id) {
+        const occupiedByOther = status === 'checked_in' ? false : await bedHasOtherOccupant(supabase, booking.bed_id, booking.id)
         if (status === 'checked_in') {
           await supabase.from('beds').update({ status: 'occupied' }).eq('id', booking.bed_id)
-        } else if (status === 'checked_out') {
+        } else if (status === 'checked_out' && !occupiedByOther) {
           await supabase.from('beds').update({ status: 'dirty' }).eq('id', booking.bed_id)
           // Auto-create housekeeping task so cleaning staff see it immediately
           await supabase.from('housekeeping_tasks').insert({
@@ -173,7 +177,7 @@ export function BookingDetailClient({ booking, payments, extras, property, total
             status: 'pending',
             priority: 'normal',
           })
-        } else if (status === 'cancelled' || status === 'no_show') {
+        } else if ((status === 'cancelled' || status === 'no_show') && booking.status === 'checked_in' && !occupiedByOther) {
           await supabase.from('beds').update({ status: 'available' }).eq('id', booking.bed_id)
         }
       }

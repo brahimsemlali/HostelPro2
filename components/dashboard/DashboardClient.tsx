@@ -56,6 +56,7 @@ import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
 import { useT } from '@/app/context/LanguageContext'
 import { logActivity } from '@/lib/activity'
 import { addDaysISO, dateOfInstant, dayRangeUTC, formatISODate, todayISO } from '@/lib/dates'
+import { bedHasOtherOccupant } from '@/lib/bed-status'
 
 type DashboardProperty = Pick<Property, 'id' | 'name' | 'city' | 'check_in_time' | 'check_out_time' | 'currency' | 'review_url'>
 
@@ -420,13 +421,16 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft, l
 
       try {
         const now = new Date().toISOString()
+        // Same-day turnover: if the next guest is already checked in on this
+        // bed, leave it occupied instead of marking it dirty.
+        const keepBed = booking.bed_id ? await bedHasOtherOccupant(supabase, booking.bed_id, booking.id) : true
         const [bkErr, bedErr] = await Promise.all([
           supabase
             .from('bookings')
             .update({ status: 'checked_out', check_out_time: now })
             .eq('id', booking.id)
             .then(({ error }) => error),
-          booking.bed_id
+          booking.bed_id && !keepBed
             ? supabase
                 .from('beds')
                 .update({ status: 'dirty' })
