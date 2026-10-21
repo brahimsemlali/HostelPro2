@@ -23,3 +23,13 @@ export async function bedHasOtherOccupant(
   if (error) return true
   return (data?.length ?? 0) > 0
 }
+
+/**
+ * Bed-map booking columns. Deliberately excludes the guest's identity document,
+ * date of birth, contact details and staff notes: /beds is housekeeping's
+ * landing page, and anything selected here ships to every role's browser.
+ * Full guest details are fetched on demand by roles allowed to see them
+ * (BookingDetailSheet).
+ */
+export const BED_MAP_BOOKING_SELECT =
+  'id, property_id, guest_id, bed_id, source, status, check_in_date, check_out_date, nights, adults, total_price, created_at, guest:guest_id(id, first_name, last_name, nationality)'

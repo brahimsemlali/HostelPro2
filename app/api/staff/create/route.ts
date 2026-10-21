@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getRouteHandlerSession, createAdminClient } from '@/lib/supabase/server'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 import { isSessionBlocked } from '@/lib/billing'
+import { isReservedAdminEmail } from '@/lib/superadmin'
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req)
@@ -35,6 +36,11 @@ export async function POST(req: NextRequest) {
 
     const admin = createAdminClient()
     const normalizedEmail = email.toLowerCase().trim()
+
+    // Never let a tenant provision an account for a platform-admin address.
+    if (isReservedAdminEmail(normalizedEmail)) {
+      return NextResponse.json({ error: 'Adresse email non autorisée' }, { status: 400 })
+    }
 
     // Create the auth user — email_confirm:true skips email verification
     const { data: authData, error: authError } = await admin.auth.admin.createUser({

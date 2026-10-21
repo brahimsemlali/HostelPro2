@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient, getUserSession } from '@/lib/supabase/server'
 import { todayISO } from '@/lib/dates'
 import { BedMapClient } from './BedMapClient'
+import { BED_MAP_BOOKING_SELECT } from '@/lib/bed-status'
 
 export default async function BedsPage() {
   const session = await getUserSession()
@@ -16,7 +17,7 @@ export default async function BedsPage() {
     supabase.from('beds').select('id, name, room_id, bunk_position, base_price, status, notes, property_id, created_at').eq('property_id', session.propertyId).order('name'),
     supabase
       .from('bookings')
-      .select('*, guest:guest_id(*)')
+      .select(BED_MAP_BOOKING_SELECT)
       .eq('property_id', session.propertyId)
       .eq('status', 'checked_in')
       .gte('check_out_date', today),
@@ -31,7 +32,7 @@ export default async function BedsPage() {
     <BedMapClient
       rooms={roomsRes.data ?? []}
       beds={bedsRes.data ?? []}
-      activeBookings={activeBookingsRes.data ?? []}
+      activeBookings={(activeBookingsRes.data ?? []) as unknown as Parameters<typeof BedMapClient>[0]['activeBookings']}
       propertyId={session.propertyId}
     />
   )

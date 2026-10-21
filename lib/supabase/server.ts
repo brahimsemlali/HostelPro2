@@ -3,6 +3,7 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { cache } from 'react'
 import type { UserSession } from '@/types'
+import { isSuperAdmin as isSuperAdminUser } from '@/lib/superadmin'
 
 // cache() deduplicates calls within a single server render tree.
 // Use ONLY in Server Components — React.cache() is not supported in Route Handlers.
@@ -170,7 +171,7 @@ export async function getRouteHandlerSession(): Promise<UserSession | null> {
     ? await admin.from('subscriptions').select('status, current_period_end').eq('property_id', propertyId).maybeSingle()
     : { data: null }
 
-  const isSuperAdmin = (process.env.SUPERADMIN_EMAILS ?? '').split(',').filter(Boolean).includes(user.email ?? '')
+  const isSuperAdmin = isSuperAdminUser({ id: userId, email: user.email })
 
   if (properties && properties.length > 0 && activeProperty) {
     return {

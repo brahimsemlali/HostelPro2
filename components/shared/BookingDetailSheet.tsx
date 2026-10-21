@@ -23,6 +23,8 @@ import {
   MapPin, Briefcase, Globe, Navigation, Mail, Flag, BedDouble,
   AlertTriangle, ExternalLink, Clock, Users, Hash,
 } from 'lucide-react'
+import { toast } from 'sonner'
+import { useT } from '@/app/context/LanguageContext'
 
 // Full hydrated booking as returned from the detail fetch
 export type FullBooking = Booking & {
@@ -70,6 +72,7 @@ export function BookingDetailSheet({ bookingId, onClose, isMobile = false }: Pro
   // them anyway. Guest details require check-in access; finances require
   // payment/revenue access.
   const canSeeGuestDetails = useCanDo('check_in_guests')
+  const t = useT()
   // Call both hooks unconditionally (no || short-circuit) — rules-of-hooks.
   const canRecordPayments = useCanDo('record_payments')
   const canViewRevenue = useCanDo('view_revenue')
@@ -86,42 +89,59 @@ export function BookingDetailSheet({ bookingId, onClose, isMobile = false }: Pro
     }
 
     setLoading(true)
+    let stale = false
 
+    // Fetch only what this role may see: the full guest record (passport,
+    // DOB, contacts) for check-in roles, payments for finance roles.
+    const guestCols = canSeeGuestDetails ? '*' : 'id, first_name, last_name, nationality'
     Promise.all([
       supabase
         .from('bookings')
-        .select('*, guest:guest_id(*), bed:bed_id(*, room:room_id(*))')
+        .select(`*, guest:guest_id(${guestCols}), bed:bed_id(*, room:room_id(*))`)
         .eq('id', bookingId)
         .single(),
-      supabase
-        .from('payments')
-        .select('*')
-        .eq('booking_id', bookingId)
-        .order('payment_date', { ascending: false }),
-    ]).then(([{ data: bk }, { data: pmts }]) => {
-      if (bk) {
-        const guest = Array.isArray(bk.guest) ? bk.guest[0] : bk.guest
-        const bed = Array.isArray(bk.bed) ? bk.bed[0] : bk.bed
-        if (bed) {
-          const room = Array.isArray(bed.room) ? bed.room[0] : bed.room
-          setBooking({ ...bk, guest, bed: { ...bed, room } })
-        } else {
-          setBooking({ ...bk, guest, bed: null })
+      canSeeFinances
+        ? supabase
+            .from('payments')
+            .select('id, amount, method, type, status, payment_date, reference, notes')
+            .eq('booking_id', bookingId)
+            .order('payment_date', { ascending: false })
+        : Promise.resolve({ data: [] as Payment[], error: null }),
+    ])
+      .then(([{ data: bk, error: bkErr }, { data: pmts }]) => {
+        if (stale) return
+        if (bkErr) toast.error(t('common.error'))
+        if (bk) {
+          const guest = Array.isArray(bk.guest) ? bk.guest[0] : bk.guest
+          const bed = Array.isArray(bk.bed) ? bk.bed[0] : bk.bed
+          if (bed) {
+            const room = Array.isArray(bed.room) ? bed.room[0] : bed.room
+            setBooking({ ...bk, guest, bed: { ...bed, room } })
+          } else {
+            setBooking({ ...bk, guest, bed: null })
+          }
         }
-      }
-      setPayments((pmts as Payment[]) ?? [])
-      setLoading(false)
-    })
-  }, [bookingId])
+        setPayments((pmts as Payment[]) ?? [])
+      })
+      .catch(() => {
+        if (!stale) toast.error(t('common.error'))
+      })
+      .finally(() => {
+        if (!stale) setLoading(false)
+      })
+    return () => {
+      stale = true
+    }
+  }, [bookingId, canSeeGuestDetails, canSeeFinances, t])
 
   const guest = booking?.guest ?? null
   const bed = booking?.bed ?? null
   const room = bed?.room ?? null
 
-  const amountPaid = payments.reduce(
-    (s, p) => s + (p.type !== 'refund' ? p.amount : -p.amount),
-    0,
-  )
+  // Completed payments only — pending/failed ones are not money received.
+  const amountPaid = payments
+    .filter((p) => p.status === 'completed')
+    .reduce((s, p) => s + (p.type !== 'refund' ? p.amount : -p.amount), 0)
   const balance = booking ? booking.total_price - amountPaid : 0
   const daysLeft = booking
     ? differenceInCalendarDays(parseISO(booking.check_out_date), new Date())

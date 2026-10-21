@@ -3,6 +3,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies, headers } from 'next/headers'
 import { rateLimit } from '@/lib/rate-limit'
+import { isSuperAdmin } from '@/lib/superadmin'
 
 const RATE_LIMITED_MSG = 'Trop de tentatives. Réessayez dans quelques minutes.'
 
@@ -51,13 +52,12 @@ export async function loginAction(formData: FormData) {
   }
 
   const supabase = await getSupabase()
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  const { data: signIn, error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) return { error: error.message }
 
   // Superadmins have no property row — redirect them to /admin to avoid dashboard loop
-  const superadminEmails = (process.env.SUPERADMIN_EMAILS ?? '').split(',').filter(Boolean)
-  if (superadminEmails.includes(email)) {
+  if (isSuperAdmin(signIn.user)) {
     return { success: true, redirect: '/admin' }
   }
 

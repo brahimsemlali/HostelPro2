@@ -32,7 +32,6 @@ export function SettingsClient({ property }: { property: Property }) {
     police_prefecture: property.police_prefecture ?? '',
     review_url: property.review_url ?? '',
     whatsapp_phone_number_id: property.whatsapp_phone_number_id ?? '',
-    whatsapp_access_token: property.whatsapp_access_token ?? '',
   })
 
   async function handleSave() {

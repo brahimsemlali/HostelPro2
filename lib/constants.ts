@@ -75,3 +75,7 @@ export const BANK_WIRE_DETAILS = {
   rib: '022010000277002837541725',
   city: 'Casablanca',
 }
+
+/** properties columns safe to send to the browser (excludes whatsapp_access_token). */
+export const PROPERTY_PUBLIC_COLUMNS =
+  'id, owner_id, name, address, city, phone, email, wifi_password, check_in_time, check_out_time, currency, default_language, police_prefecture, review_url, whatsapp_phone_number_id, booking_com_ical_url, last_ical_sync, created_at'

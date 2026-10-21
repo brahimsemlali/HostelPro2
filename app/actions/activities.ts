@@ -24,6 +24,11 @@ async function getSupabase() {
   )
 }
 
+type GuestPhone = { first_name: string; whatsapp: string | null; phone: string | null }
+type GuestPhoneRow = { guest_id: string | null; guests: GuestPhone | GuestPhone[] | null }
+
+const canManageActivities = (role: string) => role === 'owner' || role === 'manager' || role === 'receptionist'
+
 export async function createActivityAction(formData: FormData) {
   const title = formData.get('title') as string
   const description = formData.get('description') as string
@@ -32,14 +37,17 @@ export async function createActivityAction(formData: FormData) {
   const type = formData.get('type') as 'free' | 'paid'
   const price = formData.get('price') ? parseFloat(formData.get('price') as string) : null
   const sendWhatsapp = formData.get('sendWhatsapp') === 'true'
-  const property_id = formData.get('property_id') as string
-
-  if (!title || !activity_date || !start_time || !property_id) {
+  if (!title || !activity_date || !start_time) {
     return { error: 'Missing required fields' }
   }
 
   const gate = await getUserSession()
   if (!gate || isSessionBlocked(gate)) return { error: 'Abonnement inactif' }
+  // Activities + guest broadcasts are front-desk work (receptionist and up).
+  if (!canManageActivities(gate.role)) return { error: 'Accès refusé' }
+  // Tenant comes from the session, never from the form.
+  const property_id = gate.propertyId
+  if (price !== null && (!Number.isFinite(price) || price < 0)) return { error: 'Prix invalide' }
 
   const supabase = await getSupabase()
   
@@ -80,13 +88,13 @@ export async function createActivityAction(formData: FormData) {
       .eq('property_id', property_id)
       .lte('check_in_date', activity_date)
       .gt('check_out_date', activity_date)
+      .in('status', ['confirmed', 'checked_in'])
 
     if (!bookingsError && bookings && bookings.length > 0) {
       const phones: string[] = []
       
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      bookings.forEach((b: any) => {
-        const guest = b.guests
+      ;(bookings as unknown as GuestPhoneRow[]).forEach((b) => {
+        const guest = Array.isArray(b.guests) ? b.guests[0] : b.guests
         if (guest && (guest.whatsapp || guest.phone)) {
            phones.push((guest.whatsapp || guest.phone)!)
         }
@@ -106,10 +114,11 @@ export async function createActivityAction(formData: FormData) {
 }
 
 export async function deleteActivityAction(id: string) {
+  const gate = await getUserSession()
+  if (!gate || isSessionBlocked(gate)) return { error: 'Abonnement inactif' }
+  if (!canManageActivities(gate.role)) return { error: 'Accès refusé' }
   const supabase = await getSupabase()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
-  const { error } = await supabase.from('activities').delete().eq('id', id)
+  const { error } = await supabase.from('activities').delete().eq('id', id).eq('property_id', gate.propertyId)
   if (error) return { error: error.message }
   return { success: true }
 }
@@ -117,16 +126,16 @@ export async function deleteActivityAction(id: string) {
 export async function notifyGuestsAction(activityId: string) {
   const gate = await getUserSession()
   if (!gate || isSessionBlocked(gate)) return { error: 'Abonnement inactif' }
+  if (!canManageActivities(gate.role)) return { error: 'Accès refusé' }
 
   const supabase = await getSupabase()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
 
   // 1. Get activity details
   const { data: activity, error: activityError } = await supabase
     .from('activities')
-    .select('*')
+    .select('id, property_id, title, description, activity_date, start_time, type, price, currency')
     .eq('id', activityId)
+    .eq('property_id', gate.propertyId)
     .single()
 
   if (activityError || !activity) return { error: 'Activité non trouvée' }
@@ -138,14 +147,14 @@ export async function notifyGuestsAction(activityId: string) {
     .eq('property_id', activity.property_id)
     .lte('check_in_date', activity.activity_date)
     .gt('check_out_date', activity.activity_date)
+    .in('status', ['confirmed', 'checked_in'])
 
   if (bookingsError) return { error: bookingsError.message }
   if (!bookings || bookings.length === 0) return { error: 'Aucun client trouvé pour ces dates.' }
 
   const phones: string[] = []
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  bookings.forEach((b: any) => {
-    const guest = b.guests
+  ;(bookings as unknown as GuestPhoneRow[]).forEach((b) => {
+    const guest = Array.isArray(b.guests) ? b.guests[0] : b.guests
     if (guest && (guest.whatsapp || guest.phone)) {
        phones.push((guest.whatsapp || guest.phone)!)
     }

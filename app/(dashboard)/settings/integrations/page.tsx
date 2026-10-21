@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient, getUserSession } from '@/lib/supabase/server'
 import { IntegrationsClient } from './IntegrationsClient'
+import { PROPERTY_PUBLIC_COLUMNS } from '@/lib/constants'
 
 export default async function IntegrationsPage() {
   const session = await getUserSession()
@@ -12,7 +13,7 @@ export default async function IntegrationsPage() {
   // Use select('*') so missing columns don't cause query failure before migration is run
   // Fetch property + existing booking refs in parallel
   const [propertyRes, existingRefsRes] = await Promise.all([
-    supabase.from('properties').select('*').eq('id', session.propertyId).single(),
+    supabase.from('properties').select(PROPERTY_PUBLIC_COLUMNS).eq('id', session.propertyId).single(),
     supabase.from('bookings').select('external_booking_id').eq('property_id', session.propertyId).eq('source', 'booking_com').not('external_booking_id', 'is', null),
   ])
 

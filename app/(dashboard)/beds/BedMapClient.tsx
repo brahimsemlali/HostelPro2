@@ -35,6 +35,7 @@ const BookingDetailSheet = dynamic(
 )
 import { useT } from '@/app/context/LanguageContext'
 import { useCanDo } from '@/app/context/SessionContext'
+import { BED_MAP_BOOKING_SELECT } from '@/lib/bed-status'
 
 interface BedWithBooking extends Bed {
   room?: Room
@@ -140,11 +141,11 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
     const supabase = createClient()
     const { data } = await supabase
       .from('bookings')
-      .select('*, guest:guest_id(*)')
+      .select(BED_MAP_BOOKING_SELECT)
       .eq('property_id', propertyId)
       .eq('status', 'checked_in')
       .gte('check_out_date', today)
-    if (data) setActiveBookings(data as (Booking & { guest?: Guest })[])
+    if (data) setActiveBookings(data as unknown as (Booking & { guest?: Guest })[])
   }, [propertyId])
 
   // ── Bed swap ──
