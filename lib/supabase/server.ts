@@ -168,7 +168,7 @@ export async function getRouteHandlerSession(): Promise<UserSession | null> {
 
   const propertyId = activeProperty?.id ?? staffMember?.property_id
   const { data: subData } = propertyId
-    ? await admin.from('subscriptions').select('status, current_period_end').eq('property_id', propertyId).maybeSingle()
+    ? await admin.from('subscriptions').select('status, current_period_end, provider').eq('property_id', propertyId).maybeSingle()
     : { data: null }
 
   const isSuperAdmin = isSuperAdminUser({ id: userId, email: user.email })
@@ -185,6 +185,7 @@ export async function getRouteHandlerSession(): Promise<UserSession | null> {
       isSuperAdmin,
       subscriptionStatus: subData?.status ?? null,
       subscriptionPeriodEnd: (subData as { status: string; current_period_end: string | null } | null)?.current_period_end ?? null,
+      subscriptionProvider: subData?.provider ?? null,
       allProperties: properties,
     }
   }
@@ -201,6 +202,7 @@ export async function getRouteHandlerSession(): Promise<UserSession | null> {
       isSuperAdmin,
       subscriptionStatus: subData?.status ?? null,
       subscriptionPeriodEnd: (subData as { status: string; current_period_end: string | null } | null)?.current_period_end ?? null,
+      subscriptionProvider: subData?.provider ?? null,
       allProperties: [],
     }
   }
@@ -265,15 +267,12 @@ export const getUserSession = cache(async (): Promise<UserSession | null> => {
   const { data: sub } = subPropertyId
     ? await supabase
         .from('subscriptions')
-        .select('status, current_period_end')
+        .select('status, current_period_end, provider')
         .eq('property_id', subPropertyId)
         .maybeSingle()
     : { data: null }
 
-  const isSuperAdmin = (process.env.SUPERADMIN_EMAILS ?? '')
-    .split(',')
-    .filter(Boolean)
-    .includes(identity.email ?? '')
+  const isSuperAdmin = isSuperAdminUser({ id: userId, email: identity.email })
 
   if (properties && properties.length > 0 && activeProperty) {
     return {
@@ -287,6 +286,7 @@ export const getUserSession = cache(async (): Promise<UserSession | null> => {
       isSuperAdmin,
       subscriptionStatus: sub?.status ?? null,
       subscriptionPeriodEnd: (sub as { status: string; current_period_end: string | null } | null)?.current_period_end ?? null,
+      subscriptionProvider: sub?.provider ?? null,
       allProperties: properties,
     }
   }
@@ -303,6 +303,7 @@ export const getUserSession = cache(async (): Promise<UserSession | null> => {
       isSuperAdmin,
       subscriptionStatus: sub?.status ?? null,
       subscriptionPeriodEnd: (sub as { status: string; current_period_end: string | null } | null)?.current_period_end ?? null,
+      subscriptionProvider: sub?.provider ?? null,
       allProperties: [],
     }
   }

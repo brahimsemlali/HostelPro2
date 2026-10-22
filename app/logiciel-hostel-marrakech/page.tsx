@@ -28,7 +28,7 @@ const schema = {
   url: 'https://www.sweetreservation.com',
   description: city.metaDescription,
   areaServed: { '@type': 'City', name: 'Marrakech', containedInPlace: { '@type': 'Country', name: 'Morocco' } },
-  offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD', description: 'Essai gratuit 14 jours' },
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'MAD', description: 'Essai gratuit 14 jours' },
 }
 
 const breadcrumb = {

@@ -4,10 +4,9 @@
 // Closing sections — pilot customers, pricing, FAQ, final CTA, footer.
 //
 // Pricing mirrors the live billing configuration (lib/constants.ts →
-// BILLING_PLANS): Starter $35/mo (LS variant 1633090), Business/Pro $100/mo
-// (LS 1633110). Enterprise $999/mo is the previously published contact-only
-// price. Billing is monthly, in USD, via LemonSqueezy. The former annual -20%
-// toggle was removed: no annual variant exists in LemonSqueezy.
+// BILLING_PLANS): Starter 350 MAD/mo (LS variant 1633090), Pro 1 000 MAD/mo
+// (LS 1633110). Enterprise is contact-only. LemonSqueezy charges in MAD, so
+// MAD is the price shown. No annual variant exists in LemonSqueezy.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import Link from 'next/link'
@@ -70,12 +69,11 @@ export function Customers() {
 }
 
 // ── Pricing ────────────────────────────────────────────────────────────────
-const PLAN_DATA: { monthlyUsd: number; href: string; featured: boolean; clay: ClayName }[] = [
-  { monthlyUsd: 35, href: START_HREF, featured: false, clay: 'key' },
-  { monthlyUsd: 100, href: PRO_HREF, featured: true, clay: 'bell' },
-  { monthlyUsd: 999, href: CONTACT_WA, featured: false, clay: 'hostel' },
+const PLAN_DATA: { monthlyMad: number; href: string; featured: boolean; clay: ClayName }[] = [
+  { monthlyMad: 350, href: START_HREF, featured: false, clay: 'key' },
+  { monthlyMad: 1000, href: PRO_HREF, featured: true, clay: 'bell' },
+  { monthlyMad: 9990, href: CONTACT_WA, featured: false, clay: 'hostel' },
 ]
-const MAD_PER_USD = 10 // approximate, display-only
 
 export function Pricing() {
   const { copy } = useLP()
@@ -99,11 +97,8 @@ export function Pricing() {
                   <p style={{ fontSize: 14.5, color: d.featured ? 'var(--sr-on-dark)' : 'var(--sr-muted)', marginTop: -12 }}>{plan.tagline}</p>
                   <div>
                     <div className="sr-plan-price">
-                      <b>${d.monthlyUsd}</b>
-                      <span style={{ fontSize: 14, color: d.featured ? 'var(--sr-on-dark)' : 'var(--sr-muted)' }}>USD / {copy.pricing.perMonth}</span>
-                    </div>
-                    <div className="sr-mono" style={{ fontSize: 13, marginTop: 8, color: d.featured ? 'var(--sr-on-dark-faint)' : 'var(--sr-faint)' }}>
-                      ≈ {(d.monthlyUsd * MAD_PER_USD).toLocaleString('fr-MA')} MAD
+                      <b>{d.monthlyMad.toLocaleString('fr-MA')}</b>
+                      <span style={{ fontSize: 14, color: d.featured ? 'var(--sr-on-dark)' : 'var(--sr-muted)' }}>MAD / {copy.pricing.perMonth}</span>
                     </div>
                   </div>
                   <CTA

@@ -1,56 +1,58 @@
-# Audit remediation: deploy checklist
+# Launch checklist
 
-Branch: `fix/audit-remediation`, built on `fix/mobile-and-correctness-audit` (f20f6da).
-None of the SQL below has been run against production. Do these steps in order.
+Last verified 2026-10-22 against production (public API probes + LemonSqueezy API with the local key).
 
-## 1. Do today (no deploy needed)
+## Database: what production has
 
-- [ ] **Rotate `LEMONSQUEEZY_WEBHOOK_SECRET`.** The old value is committed in git history on `master`. Generate a new alphanumeric-only secret, then set it in both LemonSqueezy (Settings → Webhooks) and Vercel (Production and Preview). Redeploy.
-- [ ] **Set `SUPERADMIN_USER_IDS` in Vercel.** It's a comma-separated list of auth user UUIDs. Once it's set, the email list is no longer used to grant admin rights.
-- [ ] **Check what production actually has.** Run these in the Supabase SQL editor:
-  ```sql
-  SELECT tablename, policyname, qual FROM pg_policies WHERE schemaname = 'public' ORDER BY 1, 2;
-  SELECT indexname FROM pg_indexes WHERE schemaname = 'public' ORDER BY 1;
-  SELECT column_name FROM information_schema.columns WHERE table_name = 'subscriptions';
-  SELECT proname FROM pg_proc WHERE proname IN ('get_my_role_rank', 'swap_booking_beds', 'create_property_with_setup');
-  ```
-  This tells you which of 023, 026 and 028 are already live. CLAUDE.md contradicts itself on this.
-
-## 2. Apply migrations, in order
-
-Each file has pre-flight queries at the top. Run those first.
-
-| Migration | What it fixes |
+| Migration | State |
 |---|---|
-| `023_scale_hardening.sql` | Indexes, a unique night audit per day, `swap_booking_beds` (bed swap fails without it) |
-| `026_role_aware_staff_rls.sql` | Housekeeping can no longer read or write payments and guest personal data **(critical)** |
-| `028_subscription_webhook_hardening.sql` | Webhook ordering and the customer portal URL (the code now also works without it) |
-| `029_security_fixes_safe.sql` | Blocks the trial self-grant through the onboarding RPC **(critical)** |
-| `030_role_gate_extras_beds.sql` | Housekeeping writes to extras, activities and beds |
+| 001–010, 012–028, 031 | ✅ Live (every column they add exists) |
+| 024 | ✅ Live (`staff_invitations` dropped) |
+| 011 | ❌ Not applied: `properties.whatsapp_*` columns don't exist. The code no longer needs them (the token lives in `property_secrets`). Don't apply it. |
+| 029 | ❓ Can't be detected from the API. Check with the SQL below. **This is the trial self-grant fix: critical.** |
+| 030 | ❓ Can't be detected from the API. Check with the SQL below. |
+| 032 | ⏳ New. Locks `recompute_guest_totals`, which anonymous visitors can currently call. Safe to apply at any time. |
 
-## 3. Deploy the code
+```sql
+-- 029 is applied if has_active_subscription shows a search_path in proconfig
+-- and create_property_with_setup shows trial_fixed = true
+SELECT proname, proconfig, prosrc LIKE '%14 days%' AS trial_fixed
+FROM pg_proc WHERE proname IN ('has_active_subscription', 'create_property_with_setup');
 
-Merge `fix/audit-remediation`. The landing redesign (`feat/landing-redesign`) also edits `proxy.ts`. The matcher change is identical in both branches, so a merge conflict there should be trivial.
+-- 030 is applied if this returns a row instead of an error
+SELECT 'enforce_housekeeping_bed_columns'::regproc;
+```
 
-## 4. Then apply `031_secrets_guest_scope_amount_checks.sql`
+After 031: once the pre-flight queries in it return no rows, run its `VALIDATE CONSTRAINT` lines.
 
-It requires 026. After it is applied:
+## Billing: bank transfer and cash (current mode)
 
-- [ ] Send a test WhatsApp message to confirm the token is read from `property_secrets`.
-- [ ] Run the "Step 2" block at the bottom of 031 to clear `properties.whatsapp_access_token`.
-- [ ] Once pre-flight a) and b) return no rows, run the `VALIDATE CONSTRAINT` statements.
+Card checkout is **off**. The billing page's plan buttons open WhatsApp with a prefilled request (plan, price, 8-character account reference), and `/api/billing/checkout` returns 503.
 
-## 5. Decisions still open (no code written)
+When a customer pays:
+1. Open `/admin`, find the property, and use search the reference from the WhatsApp message, then click **+1 / +6 / +12 mois**. This sets `status = active`, `provider = manual_wire` and moves `current_period_end` forward.
+2. Access stops 7 days (`GRACE_DAYS`) after `current_period_end` unless you extend again. The billing page shows the account as expired from the end date onward.
 
-- **Paywall at the database level.** Adding `has_active_subscription` to the RLS write policies would lock out any tenant without a subscription row. Audit `subscriptions` coverage first.
-- **Plan limits.** Starter's "45 beds" limit isn't enforced anywhere. Decide what happens to existing Starter accounts that are over the limit, and which plan a trial counts as.
-- **Expiry for `manual_wire` subscriptions.** `active` currently ignores `current_period_end`. Enforcing it is the bank-wire customer's renewal path.
-- **Refunds.** `order_refunded` and `subscription_payment_refunded` aren't handled. Confirm whether LemonSqueezy cancels the subscription automatically on refund.
-- **Housekeeping and guest columns.** Migration 031 limits housekeeping to today's guests (rows only). Hiding passport columns entirely needs a separate table or view.
-- **Platform WhatsApp fallback.** If `WHATSAPP_API_TOKEN` is set, tenants who haven't added their own credentials send through the platform number.
-- **Compliance.**
-  - Privacy policy and terms pages.
-  - An information notice on the public pre-check-in form (law 09-08, Art. 5).
-  - A data-retention period and a purge job.
-  - CNDP declaration and transfer authorisation (Vercel `lhr1` London; Supabase region to be checked).
-- **Rate limiting.** It's held in memory per serverless instance. Move it to Upstash or Vercel KV.
+To turn on card payments later:
+- [ ] Finish LemonSqueezy store activation (it likely requires privacy, terms and refund pages).
+- [ ] Put the **live** API key in Vercel and create a **live-mode** webhook to `https://www.sweetreservation.com/api/webhooks/lemonsqueezy` with the `LEMONSQUEEZY_WEBHOOK_SECRET` secret.
+- [ ] Remove the trials on both LemonSqueezy variants (the in-app trial is 14 days).
+- [ ] Set `NEXT_PUBLIC_CARD_PAYMENTS_ENABLED=true` in Vercel and redeploy.
+- Production ignores test-mode webhooks unless `LEMONSQUEEZY_ALLOW_TEST_MODE=true`.
+
+## Must have before launch
+
+- [ ] **Custom SMTP in Supabase** (Auth → SMTP). Without it, password-reset emails don't reach customers. Email confirmation is currently off (`autoconfirm`); turn it on only after SMTP works.
+- [ ] **Privacy policy, terms (CGU/CGV) and refund policy pages.** The app stores passport data (law 09-08). Also add an information notice on the public pre-check-in form and file the CNDP declaration.
+- [ ] **Sentry.** Set `NEXT_PUBLIC_SENTRY_DSN` in Vercel. Production errors are currently invisible.
+- [ ] **Supabase plan.** Make sure you're on a plan with daily backups. You store guest ID documents.
+- [ ] Set `SUPERADMIN_USER_IDS` in Vercel.
+
+## Product gaps to decide
+
+- **Fiche de police fields.** Missing: place of birth, passport issue date and place, date and point of entry into Morocco, and "coming from". Check them against your préfecture's form.
+- **Receipt and invoice.** The PDF is now titled "REÇU". A legal facture needs the property's ICE and sequential numbering.
+- **PDF fonts.** Names with characters outside Latin-1 (ł, ş, Arabic) print garbled. Fixing it means embedding a Unicode font.
+- **Plan limits.** Starter's "45 beds / 1 staff account" isn't enforced.
+- **Multi-property.** It's promised for Enterprise, but onboarding blocks a second property.
+- Earlier open items: DB-level paywall, manual_wire expiry, refund events, the housekeeping column split, the platform WhatsApp fallback, and rate limiting in Upstash.

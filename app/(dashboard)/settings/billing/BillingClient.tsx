@@ -10,6 +10,16 @@ import type { Subscription } from '@/types'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
+// Card checkout (LemonSqueezy) stays off until the store is live. Until then
+// owners pay by bank transfer or cash and the superadmin extends the period.
+const CARD_PAYMENTS_ENABLED = process.env.NEXT_PUBLIC_CARD_PAYMENTS_ENABLED === 'true'
+const SUPPORT_WA = '212679760746'
+
+function manualPaymentLink(planName: string, price: number, propertyId: string): string {
+  const msg = `Bonjour, je souhaite activer le forfait ${planName} (${price.toLocaleString('fr-MA')} MAD/mois) par virement ou en espèces. Réf. compte : ${propertyId.slice(0, 8)}`
+  return `https://wa.me/${SUPPORT_WA}?text=${encodeURIComponent(msg)}`
+}
+
 interface Props {
   propertyId: string
   subscription: Subscription | null
@@ -17,6 +27,7 @@ interface Props {
 
 export function BillingClient({ propertyId, subscription }: Props) {
   const [loadingVariant, setLoadingVariant] = useState<string | null>(null)
+  const [requestedPlan, setRequestedPlan] = useState<string | null>(null)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -32,7 +43,10 @@ export function BillingClient({ propertyId, subscription }: Props) {
     const planKey = params.get('checkout')
     if (!planKey) return
     const match = BILLING_PLANS.find((p) => p.id.startsWith(planKey))
-    if (match) handleCheckout(match.ls_variant_id)
+    if (match) {
+      if (CARD_PAYMENTS_ENABLED) handleCheckout(match.ls_variant_id)
+      else setRequestedPlan(match.id)
+    }
     window.history.replaceState({}, '', window.location.pathname)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -135,11 +149,14 @@ export function BillingClient({ propertyId, subscription }: Props) {
                 String(subscription?.ls_variant_id ?? '') === String(plan.ls_variant_id)
               const portalUrl = subscription?.customer_portal_url
               return (
-              <Card key={plan.id} className="relative overflow-hidden border-[#E8ECF0] hover:border-[#0F6E56]/30 transition-all">
+              <Card key={plan.id} className={cn(
+                "relative overflow-hidden border-[#E8ECF0] hover:border-[#0F6E56]/30 transition-all",
+                requestedPlan === plan.id && "border-[#0F6E56] ring-2 ring-[#0F6E56]/20"
+              )}>
                 <CardHeader>
                   <CardTitle className="text-xl">{plan.name}</CardTitle>
                   <div className="flex items-baseline gap-1 mt-2">
-                    <span className="text-3xl font-bold text-[#0A1F1C]">${plan.price}</span>
+                    <span className="text-3xl font-bold text-[#0A1F1C]">{plan.price.toLocaleString('fr-MA')} MAD</span>
                     <span className="text-[#94A3B8] text-sm">/mois</span>
                   </div>
                 </CardHeader>
@@ -172,6 +189,16 @@ export function BillingClient({ propertyId, subscription }: Props) {
                         Gérez votre forfait via le portail
                       </Button>
                     )
+                  ) : !CARD_PAYMENTS_ENABLED ? (
+                    <a
+                      href={manualPaymentLink(plan.name.replace(/ \(.*\)$/, ''), plan.price, propertyId)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#0F6E56] py-4 text-sm font-medium text-white hover:bg-[#0c5a46] transition-colors"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      Choisir ce forfait
+                    </a>
                   ) : (
                     <Button
                       className="w-full bg-[#0F6E56] hover:bg-[#0c5a46] rounded-xl py-6"
@@ -193,15 +220,15 @@ export function BillingClient({ propertyId, subscription }: Props) {
 
         {/* Local Payment (Virement) */}
         <div className="space-y-6">
-          <h2 className="text-lg font-semibold text-[#0A1F1C]">Paiement Local (Maroc)</h2>
+          <h2 className="text-lg font-semibold text-[#0A1F1C]">Paiement au Maroc</h2>
           <Card className="border-[#E8ECF0] bg-[#F8FAFC]">
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2 text-[#0F6E56] mb-1">
                 <Landmark className="w-5 h-5" />
-                <span className="font-semibold">Virement Bancaire</span>
+                <span className="font-semibold">Virement ou espèces</span>
               </div>
               <CardDescription>
-                Payez en MAD par virement national sans frais de change.
+                Payez en MAD par virement national, ou en espèces sur rendez-vous. Votre accès est prolongé dès réception.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -222,10 +249,10 @@ export function BillingClient({ propertyId, subscription }: Props) {
               
               <div className="space-y-2">
                 <p className="text-xs text-[#64748B] italic">
-                  * Après le virement, envoyez une capture d&apos;écran sur WhatsApp pour activation immédiate.
+                  * Après le virement, envoyez une capture d&apos;écran sur WhatsApp. Pour payer en espèces, écrivez-nous sur WhatsApp.
                 </p>
                 <Button variant="outline" className="w-full border-[#25D366]/30 text-[#25D366] hover:bg-[#25D366]/5 gap-2"
-                  onClick={() => window.open('https://wa.me/212679760746', '_blank')}>
+                  onClick={() => window.open(`https://wa.me/${SUPPORT_WA}`, '_blank')}>
                   <MessageCircle className="w-4 h-4" />
                   Envoyer le reçu (WhatsApp)
                 </Button>

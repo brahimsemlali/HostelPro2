@@ -27,7 +27,7 @@ export default async function DashboardLayout({
   const pathname = headersList.get('x-pathname') ?? ''
   const onBillingPage = pathname.startsWith('/settings/billing')
 
-  if (!onBillingPage && isSubscriptionBlocked(session.subscriptionStatus, session.subscriptionPeriodEnd, session.isSuperAdmin)) {
+  if (!onBillingPage && isSubscriptionBlocked(session.subscriptionStatus, session.subscriptionPeriodEnd, session.isSuperAdmin, new Date(), session.subscriptionProvider)) {
     redirect('/settings/billing')
   }
 

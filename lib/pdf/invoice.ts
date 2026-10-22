@@ -1,4 +1,5 @@
 import type { Guest, Booking, Property, Payment, BookingExtra } from '@/types'
+import { netReceived } from '@/lib/money'
 
 function formatMAD(amount: number): string {
   return new Intl.NumberFormat('fr-MA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount) + ' MAD'
@@ -25,7 +26,10 @@ export async function generateInvoice(
 
   const extrasTotal = extras?.reduce((s, e) => s + e.quantity * e.unit_price, 0) ?? 0
   const grandTotal = booking.total_price + extrasTotal
-  const totalPaid = payments.reduce((s, p) => s + (p.type === 'refund' ? -p.amount : p.amount), 0)
+  // Only completed payments are money received; pending/failed rows are not
+  // shown to the guest or counted toward the balance.
+  const settled = payments.filter((p) => !p.status || p.status === 'completed')
+  const totalPaid = netReceived(settled)
   const balance = grandTotal - totalPaid
   const invoiceNum = invoiceNumber ?? `INV-${new Date().getFullYear()}-${booking.id.slice(0, 6).toUpperCase()}`
 
@@ -50,7 +54,7 @@ export async function generateInvoice(
 
   doc.setFontSize(18)
   doc.setFont('helvetica', 'bold')
-  doc.text('FACTURE / REÇU', rightCol, 16, { align: 'right' })
+  doc.text('REÇU', rightCol, 16, { align: 'right' })
   doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
   doc.text(`N° ${invoiceNum}`, rightCol, 24, { align: 'right' })
@@ -88,7 +92,7 @@ export async function generateInvoice(
   doc.setTextColor(0, 0, 0)
 
   const bed = booking.bed
-  const bedLabel = bed ? `${bed.room?.name ?? ''} — ${bed.name}` : '—'
+  const bedLabel = bed ? `${bed.room?.name ?? ''} - ${bed.name}` : '-'
   doc.text(`Lit: ${bedLabel}`, W - margin - 81, y + 16)
   doc.text(`Arrivée: ${fmtDate(booking.check_in_date)}`, W - margin - 81, y + 22)
   doc.text(`Départ: ${fmtDate(booking.check_out_date)}`, W - margin - 81, y + 28)
@@ -117,7 +121,7 @@ export async function generateInvoice(
   doc.rect(margin, y, W - 2 * margin, 9, 'F')
   doc.setFontSize(9)
   const pricePerNight = (booking.nights ?? 1) > 0 ? booking.total_price / (booking.nights ?? 1) : booking.total_price
-  doc.text(`Hébergement — ${bedLabel}`, margin + 3, y + 6)
+  doc.text(`Hébergement - ${bedLabel}`, margin + 3, y + 6)
   doc.text(`${booking.nights}`, 130, y + 6, { align: 'center' })
   doc.text(formatMAD(pricePerNight), 158, y + 6, { align: 'center' })
   doc.text(formatMAD(booking.total_price), rightCol - 2, y + 6, { align: 'right' })
@@ -137,17 +141,6 @@ export async function generateInvoice(
       doc.text(formatMAD(extra.quantity * extra.unit_price), rightCol - 2, y + 6, { align: 'right' })
       y += 9
     })
-  }
-
-  // Commission note (if any)
-  if (booking.commission_rate > 0) {
-    doc.setFillColor(255, 255, 255)
-    doc.rect(margin, y, W - 2 * margin, 7, 'F')
-    doc.setTextColor(120, 120, 120)
-    doc.setFontSize(8)
-    doc.text(`Commission ${booking.source} (${booking.commission_rate}%)`, margin + 3, y + 5)
-    doc.text(`−${formatMAD(booking.total_price - booking.net_revenue)}`, rightCol - 2, y + 5, { align: 'right' })
-    y += 7
   }
 
   // ── Totals ────────────────────────────────────────────────────
@@ -179,14 +172,14 @@ export async function generateInvoice(
   doc.line(totalsX, y, rightCol, y)
   y += 4
   addTotalRow(
-    balance <= 0 ? 'SOLDE (Réglé ✓)' : 'SOLDE DÛ',
+    balance <= 0 ? 'SOLDE (Réglé)' : 'SOLDE DÛ',
     balance <= 0 ? formatMAD(0) : formatMAD(balance),
     true,
     balance <= 0 ? [15, 110, 86] : [200, 50, 50]
   )
 
   // ── Payments detail ───────────────────────────────────────────
-  if (payments.length > 0) {
+  if (settled.length > 0) {
     y += 8
     doc.setTextColor(0, 0, 0)
     doc.setFont('helvetica', 'bold')
@@ -198,15 +191,15 @@ export async function generateInvoice(
       cash: 'Espèces', virement: 'Virement bancaire', cmi: 'CMI / TPE', wave: 'Wave', other: 'Autre'
     }
 
-    payments.forEach((p) => {
+    settled.forEach((p) => {
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(80, 80, 80)
       doc.setFontSize(8.5)
       const dateStr = fmtDate(p.payment_date)
       const ref = p.reference ? ` (Réf: ${p.reference})` : ''
-      const label = p.type === 'refund' ? 'Remboursement — ' : ''
-      doc.text(`${label}${methodLabels[p.method] ?? p.method}${ref} — ${dateStr}`, margin + 3, y)
-      doc.text(`${p.type === 'refund' ? '−' : ''}${formatMAD(p.amount)}`, rightCol - 2, y, { align: 'right' })
+      const label = p.type === 'refund' ? 'Remboursement - ' : ''
+      doc.text(`${label}${methodLabels[p.method] ?? p.method}${ref} - ${dateStr}`, margin + 3, y)
+      doc.text(`${p.type === 'refund' ? '-' : ''}${formatMAD(p.amount)}`, rightCol - 2, y, { align: 'right' })
       y += 5
     })
   }

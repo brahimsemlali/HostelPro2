@@ -13,7 +13,7 @@ export default async function BillingPage() {
   // back to /dashboard (that would ping-pong into an infinite redirect loop).
   // Instead show a read-only "contact the owner" notice.
   if (!session.isOwner) {
-    if (isSubscriptionBlocked(session.subscriptionStatus, session.subscriptionPeriodEnd, session.isSuperAdmin)) {
+    if (isSubscriptionBlocked(session.subscriptionStatus, session.subscriptionPeriodEnd, session.isSuperAdmin, new Date(), session.subscriptionProvider)) {
       return <SubscriptionSuspendedNotice />
     }
     redirect('/dashboard')

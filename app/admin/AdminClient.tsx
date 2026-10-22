@@ -149,7 +149,9 @@ export function AdminClient({ properties, stats, signupsByWeek }: Props) {
     const matchQuery =
       p.name.toLowerCase().includes(query.toLowerCase()) ||
       p.city.toLowerCase().includes(query.toLowerCase()) ||
-      p.owner_email.toLowerCase().includes(query.toLowerCase())
+      p.owner_email.toLowerCase().includes(query.toLowerCase()) ||
+      // the billing page's WhatsApp request carries the first 8 chars of the id
+      p.id.toLowerCase().startsWith(query.trim().toLowerCase())
 
     if (!matchQuery) return false
 
@@ -261,7 +263,7 @@ export function AdminClient({ properties, stats, signupsByWeek }: Props) {
         />
         <KpiCard
           label="MRR"
-          value={`$${stats.mrr}`}
+          value={`${stats.mrr.toLocaleString('fr-MA')} MAD`}
           sub="abonnements LemonSqueezy"
           icon={<TrendingUp className="w-5 h-5 text-emerald-600" />}
           color="bg-emerald-50"
@@ -369,7 +371,7 @@ export function AdminClient({ properties, stats, signupsByWeek }: Props) {
                           className="text-[10px] font-bold border-[#E8ECF0] text-[#475569]"
                         >
                           {p.plan_name}
-                          {p.plan_price > 0 && ` · $${p.plan_price}`}
+                          {p.plan_price > 0 && ` · ${p.plan_price} MAD`}
                         </Badge>
                       ) : (
                         <span className="text-xs text-[#CBD5E1]">—</span>
@@ -486,7 +488,7 @@ export function AdminClient({ properties, stats, signupsByWeek }: Props) {
                                     onClick={() => handleAction(p.id, 'set_plan', undefined, opt.id)}
                                     className="w-full text-left px-3 py-2 text-xs text-[#475569] hover:bg-[#F8FAFC] rounded-lg transition-colors flex items-center justify-between gap-2"
                                   >
-                                    <span>{opt.name} · ${opt.price}</span>
+                                    <span>{opt.name} · {opt.price} MAD</span>
                                     {isCurrent && <CheckCircle2 className="w-3.5 h-3.5 text-[#0F6E56] shrink-0" />}
                                   </button>
                                 )

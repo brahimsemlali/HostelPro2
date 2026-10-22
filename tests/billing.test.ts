@@ -16,6 +16,19 @@ describe('isSubscriptionBlocked — the paywall gate', () => {
     expect(isSubscriptionBlocked('active', daysFromNow(-30), false, NOW)).toBe(false)
   })
 
+  describe('active, paid by bank transfer / cash (manual_wire)', () => {
+    it('allows until the paid period ends, then through the grace period', () => {
+      expect(isSubscriptionBlocked('active', daysFromNow(10), false, NOW, 'manual_wire')).toBe(false)
+      expect(isSubscriptionBlocked('active', daysFromNow(-(GRACE_DAYS - 1)), false, NOW, 'manual_wire')).toBe(false)
+    })
+    it('blocks once the paid period + grace is over', () => {
+      expect(isSubscriptionBlocked('active', daysFromNow(-(GRACE_DAYS + 1)), false, NOW, 'manual_wire')).toBe(true)
+    })
+    it('does not expire a LemonSqueezy subscription by date', () => {
+      expect(isSubscriptionBlocked('active', daysFromNow(-30), false, NOW, 'lemonsqueezy')).toBe(false)
+    })
+  })
+
   describe('trialing', () => {
     it('allows during the trial', () => {
       expect(isSubscriptionBlocked('trialing', daysFromNow(10), false, NOW)).toBe(false)

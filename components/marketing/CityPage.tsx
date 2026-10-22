@@ -199,30 +199,6 @@ export function CityPage({ city }: Props) {
         </div>
       </section>
 
-      {/* ── Testimonial ─────────────────────────────────────────────────── */}
-      <section style={{ background: 'linear-gradient(135deg, #0a1f1c 0%, #0d2b26 100%)', padding: '72px 24px' }}>
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          style={{ maxWidth: 680, margin: '0 auto', textAlign: 'center' }}
-        >
-          <div style={{ fontSize: 48, color: 'rgba(33,199,122,0.4)', lineHeight: 1, marginBottom: 16 }}>&ldquo;</div>
-          <blockquote style={{ fontSize: 19, fontWeight: 500, color: 'rgba(255,255,255,0.85)', lineHeight: 1.7, marginBottom: 28, fontStyle: 'italic' }}>
-            {city.testimonial.quote}
-          </blockquote>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
-            <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'linear-gradient(135deg, #21C77A, #0F6B41)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, fontWeight: 800, color: '#fff' }}>
-              {city.testimonial.author[0]}
-            </div>
-            <div style={{ textAlign: 'left' }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>{city.testimonial.author}</div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>{city.testimonial.property}</div>
-            </div>
-          </div>
-        </motion.div>
-      </section>
-
       {/* ── Feature list ────────────────────────────────────────────────── */}
       <section style={{ padding: '72px 24px' }}>
         <div style={{ maxWidth: 800, margin: '0 auto' }}>

@@ -52,7 +52,7 @@ function drawHeader(doc: InstanceType<typeof import('jspdf').default>, property:
   doc.setFontSize(10)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(100)
-  doc.text('Formulaire d\'enregistrement des voyageurs — Royaume du Maroc', 105, 27, { align: 'center' })
+  doc.text('Formulaire d\'enregistrement des voyageurs - Royaume du Maroc', 105, 27, { align: 'center' })
   doc.setTextColor(0)
 
   doc.setFontSize(11)

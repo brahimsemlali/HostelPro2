@@ -11,7 +11,6 @@ export type CityData = {
   intro: string
   challenges: { title: string; body: string }[]
   stats: { value: string; label: string }[]
-  testimonial: { quote: string; author: string; property: string }
   faq: { q: string; a: string }[]
   nearbyAreas: string[]
   canonicalPath: string
@@ -62,11 +61,6 @@ export const CITIES: Record<string, CityData> = {
       { value: '0 MAD', label: 'Frais de mise en place' },
       { value: '14j', label: 'Essai gratuit' },
     ],
-    testimonial: {
-      quote: 'Avant Sweet Reservation, je passais 30 minutes par check-in entre le cahier, les fiches de police et WhatsApp. Maintenant c\'est 60 secondes. Je me consacre enfin à mes guests.',
-      author: 'Rachid B.',
-      property: 'Hostel Jemaa · Marrakech Médina',
-    },
     faq: [
       {
         q: 'Sweet Reservation fonctionne-t-il pour les riads reconvertis en hostel ?',
@@ -78,7 +72,7 @@ export const CITIES: Record<string, CityData> = {
       },
       {
         q: 'Puis-je gérer plusieurs propriétés à Marrakech ?',
-        a: 'Le plan Pro supporte la gestion multi-établissements. Idéal si vous gérez plusieurs riad-hostels dans la médina.',
+        a: 'La gestion multi-établissements fait partie de l\'offre Enterprise : contactez-nous sur WhatsApp pour en discuter.',
       },
     ],
     nearbyAreas: ['Médina de Marrakech', 'Guéliz', 'Hivernage', 'Palmeraie', 'Targa'],
@@ -128,15 +122,10 @@ export const CITIES: Record<string, CityData> = {
       { value: 'MAD', label: 'Devise native' },
       { value: '14j', label: 'Essai gratuit' },
     ],
-    testimonial: {
-      quote: 'On est basé à Agadir depuis 2019. Sweet Reservation comprend vraiment nos besoins — la fiche de police, les paiements en cash, le WhatsApp. C\'est fait pour nous.',
-      author: 'Nadia M.',
-      property: 'Auberge Souss · Agadir Nouveau',
-    },
     faq: [
       {
         q: 'Sweet Reservation est-il adapté aux petites auberges de 10 à 20 lits à Agadir ?',
-        a: 'Absolument. Le plan Starter à 35$/mois est conçu pour les établissements jusqu\'à 45 lits. Toutes les fonctionnalités essentielles sont incluses : fiches de police, WhatsApp, paiements, rapports.',
+        a: 'Absolument. Le plan Starter à 350 MAD/mois est conçu pour les établissements jusqu\'à 45 lits. Toutes les fonctionnalités essentielles sont incluses : fiches de police, WhatsApp, paiements, rapports.',
       },
       {
         q: 'Puis-je payer en MAD via virement ?',
@@ -194,11 +183,6 @@ export const CITIES: Record<string, CityData> = {
       { value: '24/7', label: 'Accès depuis mobile' },
       { value: '14j', label: 'Essai gratuit' },
     ],
-    testimonial: {
-      quote: 'Nos clients de Casa sont pressés — transit, réunion, aéroport. Avec Sweet Reservation, le check-in est fini avant qu\'ils posent leur sac. Parfait pour notre rythme.',
-      author: 'Hamza K.',
-      property: 'Casa Backpackers · Maarif',
-    },
     faq: [
       {
         q: 'Sweet Reservation gère-t-il les réservations Booking.com à Casablanca ?',
@@ -256,11 +240,6 @@ export const CITIES: Record<string, CityData> = {
       { value: '3G+', label: 'Connexion suffisante' },
       { value: '14j', label: 'Essai gratuit' },
     ],
-    testimonial: {
-      quote: 'On a des clients de 30 nationalités différentes chaque semaine. Les fiches de police prenaient une heure chaque soir. Maintenant c\'est fait automatiquement pendant le check-in.',
-      author: 'Imane R.',
-      property: 'Riad Youth Hostel · Fès el-Bali',
-    },
     faq: [
       {
         q: 'Sweet Reservation fonctionne-t-il dans la médina de Fès avec une connexion lente ?',
@@ -318,11 +297,6 @@ export const CITIES: Record<string, CityData> = {
       { value: '60s', label: 'Check-in walk-in' },
       { value: '14j', label: 'Essai gratuit' },
     ],
-    testimonial: {
-      quote: 'Les vendredis soir quand le ferry arrive, on peut avoir 15 personnes qui se présentent d\'un coup. Avant c\'était le chaos. Maintenant on gère ça sans stress.',
-      author: 'Karim A.',
-      property: 'Hostel Détroit · Tanger Ville',
-    },
     faq: [
       {
         q: 'Sweet Reservation gère-t-il bien les walk-ins de dernière minute ?',
@@ -359,7 +333,7 @@ export const CITIES: Record<string, CityData> = {
     challenges: [
       {
         title: 'Petites structures familiales',
-        body: 'La plupart des auberges de Chefchaouen ont moins de 45 lits et sont gérées en famille. Le plan Starter à 35$/mois est fait pour vous — toutes les fonctionnalités sans la complexité.',
+        body: 'La plupart des auberges de Chefchaouen ont moins de 45 lits et sont gérées en famille. Le plan Starter à 350 MAD/mois est fait pour vous — toutes les fonctionnalités sans la complexité.',
       },
       {
         title: 'Forte saisonnalité',
@@ -380,11 +354,6 @@ export const CITIES: Record<string, CityData> = {
       { value: 'Simple', label: 'Pas de formation requise' },
       { value: '14j', label: 'Essai gratuit' },
     ],
-    testimonial: {
-      quote: 'J\'ai une petite auberge de 12 lits à Chaouen. Sweet Reservation m\'a pris 10 minutes à configurer. Maintenant mes fiches de police sont prêtes en un clic, et mes clients reçoivent le WiFi par WhatsApp automatiquement.',
-      author: 'Fatima-Zahra O.',
-      property: 'Dar Bleu · Médina de Chefchaouen',
-    },
     faq: [
       {
         q: 'Sweet Reservation est-il trop complexe pour une petite auberge de Chefchaouen ?',

@@ -4,7 +4,7 @@
 **Type**: SaaS Property Management System (PMS)  
 **Market**: Morocco, North Africa  
 **Language**: French (primary), Arabic, English  
-**Currency**: MAD (Moroccan Dirham) for local payments, USD for international subscriptions
+**Currency**: MAD (Moroccan Dirham) for guest payments and for subscriptions
 
 ---
 
@@ -114,8 +114,8 @@ A 5-step guided flow completed in under 60 seconds:
 | Plan | Price | Beds | Features |
 |------|-------|------|----------|
 | Free Trial | $0 | All | 14 days, no credit card |
-| Starter | $19/month | Up to 20 | Police forms, WhatsApp, reports, email support |
-| Pro | $49/month | Unlimited | All Starter features + advanced reports + staff management + WhatsApp support |
+| Starter | 350 MAD/month | Up to 45 | Police forms, WhatsApp, reports, email support |
+| Pro | 1,000 MAD/month | Unlimited | All Starter features + advanced reports + staff management + WhatsApp support |
 
 Moroccan customers can pay in MAD via bank transfer (Attijariwafa Bank).
 

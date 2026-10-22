@@ -3,6 +3,10 @@ import { getRouteHandlerSession, createAdminClient } from '@/lib/supabase/server
 import { BILLING_PLANS } from '@/lib/constants'
 
 export async function POST(request: Request) {
+  if (process.env.NEXT_PUBLIC_CARD_PAYMENTS_ENABLED !== 'true') {
+    return NextResponse.json({ error: 'Paiement par carte indisponible — payez par virement ou en espèces.' }, { status: 503 })
+  }
+
   // getRouteHandlerSession — React.cache()'d getUserSession is unreliable in Route Handlers
   const session = await getRouteHandlerSession()
   if (!session || !session.isOwner) {

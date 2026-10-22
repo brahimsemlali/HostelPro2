@@ -31,7 +31,9 @@ export function SettingsClient({ property }: { property: Property }) {
     check_out_time: property.check_out_time,
     police_prefecture: property.police_prefecture ?? '',
     review_url: property.review_url ?? '',
-    whatsapp_phone_number_id: property.whatsapp_phone_number_id ?? '',
+    // whatsapp_phone_number_id is deliberately not part of this form: there is
+    // no input for it, and production lacks the column (migration 011), so
+    // sending it made every property save fail with PGRST204.
   })
 
   async function handleSave() {

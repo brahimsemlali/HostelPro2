@@ -33,6 +33,7 @@ export async function POST(request: Request) {
   const payload = parsed as {
     meta: {
       event_name: string
+      test_mode?: boolean
       custom_data?: { property_id?: string }
     }
     data: {
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
         ends_at: string | null
         updated_at?: string
         cancelled: boolean
+        test_mode?: boolean
         urls?: { customer_portal?: string }
       }
     }
@@ -66,6 +68,17 @@ export async function POST(request: Request) {
 
   if (!HANDLED_EVENTS.includes(event_name)) {
     return NextResponse.json({ received: true })
+  }
+
+  // A test-mode purchase (card 4242…) must never activate a real production
+  // account. Acknowledge with 200 so LemonSqueezy doesn't retry; set
+  // LEMONSQUEEZY_ALLOW_TEST_MODE=true to test the flow on purpose.
+  if (
+    (payload.meta.test_mode || payload.data?.attributes?.test_mode) &&
+    process.env.VERCEL_ENV === 'production' &&
+    process.env.LEMONSQUEEZY_ALLOW_TEST_MODE !== 'true'
+  ) {
+    return NextResponse.json({ received: true, ignored: 'test_mode' })
   }
 
   const attrs = payload.data.attributes

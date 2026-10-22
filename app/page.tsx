@@ -69,8 +69,8 @@ const appSchema = {
   operatingSystem: 'Web',
   inLanguage: ['fr', 'en'],
   offers: [
-    { '@type': 'Offer', name: 'Starter', price: '35', priceCurrency: 'USD', description: 'Essai gratuit 14 jours' },
-    { '@type': 'Offer', name: 'Business', price: '100', priceCurrency: 'USD', description: 'Essai gratuit 14 jours' },
+    { '@type': 'Offer', name: 'Starter', price: '350', priceCurrency: 'MAD', description: 'Essai gratuit 14 jours' },
+    { '@type': 'Offer', name: 'Pro', price: '1000', priceCurrency: 'MAD', description: 'Essai gratuit 14 jours' },
   ],
 }
 

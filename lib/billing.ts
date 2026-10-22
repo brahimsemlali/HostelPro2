@@ -12,9 +12,16 @@ export function isSubscriptionBlocked(
   periodEnd: string | null,
   isSuperAdmin: boolean,
   now: Date = new Date(),
+  provider: string | null = null,
 ): boolean {
   if (isSuperAdmin) return false
-  if (status === 'active') return false
+  if (status === 'active') {
+    // Bank transfer / cash: the superadmin extends current_period_end by hand
+    // each month, so access ends GRACE_DAYS after it. LemonSqueezy subs renew
+    // via webhook and keep the old rule (never blocked while active).
+    if (provider !== 'manual_wire' || !periodEnd) return false
+    return now.getTime() > new Date(periodEnd).getTime() + GRACE_DAYS * 24 * 60 * 60 * 1000
+  }
 
   const end = periodEnd ? new Date(periodEnd) : null
   const graceCutoff = end ? new Date(end.getTime() + GRACE_DAYS * 24 * 60 * 60 * 1000) : null
@@ -46,7 +53,7 @@ export function isSubscriptionBlocked(
  * only — full enforcement of those would need subscription checks in RLS.)
  */
 export function isSessionBlocked(
-  session: Pick<UserSession, 'subscriptionStatus' | 'subscriptionPeriodEnd' | 'isSuperAdmin'>,
+  session: Pick<UserSession, 'subscriptionStatus' | 'subscriptionPeriodEnd' | 'isSuperAdmin' | 'subscriptionProvider'>,
   now: Date = new Date(),
 ): boolean {
   return isSubscriptionBlocked(
@@ -54,6 +61,7 @@ export function isSessionBlocked(
     session.subscriptionPeriodEnd,
     session.isSuperAdmin,
     now,
+    session.subscriptionProvider,
   )
 }
 

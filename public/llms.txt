@@ -24,8 +24,8 @@ Hostel and auberge owners in Morocco (Agadir, Marrakech, Casablanca, Fes, Tangie
 ## Pricing
 
 - Free 14-day trial, no credit card required
-- Starter plan: $19/month (up to 20 beds)
-- Pro plan: $49/month (unlimited beds, advanced reports, staff management)
+- Starter plan: 350 MAD/month (up to 45 beds)
+- Pro plan: 1,000 MAD/month (unlimited beds, advanced reports, staff management)
 - Bank wire payment in MAD available for Moroccan customers
 
 ## Key URLs

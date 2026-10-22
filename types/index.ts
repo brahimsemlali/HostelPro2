@@ -13,7 +13,8 @@ export type Property = {
   default_language: string
   police_prefecture: string | null
   review_url: string | null
-  whatsapp_phone_number_id: string | null
+  /** Optional: the column exists only where migration 011 was applied. */
+  whatsapp_phone_number_id?: string | null
   /** Server-only secret (Meta API token). Never select it into client-bound data. */
   whatsapp_access_token?: string | null
   booking_com_ical_url: string | null
@@ -251,6 +252,8 @@ export type UserSession = {
   isSuperAdmin: boolean
   subscriptionStatus: SubscriptionStatus | null
   subscriptionPeriodEnd: string | null
+  /** 'lemonsqueezy' | 'manual_wire' — manual payments expire at period end. */
+  subscriptionProvider: string | null
   /** All properties this owner controls — only populated for owners, empty for staff */
   allProperties: { id: string; name: string; city: string }[]
 }
