@@ -25,6 +25,13 @@ SELECT 'enforce_housekeeping_bed_columns'::regproc;
 
 After 031: once the pre-flight queries in it return no rows, run its `VALIDATE CONSTRAINT` lines.
 
+## Superadmin console (/admin)
+
+- [ ] Apply `033_admin_console.sql`. Until you do, the console shows a notice and these are disabled: payments ledger, encaisser, notes, suspension, audit log and the usage columns.
+- [ ] Set `SUPERADMIN_USER_IDS=11ecbf1b-c0f9-4d85-8243-c94af7e38c60` in Vercel (Production), then redeploy. Without it, these stay greyed out: the password link, log in as owner, the data export and delete.
+- Suspension only blocks the dashboard pages. An already-open tab can still call API routes and server actions, or write to Supabase directly, until its session ends.
+- MRR counts every active contract, including gifted months and manually set end dates. "Encaissé" counts only real payments.
+
 ## Billing: bank transfer and cash (current mode)
 
 Card checkout is **off**. The billing page's plan buttons open WhatsApp with a prefilled request (plan, price, 8-character account reference), and `/api/billing/checkout` returns 503.

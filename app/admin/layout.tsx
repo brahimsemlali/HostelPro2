@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Toaster } from '@/components/ui/sonner'
-import { Shield, LayoutDashboard } from 'lucide-react'
+import { Shield, LayoutDashboard, Wallet, ScrollText } from 'lucide-react'
 import Link from 'next/link'
 import { isSuperAdmin } from '@/lib/superadmin'
 
@@ -29,13 +29,20 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
 
         <nav className="flex-1 p-3 space-y-0.5">
-          <Link
-            href="/admin"
-            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-white/80 hover:text-white hover:bg-white/10 text-sm transition-colors"
-          >
-            <LayoutDashboard className="w-4 h-4 shrink-0" />
-            Vue d&apos;ensemble
-          </Link>
+          {[
+            { href: '/admin', label: 'Clients & chiffres', icon: LayoutDashboard },
+            { href: '/admin/payments', label: 'Encaissements', icon: Wallet },
+            { href: '/admin/audit', label: 'Journal d’audit', icon: ScrollText },
+          ].map(({ href, label, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-white/80 hover:text-white hover:bg-white/10 text-sm transition-colors"
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              {label}
+            </Link>
+          ))}
         </nav>
 
         <div className="p-4 border-t border-white/8">

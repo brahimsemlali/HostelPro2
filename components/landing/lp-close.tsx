@@ -75,6 +75,9 @@ const PLAN_DATA: { monthlyMad: number; href: string; featured: boolean; clay: Cl
   { monthlyMad: 9990, href: CONTACT_WA, featured: false, clay: 'hostel' },
 ]
 
+// Deterministic (server and browser ICU can disagree on fr-MA grouping → hydration mismatch).
+const groupThousands = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '\u202f')
+
 export function Pricing() {
   const { copy } = useLP()
   return (
@@ -97,7 +100,7 @@ export function Pricing() {
                   <p style={{ fontSize: 14.5, color: d.featured ? 'var(--sr-on-dark)' : 'var(--sr-muted)', marginTop: -12 }}>{plan.tagline}</p>
                   <div>
                     <div className="sr-plan-price">
-                      <b>{d.monthlyMad.toLocaleString('fr-MA')}</b>
+                      <b>{groupThousands(d.monthlyMad)}</b>
                       <span style={{ fontSize: 14, color: d.featured ? 'var(--sr-on-dark)' : 'var(--sr-muted)' }}>MAD / {copy.pricing.perMonth}</span>
                     </div>
                   </div>

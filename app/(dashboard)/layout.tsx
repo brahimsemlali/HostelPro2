@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
-import { getUserSession } from '@/lib/supabase/server'
+import { getUserSession, createAdminClient } from '@/lib/supabase/server'
 import { isSubscriptionBlocked } from '@/lib/billing'
 
 export const metadata: Metadata = {
@@ -26,6 +26,17 @@ export default async function DashboardLayout({
   const headersList = await headers()
   const pathname = headersList.get('x-pathname') ?? ''
   const onBillingPage = pathname.startsWith('/settings/billing')
+
+  // Superadmin suspension (tenant_admin is service-role only, migration 033).
+  // A missing table or row simply means "not suspended".
+  if (!session.isSuperAdmin) {
+    const { data: flag } = await createAdminClient()
+      .from('tenant_admin')
+      .select('suspended_at')
+      .eq('property_id', session.propertyId)
+      .maybeSingle()
+    if (flag?.suspended_at) redirect('/suspended')
+  }
 
   if (!onBillingPage && isSubscriptionBlocked(session.subscriptionStatus, session.subscriptionPeriodEnd, session.isSuperAdmin, new Date(), session.subscriptionProvider)) {
     redirect('/settings/billing')
