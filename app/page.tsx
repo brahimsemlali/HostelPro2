@@ -2,41 +2,49 @@
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public marketing landing page — sweetreservation.com/
-// Everything on this page is marketing-only: the dashboard shown in the hero
-// and the product-tour visuals are hard-coded mockups (components/landing/),
-// never connected to the real app. CTA destinations are unchanged:
-// "Essai gratuit" → /register?plan=starter · "Se connecter" → /login.
+// Everything on this page is marketing-only: the 3D riad, the dashboard and
+// every product preview are static renderings with demo data
+// (components/landing/), never connected to the real app.
+// CTA destinations are unchanged: "Essai gratuit" → /register?plan=starter,
+// Business → /register?plan=pro, "Se connecter" → /login, demo → WhatsApp.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useEffect, useState } from 'react'
-import { IBM_Plex_Sans_Arabic } from 'next/font/google'
+import { MotionConfig } from 'framer-motion'
+import { Inter, Bricolage_Grotesque, IBM_Plex_Sans_Arabic } from 'next/font/google'
 import { LP_COPY, BRAND, type LandingLang } from '@/components/landing/lp-i18n'
-import { LPLangContext, T } from '@/components/landing/lp-shared'
+import { LPLangContext } from '@/components/landing/lp-shared'
+import { LandingNav, Hero } from '@/components/landing/lp-hero'
+import { Showcase } from '@/components/landing/lp-story'
+import { Features } from '@/components/landing/lp-bento'
+import { Complexity, LocalAdvantage, PropertyTypes } from '@/components/landing/lp-clay'
 import {
-  AnnouncementBar,
-  LandingNav,
-  Hero,
-  TrustStrip,
-  Outcomes,
-  ProductTour,
-  Workflow,
-} from '@/components/landing/lp-sections'
-import {
-  LocalAdvantage,
-  PropertyTypes,
   Customers,
-  Ecosystem,
-  Migration,
   Pricing,
   FAQ,
   FinalCTA,
   LandingFooter,
-} from '@/components/landing/lp-sections2'
+} from '@/components/landing/lp-close'
+import '@/components/landing/landing.css'
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--sr-font-sans',
+})
+
+const bricolage = Bricolage_Grotesque({
+  subsets: ['latin'],
+  display: 'swap',
+  axes: ['opsz'],
+  variable: '--sr-font-display',
+})
 
 const plexArabic = IBM_Plex_Sans_Arabic({
   subsets: ['arabic'],
   weight: ['400', '500', '600', '700'],
   display: 'swap',
+  variable: '--sr-font-ar',
 })
 
 const LANG_KEY = 'lm-lang'
@@ -98,7 +106,6 @@ export default function LandingPage() {
   }
 
   const copy = LP_COPY[lang]
-  const isAr = lang === 'ar'
 
   useEffect(() => {
     document.documentElement.lang = lang
@@ -106,44 +113,32 @@ export default function LandingPage() {
 
   return (
     <LPLangContext.Provider value={{ lang, setLang, copy }}>
-      <div
-        dir={copy.dir}
-        lang={lang}
-        className={`lm-root${isAr ? ` ${plexArabic.className}` : ''}`}
-        style={{
-          background: '#fff',
-          color: T.ink,
-          overflowX: 'clip',
-          // Apple-style system stack for FR/EN; Arabic gets IBM Plex Sans Arabic
-          // via the next/font class (inline style must be absent for it to win).
-          fontFamily: isAr
-            ? undefined
-            : "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, system-ui, sans-serif",
-        }}
-      >
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(appSchema) }} />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }} />
-        <a href="#lm-main" className="lm-skip">{copy.skipToContent}</a>
-        <AnnouncementBar />
-        <LandingNav />
-        <main id="lm-main">
-          <Hero />
-          <TrustStrip />
-          <Outcomes />
-          <ProductTour />
-          <Workflow />
-          <LocalAdvantage />
-          <PropertyTypes />
-          <Customers />
-          <Ecosystem />
-          <Migration />
-          <Pricing />
-          <FAQ />
-          <FinalCTA />
-        </main>
-        <LandingFooter />
-      </div>
+      <MotionConfig reducedMotion="user">
+        <div
+          dir={copy.dir}
+          lang={lang}
+          className={`sr-root ${inter.variable} ${bricolage.variable} ${plexArabic.variable}`}
+        >
+          <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+          <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(appSchema) }} />
+          <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }} />
+          <a href="#sr-main" className="sr-skip">{copy.skipToContent}</a>
+          <LandingNav />
+          <main id="sr-main">
+            <Hero />
+            <Complexity />
+            <Features />
+            <Showcase />
+            <LocalAdvantage />
+            <PropertyTypes />
+            <Customers />
+            <Pricing />
+            <FAQ />
+            <FinalCTA />
+          </main>
+          <LandingFooter />
+        </div>
+      </MotionConfig>
     </LPLangContext.Provider>
   )
 }

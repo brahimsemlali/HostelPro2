@@ -1,46 +1,27 @@
 'use client'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Landing-page shared primitives — theme tokens, language context, motion.
-// Apple-minimal skin matching the app's design system (teal on white, soft
-// shadows, hairlines). Everything here is landing-only.
+// Landing-page shared primitives — language context, CTA destinations, motion
+// helpers (masked reveals, magnetic buttons), logo and language switcher.
+// Landing-only; styled by components/landing/landing.css (sr-*).
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { createContext, useContext, useRef } from 'react'
-import { motion, useMotionValue, useSpring, useTransform, useInView, useReducedMotion } from 'framer-motion'
-import { LP_COPY, type LandingLang, type LPCopy } from './lp-i18n'
+import Image from 'next/image'
+import Link from 'next/link'
+import { Fragment, createContext, useContext, useEffect, useRef, useState } from 'react'
+import { motion, useMotionValue, useMotionValueEvent, useScroll, useSpring, type MotionValue } from 'framer-motion'
+import { ArrowRight } from 'lucide-react'
+import { BRAND, LANG_LABELS, LP_COPY, type LandingLang, type LPCopy } from './lp-i18n'
 
-// ── Palette — the app's Apple-minimal teal system ───────────────────────────
-export const T = {
-  ink: '#0A1F1C',                    // near-black teal — headings
-  body: '#3F4E49',
-  muted: '#5F6F6A',
-  faint: '#8C9B96',
-  teal: '#0F6E56',                   // primary (dark)
-  mint: '#16a37d',                   // primary (light)
-  tealDeep: '#0A4B3C',
-  // Dark sections use the deep-teal gradient family instead of navy
-  navy: '#0B3D30',
-  navyDeep: '#073226',
-  ivory: '#F5F5F7',                  // Apple light gray — section wash
-  bluegray: '#EEF1F0',
-  emerald: '#16a37d',
-  emeraldDeep: '#0F6E56',
-  terracotta: '#D97706',             // warm amber, used very sparingly
-  line: '#E5E9E7',
-  lineCard: '#E9EDEB',
-  card: '#FFFFFF',
-  emeraldTint: 'rgba(15,110,86,0.08)',
-  navyOnDark: 'rgba(255,255,255,0.72)',
-}
+// Existing conversion routes — do not change.
+export const START_HREF = '/register?plan=starter'
+export const PRO_HREF = '/register?plan=pro'
+export const SIGNIN_HREF = '/login'
+export const CONTACT_WA = 'https://wa.me/212679760746'
 
-export const emeraldGrad = `linear-gradient(135deg, ${T.mint} 0%, ${T.teal} 100%)`
-export const darkGrad = `linear-gradient(150deg, #10745B 0%, ${T.tealDeep} 55%, #073226 100%)`
+export const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number]
 
-export const shadowCard = '0 1px 2px rgba(10,31,28,0.04), 0 12px 36px rgba(10,31,28,0.06)'
-export const shadowLift = '0 2px 6px rgba(10,31,28,0.05), 0 24px 56px rgba(10,31,28,0.10)'
-
-// ── Language context (landing-local; supports 'ar' unlike the app i18n) ────
+// ── Language context ────────────────────────────────────────────────────────
 interface LPLangValue {
   lang: LandingLang
   setLang: (l: LandingLang) => void
@@ -57,54 +38,178 @@ export function useLP(): LPLangValue {
   return useContext(LPLangContext)
 }
 
-// ── Reveal — scroll-in animation that respects prefers-reduced-motion ──────
+// ── Cinematic mode — mirrors the CSS media query in landing.css ────────────
+export const CINE_QUERY = '(min-width: 960px) and (prefers-reduced-motion: no-preference)'
+
+export function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia(query)
+    const update = () => setMatches(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [query])
+  return matches
+}
+
+export function useCinematic(): boolean {
+  return useMediaQuery(CINE_QUERY)
+}
+
+/** Like framer's useReducedMotion, but false on the first render (matching
+ *  the server) so SSR and hydration produce identical markup. */
+export function useReducedMotion(): boolean {
+  return useMediaQuery('(prefers-reduced-motion: reduce)')
+}
+
+// ── Scroll progress as a plain MotionValue ─────────────────────────────────
+// framer-motion v12 may hand useScroll→useTransform opacity to a native
+// ScrollTimeline, which mis-maps ranges on sticky tracks. Copying progress into
+// an ordinary MotionValue keeps every scroll-linked style JS-driven and in
+// lock-step with the WebGL scene.
+type ScrollOffset = NonNullable<Parameters<typeof useScroll>[0]>['offset']
+
+export function useScrollProgress(target: React.RefObject<HTMLElement | null>, offset: ScrollOffset): MotionValue<number> {
+  const { scrollYProgress } = useScroll({ target, offset })
+  const progress = useMotionValue(0)
+  useMotionValueEvent(scrollYProgress, 'change', (v) => progress.set(v))
+  return progress
+}
+
+// ── Reveal — fade/rise on first view, static under reduced motion ──────────
 export function Reveal({
   children,
   delay = 0,
-  y = 24,
+  y = 28,
   className,
   style,
-  as = 'div',
 }: {
   children: React.ReactNode
   delay?: number
   y?: number
   className?: string
   style?: React.CSSProperties
-  as?: 'div' | 'li' | 'span'
 }) {
   const reduced = useReducedMotion()
-  const Comp = as === 'li' ? motion.li : as === 'span' ? motion.span : motion.div
   return (
-    <Comp
-      initial={reduced ? { opacity: 1 } : { opacity: 0, y, filter: 'blur(5px)' }}
-      whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-      viewport={{ once: true, margin: '-60px' }}
-      transition={{ duration: 0.65, delay, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
+    <motion.div
+      initial={reduced ? false : { opacity: 0, y }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-80px' }}
+      transition={{ duration: 0.9, delay, ease: EASE }}
       className={className}
       style={style}
     >
       {children}
-    </Comp>
+    </motion.div>
   )
 }
 
-// ── 3D tilt wrapper for the hero product shot ──────────────────────────────
-export function TiltCard({ children, className }: { children: React.ReactNode; className?: string }) {
-  const ref = useRef<HTMLDivElement>(null)
+// ── MaskText — words rise from behind a mask when scrolled into view ──────
+export function MaskText({
+  text,
+  as = 'h2',
+  className,
+  style,
+  delay = 0,
+  id,
+  accent = false,
+}: {
+  text: string
+  accent?: boolean
+  as?: 'h2' | 'h3' | 'p' | 'span'
+  className?: string
+  style?: React.CSSProperties
+  delay?: number
+  id?: string
+}) {
   const reduced = useReducedMotion()
-  const x = useMotionValue(0)
-  const y = useMotionValue(0)
-  const rotX = useSpring(useTransform(y, [-0.5, 0.5], [4.5, -4.5]), { stiffness: 150, damping: 20 })
-  const rotY = useSpring(useTransform(x, [-0.5, 0.5], [-6, 6]), { stiffness: 150, damping: 20 })
+  const Tag = as
+  // With `accent`, a two-sentence heading ("Simple pricing. Serious capability.")
+  // sets its second sentence on its own line in the italic serif, like the hero.
+  const cut = accent ? text.search(/[.!?]\s+\S/) : -1
+  const lines = cut > 0 ? [text.slice(0, cut + 1), text.slice(cut + 1).trim()] : [text]
+  let n = 0
+  return (
+    <Tag className={className} style={style} id={id}>
+      <span className="sr-vh">{text}</span>
+      <span aria-hidden="true">
+        {lines.map((line, li) => {
+          const words = line.split(' ')
+          return (
+            <span key={li} className={li > 0 ? 'sr-accent-line' : undefined}>
+              {words.map((w, i) => {
+                const k = n++
+                return (
+                  <Fragment key={`${w}-${i}`}>
+                    <span className="sr-mask">
+                      <motion.span
+                        initial={reduced ? false : { y: '105%' }}
+                        whileInView={{ y: '0%' }}
+                        viewport={{ once: true, margin: '-60px' }}
+                        transition={{ duration: 0.9, delay: delay + k * 0.045, ease: EASE }}
+                      >
+                        {w}
+                      </motion.span>
+                    </span>
+                    {i < words.length - 1 ? ' ' : null}
+                  </Fragment>
+                )
+              })}
+            </span>
+          )
+        })}
+      </span>
+    </Tag>
+  )
+}
 
-  function onMove(e: React.PointerEvent<HTMLDivElement>) {
-    if (reduced) return
+// ── Section head ───────────────────────────────────────────────────────────
+export function SectionHead({
+  eyebrow,
+  heading,
+  sub,
+  center = false,
+  id,
+}: {
+  eyebrow?: string
+  heading: string
+  sub?: string
+  center?: boolean
+  id?: string
+}) {
+  return (
+    <div className={`sr-head${center ? ' sr-head-center' : ''}`}>
+      {eyebrow && (
+        <Reveal y={12}>
+          <span className="sr-eyebrow">{eyebrow}</span>
+        </Reveal>
+      )}
+      <MaskText text={heading} className="sr-h2" id={id} accent />
+      {sub && (
+        <Reveal delay={0.15}>
+          <p className="sr-lead">{sub}</p>
+        </Reveal>
+      )}
+    </div>
+  )
+}
+
+// ── Magnetic — subtle pull toward the pointer (fine pointers only) ─────────
+export function Magnetic({ children, strength = 0.22 }: { children: React.ReactNode; strength?: number }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const reduced = useReducedMotion()
+  const x = useSpring(useMotionValue(0), { stiffness: 220, damping: 18, mass: 0.4 })
+  const y = useSpring(useMotionValue(0), { stiffness: 220, damping: 18, mass: 0.4 })
+
+  function onMove(e: React.PointerEvent<HTMLSpanElement>) {
+    if (reduced || e.pointerType !== 'mouse') return
     const el = ref.current
     if (!el) return
     const r = el.getBoundingClientRect()
-    x.set((e.clientX - r.left) / r.width - 0.5)
-    y.set((e.clientY - r.top) / r.height - 0.5)
+    x.set((e.clientX - (r.left + r.width / 2)) * strength)
+    y.set((e.clientY - (r.top + r.height / 2)) * strength)
   }
   function onLeave() {
     x.set(0)
@@ -112,153 +217,102 @@ export function TiltCard({ children, className }: { children: React.ReactNode; c
   }
 
   return (
-    <motion.div
+    <motion.span
       ref={ref}
       onPointerMove={onMove}
       onPointerLeave={onLeave}
-      style={reduced ? undefined : { rotateX: rotX, rotateY: rotY, transformStyle: 'preserve-3d', perspective: 1200 }}
-      className={className}
+      style={{ display: 'inline-flex', x, y }}
     >
       {children}
-    </motion.div>
+    </motion.span>
   )
 }
 
-// ── Soft atmospheric glow ───────────────────────────────────────────────────
-export function Glow({ style }: { style?: React.CSSProperties }) {
-  return (
-    <div
-      aria-hidden="true"
-      style={{
-        position: 'absolute',
-        pointerEvents: 'none',
-        borderRadius: '50%',
-        background: 'radial-gradient(ellipse, rgba(22,163,125,0.14) 0%, transparent 65%)',
-        filter: 'blur(20px)',
-        ...style,
-      }}
-    />
+// ── CTA button (internal route or external link) ───────────────────────────
+export function CTA({
+  href,
+  children,
+  variant = 'primary',
+  size,
+  arrow = false,
+  magnetic = true,
+  className = '',
+  style,
+}: {
+  href: string
+  children: React.ReactNode
+  variant?: 'primary' | 'ink' | 'ghost' | 'ghost-dark'
+  size?: 'sm'
+  arrow?: boolean
+  magnetic?: boolean
+  className?: string
+  style?: React.CSSProperties
+}) {
+  const cls = `sr-btn sr-btn-${variant}${size ? ` sr-btn-${size}` : ''} ${className}`.trim()
+  const inner = (
+    <>
+      {children}
+      {arrow && (
+        <span className="sr-btn-arrow" aria-hidden="true">
+          <ArrowRight size={17} strokeWidth={2.2} />
+        </span>
+      )}
+    </>
   )
+  const el = href.startsWith('http') ? (
+    <a href={href} target="_blank" rel="noopener noreferrer" className={cls} style={style}>
+      {inner}
+    </a>
+  ) : href.startsWith('#') ? (
+    <a href={href} className={cls} style={style}>
+      {inner}
+    </a>
+  ) : (
+    <Link href={href} className={cls} style={style}>
+      {inner}
+    </Link>
+  )
+  return magnetic ? <Magnetic>{el}</Magnetic> : el
 }
 
-// ── Section scaffolding ─────────────────────────────────────────────────────
-export function Eyebrow({ children, dark = false }: { children: React.ReactNode; dark?: boolean }) {
+// ── Logo — the real app icon + wordmark ────────────────────────────────────
+export function Logo({ dark = false }: { dark?: boolean }) {
   return (
-    <span
-      className="lm-eyebrow"
-      style={{
-        color: dark ? '#9FE8D2' : T.teal,
-        background: dark ? 'rgba(255,255,255,0.10)' : T.emeraldTint,
-        border: `1px solid ${dark ? 'rgba(255,255,255,0.18)' : 'rgba(15,110,86,0.16)'}`,
-      }}
-    >
-      {children}
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+      <Image src="/icon.png" alt="" width={30} height={30} style={{ borderRadius: 8, flexShrink: 0 }} />
+      <span
+        style={{
+          fontSize: 16,
+          fontWeight: 600,
+          letterSpacing: '-0.025em',
+          color: dark ? 'var(--sr-bg)' : 'var(--sr-ink)',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {BRAND}
+      </span>
     </span>
   )
 }
 
-export function SectionHead({
-  eyebrow,
-  heading,
-  sub,
-  dark = false,
-  align = 'center',
-  id,
-}: {
-  eyebrow?: string
-  heading: string
-  sub?: string
-  dark?: boolean
-  align?: 'center' | 'start'
-  id?: string
-}) {
+// ── Language switcher ──────────────────────────────────────────────────────
+export function LangSwitcher({ dark = false }: { dark?: boolean }) {
+  const { lang, setLang, copy } = useLP()
+  const langs: LandingLang[] = ['fr', 'en', 'ar']
   return (
-    <Reveal
-      className="lm-section-head"
-      style={{ textAlign: align === 'center' ? 'center' : 'start', alignItems: align === 'center' ? 'center' : 'flex-start' }}
-    >
-      {eyebrow && <Eyebrow dark={dark}>{eyebrow}</Eyebrow>}
-      <h2 id={id} className="lm-h2" style={{ color: dark ? '#fff' : T.ink }}>
-        {heading}
-      </h2>
-      {sub && (
-        <p className="lm-sub" style={{ color: dark ? T.navyOnDark : T.muted }}>
-          {sub}
-        </p>
-      )}
-    </Reveal>
-  )
-}
-
-// ── Zellige — subtle eight-point-star pattern (Moroccan geometric detail) ──
-export function ZelligePattern({
-  color = T.teal,
-  opacity = 0.04,
-  className,
-  style,
-  id = 'lm-zellige',
-}: {
-  color?: string
-  opacity?: number
-  className?: string
-  style?: React.CSSProperties
-  id?: string
-}) {
-  return (
-    <svg
-      aria-hidden="true"
-      className={className}
-      style={{ position: 'absolute', pointerEvents: 'none', ...style }}
-      width="100%"
-      height="100%"
-    >
-      <defs>
-        <pattern id={id} width="56" height="56" patternUnits="userSpaceOnUse">
-          <path
-            d="M28 8 L33 23 L48 28 L33 33 L28 48 L23 33 L8 28 L23 23 Z"
-            fill="none"
-            stroke={color}
-            strokeWidth="1"
-            opacity={opacity}
-          />
-          <circle cx="28" cy="28" r="2.5" fill={color} opacity={opacity * 0.8} />
-        </pattern>
-      </defs>
-      <rect width="100%" height="100%" fill={`url(#${id})`} />
-    </svg>
-  )
-}
-
-export function useOnceInView(margin = '-60px') {
-  const ref = useRef<HTMLDivElement>(null)
-  const inView = useInView(ref, { once: true, margin: margin as never })
-  return { ref, inView }
-}
-
-// ── Icons ───────────────────────────────────────────────────────────────────
-export function CheckIcon({ size = 12, color = '#fff', strokeWidth = 3 }: { size?: number; color?: string; strokeWidth?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  )
-}
-
-export function ArrowIcon({ size = 16, flip = false }: { size?: number; flip?: boolean }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      style={{ transform: flip ? 'scaleX(-1)' : undefined }}
-    >
-      <path d="M5 12h14M12 5l7 7-7 7" />
-    </svg>
+    <div role="group" aria-label={copy.nav.langLabel} className={`sr-lang${dark ? ' sr-lang-dark' : ''}`}>
+      {langs.map((l) => (
+        <button
+          key={l}
+          type="button"
+          onClick={() => setLang(l)}
+          aria-pressed={lang === l}
+          aria-label={LANG_LABELS[l]}
+          lang={l}
+        >
+          {l === 'ar' ? 'ع' : l.toUpperCase()}
+        </button>
+      ))}
+    </div>
   )
 }
