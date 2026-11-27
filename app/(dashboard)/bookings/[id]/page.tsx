@@ -4,6 +4,7 @@ import { createClient, getUserSession } from '@/lib/supabase/server'
 import { BookingDetailClient } from './BookingDetailClient'
 import { withoutSecrets } from '@/lib/constants'
 import { netReceived } from '@/lib/money'
+import { INVOICE_COLUMNS, PROPERTY_LEGAL_COLUMNS, type Invoice, type PropertyLegal } from '@/lib/invoicing'
 
 export default async function BookingDetailPage({
   params,
@@ -31,11 +32,15 @@ export default async function BookingDetailPage({
   const booking = bookingRes.data
   if (!booking) notFound()
 
-  const [{ data: payments }, { data: extras }, { data: beds }] = await Promise.all([
+  const [{ data: payments }, { data: extras }, { data: beds }, legalRes, invoicesRes] = await Promise.all([
     supabase.from('payments').select('id, amount, method, type, status, reference, notes, payment_date, created_at, property_id, booking_id, guest_id, recorded_by').eq('booking_id', id).order('payment_date', { ascending: false }),
     supabase.from('booking_extras').select('id, name, quantity, unit_price, created_at, booking_id, property_id').eq('booking_id', id).order('created_at'),
     supabase.from('beds').select('id, name, base_price, status, room:room_id(name)').eq('property_id', session.propertyId).order('name'),
+    supabase.from('property_legal').select(PROPERTY_LEGAL_COLUMNS).eq('property_id', session.propertyId).maybeSingle(),
+    supabase.from('invoices').select(INVOICE_COLUMNS).eq('booking_id', id).order('created_at'),
   ])
+  // Both error until migration 034 is applied: the invoicing card is then hidden.
+  const invoicingEnabled = !legalRes.error && !invoicesRes.error
 
   // Completed payments only — a pending/failed payment is not money received.
   const totalPaid = netReceived(payments)
@@ -61,6 +66,10 @@ export default async function BookingDetailPage({
       property={property as unknown as Parameters<typeof BookingDetailClient>[0]['property']}
       totalPaid={totalPaid}
       extrasTotal={extrasTotal}
+      invoicing={invoicingEnabled ? {
+        legal: (legalRes.data as PropertyLegal | null) ?? null,
+        invoices: (invoicesRes.data ?? []) as unknown as Invoice[],
+      } : null}
     />
   )
 }

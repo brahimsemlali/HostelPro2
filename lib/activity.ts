@@ -12,6 +12,8 @@ export type ActivityActionType =
   | 'bed_status'
   | 'pre_checkin'
   | 'guest_anonymized'
+  | 'invoice_issued'
+  | 'credit_note_issued'
 
 export interface LogActivityParams {
   propertyId: string

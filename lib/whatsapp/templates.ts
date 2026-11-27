@@ -1,4 +1,12 @@
 import type { Guest, Property, Booking } from '@/types'
+import { formatAmount } from '@/lib/invoicing'
+
+export type PaymentReminderDetails = {
+  propertyName?: string | null
+  invoiceNumber?: string | null
+  /** RIB / bank name from Paramètres → Facturation. */
+  bankDetails?: string | null
+}
 
 type TemplateProp = Pick<Property, 'name' | 'wifi_password' | 'check_out_time'>
 
@@ -12,8 +20,19 @@ export const WHATSAPP_TEMPLATES = {
       `Welcome ${g.first_name}! 🏠 You're checked in at *${p.name}*.\n\n📶 WiFi: *${p.wifi_password ?? 'Ask at reception'}*\n🕑 Checkout: *${new Date(b.check_out_date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}* before *${p.check_out_time}*\n\nEnjoy your stay! 😊`,
   },
   payment_reminder: {
-    fr: (g: Guest, amount: number) =>
-      `Bonjour ${g.first_name} 👋\n\nNous vous rappelons qu'un solde de *${amount} MAD* est dû pour votre séjour.\n\nMerci de nous contacter pour régler ce montant. 🙏`,
+    fr: (g: Pick<Guest, 'first_name'>, amount: number, details?: PaymentReminderDetails) => {
+      const lines = [
+        `Bonjour ${g.first_name} 👋`,
+        '',
+        `Nous vous rappelons qu'un solde de *${formatAmount(amount)} MAD* est dû pour votre séjour${details?.propertyName ? ` à *${details.propertyName}*` : ''}.`,
+      ]
+      if (details?.invoiceNumber) lines.push('', `🧾 Facture N° *${details.invoiceNumber}*`)
+      if (details?.bankDetails) lines.push('', `🏦 Virement possible :`, details.bankDetails)
+      lines.push('', details?.bankDetails
+        ? 'Vous pouvez aussi régler à la réception (espèces ou carte). Merci ! 🙏'
+        : 'Merci de nous contacter pour régler ce montant. 🙏')
+      return lines.join('\n')
+    },
   },
   checkout_reminder: {
     fr: (g: Guest, p: Pick<Property, 'check_out_time'>) =>

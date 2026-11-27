@@ -69,7 +69,7 @@ export async function generateInvoice(
   doc.setFontSize(8)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(100, 100, 100)
-  doc.text('FACTURÉ À', margin + 4, y + 7)
+  doc.text('CLIENT', margin + 4, y + 7)
   doc.setTextColor(0, 0, 0)
   doc.setFontSize(11)
   doc.setFont('helvetica', 'bold')
@@ -218,5 +218,5 @@ export async function generateInvoice(
   const contactLine = [property.phone, property.email].filter(Boolean).join('  ·  ')
   if (contactLine) doc.text(contactLine, W / 2, footerY + 17, { align: 'center' })
 
-  doc.save(`facture-${guest.last_name.toLowerCase()}-${booking.id.slice(0, 6)}.pdf`)
+  doc.save(`recu-${guest.last_name.toLowerCase()}-${booking.id.slice(0, 6)}.pdf`)
 }
