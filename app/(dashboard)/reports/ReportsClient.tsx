@@ -479,7 +479,7 @@ export function ReportsClient({
                   <td className="px-5 py-3 font-medium text-[#0A1F1C]">{sourceLabels[s.key] ?? s.key}</td>
                   <td className="px-5 py-3 text-right tabular-nums text-[#475569]">{s.count}</td>
                   <td className="px-5 py-3 text-right tabular-nums text-[#475569]">{formatCurrency(s.gross)}</td>
-                  <td className="px-5 py-3 text-right text-[#94A3B8]">{s.commission_rate}%</td>
+                  <td className="px-5 py-3 text-right text-[#94A3B8]">{s.gross > 0 ? Math.round((1 - s.net / s.gross) * 1000) / 10 : s.commission_rate}%</td>
                   <td className="px-5 py-3 text-right text-[#0F6E56] font-semibold tabular-nums">{formatCurrency(s.net)}</td>
                 </tr>
               ))}

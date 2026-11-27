@@ -17,6 +17,7 @@ import {
   RefreshCw, Link2, Copy, Check, CalendarDays,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { defaultCommissionRate } from '@/lib/constants'
 import { useT } from '@/app/context/LanguageContext'
 
 interface ParsedEvent {
@@ -181,7 +182,7 @@ export function IntegrationsClient({ propertyId, savedIcalUrl, lastSync, importe
           check_out_date: event.check_out_date,
           adults: 1,
           total_price: 0,         // to be filled by staff
-          commission_rate: 15,    // Booking.com default
+          commission_rate: defaultCommissionRate('booking_com'),
         })
         if (bookingError) {
           // 23505 = already imported by a concurrent sync (bookings_external_import_unique)

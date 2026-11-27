@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn, isBedConflictError } from '@/lib/utils'
-import { BOOKING_SOURCES, NATIONALITIES } from '@/lib/constants'
+import { BOOKING_SOURCES, NATIONALITIES, defaultCommissionRate } from '@/lib/constants'
 import { toast } from 'sonner'
 import { logActivity } from '@/lib/activity'
 import {
@@ -179,6 +179,7 @@ export function AddArrivalModal({
             check_in_date: checkInDate,
             check_out_date: checkOutDate,
             total_price: price,
+            commission_rate: defaultCommissionRate(source),
             arrival_notes: arrivalNotes.trim() || null,
             expected_arrival_time: expectedTime || null,
           })

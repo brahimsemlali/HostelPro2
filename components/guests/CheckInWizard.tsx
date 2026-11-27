@@ -19,7 +19,7 @@ import {
 import { cn, formatCurrency, formatDateShort, daysBetween, todayISO, tomorrowISO, isBedConflictError, sanitizeSearchTerm } from '@/lib/utils'
 import { generateFicheDePolice } from '@/lib/pdf/fiche-police'
 import { buildWhatsAppLink, WHATSAPP_TEMPLATES } from '@/lib/whatsapp/templates'
-import { NATIONALITIES, COUNTRIES, BOOKING_SOURCES, PAYMENT_METHODS } from '@/lib/constants'
+import { NATIONALITIES, COUNTRIES, BOOKING_SOURCES, PAYMENT_METHODS, defaultCommissionRate } from '@/lib/constants'
 import type { Property, Room, Bed, Guest, Booking } from '@/types'
 import { useT } from '@/app/context/LanguageContext'
 import {
@@ -406,6 +406,7 @@ export function CheckInWizard({ property, beds, preselectedBedId }: Props) {
             check_out_date: bookingForm.check_out_date,
             adults: 1,
             total_price: price,
+            commission_rate: defaultCommissionRate(bookingForm.source),
             special_requests: bookingForm.special_requests || null,
           })
           .select()
