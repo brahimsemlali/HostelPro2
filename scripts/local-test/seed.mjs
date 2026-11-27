@@ -31,7 +31,7 @@ let P = prop?.id
 if (!P) {
   const bed = (n, price = 120) => ({ name: n, base_price: price })
   const { data, error } = await ownerClient.rpc('create_property_with_setup', {
-    p_name: 'Auberge Atlas', p_city: 'Agadir', p_phone: '+212612345678', p_wifi: 'atlas2026', p_lang: 'fr', p_owner_name: 'Brahim',
+    p_name: 'Auberge Atlas', p_city: 'Agadir', p_phone: '+212612345678', p_wifi: 'atlas2026', p_lang: 'fr', p_owner_name: 'Gérant Test',
     p_trial_end: new Date().toISOString(),
     p_rooms: [
       { name: 'Dortoir A', type: 'dorm', beds: ['A1', 'A2', 'A3', 'A4'].map((n) => bed(n)) },
