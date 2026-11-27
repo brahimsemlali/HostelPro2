@@ -1,6 +1,6 @@
 # Launch checklist
 
-Last verified 2026-10-22 against production (public API probes + LemonSqueezy API with the local key).
+Last verified 2026-10-22 against production (public API probes + LemonSqueezy API with the local key). Migrations 033–035 re-probed on 2026-11-27.
 
 ## Database: what production has
 
@@ -11,7 +11,10 @@ Last verified 2026-10-22 against production (public API probes + LemonSqueezy AP
 | 011 | ❌ Not applied: `properties.whatsapp_*` columns don't exist. The code no longer needs them (the token lives in `property_secrets`). Don't apply it. |
 | 029 | ❓ Can't be detected from the API. Check with the SQL below. **This is the trial self-grant fix: critical.** |
 | 030 | ❓ Can't be detected from the API. Check with the SQL below. |
-| 032 | ⏳ New. Locks `recompute_guest_totals`, which anonymous visitors can currently call. Safe to apply at any time. |
+| 032 | ⏳ New. Locks `recompute_guest_totals`, which anonymous visitors can currently call. Safe to apply at any time. (Not probed: calling it anonymously would run it.) |
+| 033 | ✅ Live (2026-11-27 probe: `tenant_admin` / `platform_payments` exist and refuse anon) |
+| 034 | ✅ Applied by the owner on 2026-11-27 (tables + `issue_invoice` / `issue_credit_note` exist, anon refused) |
+| 035 | ✅ Applied by the owner on 2026-11-27 (`subscription_gate` exists, anon refused) |
 
 ```sql
 -- 029 is applied if has_active_subscription shows a search_path in proconfig
@@ -25,12 +28,14 @@ SELECT 'enforce_housekeeping_bed_columns'::regproc;
 
 After 031: once the pre-flight queries in it return no rows, run its `VALIDATE CONSTRAINT` lines.
 
-## 🔴 Staff accounts are locked out (migration 035)
+## Staff accounts locked out (migration 035)
 
 Found while testing on 2026-11-27 against a local Supabase built from these migrations. The only SELECT policy on `subscriptions` is owner-only (015). A manager/receptionist/housekeeping session therefore reads no subscription, `isSubscriptionBlocked(null)` is true, and every staff page redirects to `/settings/billing` ("Abonnement suspendu"), even on an active plan.
 
-- [ ] Confirm in production (SQL editor): `SELECT polname FROM pg_policy WHERE polrelid = 'subscriptions'::regclass;`. If it lists only "Owners can view their own subscription", staff logins are bounced today.
-- [ ] Apply `035_staff_subscription_gate.sql`, then deploy. It adds `subscription_gate()`, which returns only status/period end/provider to the property's owner or active staff. Staff still can't read the row, which holds the billing-portal link. The app falls back to the old behaviour until 035 exists.
+- [x] Apply `035_staff_subscription_gate.sql` (done 2026-11-27).
+- [ ] **Merge and deploy PR #6.** Staff stay locked out until the app code that calls `subscription_gate()` is live.
+- [ ] After the deploy, log in once with a staff account and check it reaches the dashboard.
+- Background: migration 035 It adds `subscription_gate()`, which returns only status/period end/provider to the property's owner or active staff. Staff still can't read the row, which holds the billing-portal link. The app falls back to the old behaviour until 035 exists.
 
 ## ⏰ Timezone data (Morocco moved to UTC+0 on 20 Sep 2026)
 
@@ -46,7 +51,8 @@ tzdata 2026f (macOS, Chrome 158) has Morocco on UTC+0 since 2026-09-20. Node 22.
 
 ## Facturation (factures + avoirs)
 
-- [ ] Apply `034_invoicing.sql` (needs 026). Tested end-to-end on 2026-11-27 against a local Supabase: browser flows plus 17 per-role RLS/RPC checks. Until it is applied, the booking page hides the invoicing card, `/invoices` and `/settings/invoicing` show a notice, and nothing breaks. The migration was run against a stub schema in PGlite (numbering, totals checks, avoirs, immutability). RLS policies were **not** exercised against real Supabase roles, so test with a receptionist account after applying.
+- [x] Apply `034_invoicing.sql` (done 2026-11-27). Tested end-to-end beforehand against a local Supabase: browser flows plus 29 per-role RLS/RPC checks (`scripts/local-test/check-roles.sh`).
+- [ ] After PR #6 deploys: fill in Paramètres → Facturation for the property (raison sociale, ICE, IF, TVA, taxe de séjour rate), then issue one real invoice and check the PDF.
 - [ ] Have an accountant (comptable) confirm the defaults before customers rely on them: 10 % TVA on accommodation, the same rate applied to extras, the taxe de séjour shown as "included in the price, outside the TVA base", and the wording of the legal mentions.
 - Numbers are `F-YYYY-NNNN` / `AV-YYYY-NNNN`, gap-free per property and per year. Issued invoices can't be edited or deleted. Corrections go through an avoir (manager+).
 - **Administratif page** (`/declarations`, manager+): taxe de séjour summary, tourism statistics, police register, accounting pack (zip). It needs no migration, except for two things that need 034: the tax rate per nuitée (in `property_legal`) and the invoices inside the pack. Before 034, it shows nuitées without an amount, and a pack without invoices. Every output is labelled "Récapitulatif"/working document. Check the official forms with the commune / Délégation du Tourisme before advertising it as the declaration itself.
