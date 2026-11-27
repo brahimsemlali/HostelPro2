@@ -1,5 +1,5 @@
 import { clsx, type ClassValue } from "clsx"
-import { addDaysISO, diffDaysISO, todayISO as moroccoTodayISO } from './dates'
+import { addDaysISO, diffDaysISO, PROPERTY_TZ, todayISO as moroccoTodayISO } from './dates'
 import { twMerge } from "tailwind-merge"
 
 export function cn(...inputs: ClassValue[]) {
@@ -26,12 +26,15 @@ export function formatCurrency(amount: number): string {
   }).format(amount)
 }
 
+// All display formatting is pinned to Morocco time: otherwise the server (UTC
+// on Vercel) and the browser render different text and React hydration fails.
 export function formatDate(date: string | Date): string {
   const d = typeof date === 'string' ? new Date(date) : date
   return d.toLocaleDateString('fr-FR', {
     day: '2-digit',
     month: 'long',
     year: 'numeric',
+    timeZone: PROPERTY_TZ,
   })
 }
 
@@ -41,12 +44,13 @@ export function formatDateShort(date: string | Date): string {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
+    timeZone: PROPERTY_TZ,
   })
 }
 
 export function formatTime(date: string | Date): string {
   const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: PROPERTY_TZ })
 }
 
 // Calendar-date helpers live in lib/dates (Morocco time, offset-change safe);

@@ -264,13 +264,23 @@ export const getUserSession = cache(async (): Promise<UserSession | null> => {
 
   // 4. Subscription status + period end for the active property?
   const subPropertyId = activeProperty?.id ?? staffMember?.property_id
-  const { data: sub } = subPropertyId
+  let { data: sub } = subPropertyId
     ? await supabase
         .from('subscriptions')
         .select('status, current_period_end, provider')
         .eq('property_id', subPropertyId)
         .maybeSingle()
     : { data: null }
+  // Staff can't SELECT `subscriptions` (owner-only RLS, and the row holds the
+  // billing-portal link). Without this they'd read no row and be treated as
+  // unsubscribed. subscription_gate() (migration 035) returns just the gate
+  // fields to the property's owner or active staff; if 035 isn't applied the
+  // call errors and we keep the old result.
+  if (!sub && subPropertyId && staffMember && !activeProperty) {
+    const { data: gate, error: gateError } = await supabase.rpc('subscription_gate', { p_property_id: subPropertyId })
+    const row = Array.isArray(gate) ? gate[0] : gate
+    if (!gateError && row) sub = row as typeof sub
+  }
 
   const isSuperAdmin = isSuperAdminUser({ id: userId, email: identity.email })
 

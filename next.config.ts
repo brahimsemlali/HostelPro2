@@ -62,13 +62,17 @@ const nextConfig: NextConfig = {
         source: '/(.*)',
         headers: securityHeaders,
       },
-      // Long-lived cache for hashed static assets (_next/static)
-      {
-        source: '/_next/static/(.*)',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
-        ],
-      },
+      // Long-lived cache for hashed static assets (_next/static) — production
+      // only: dev chunk names are NOT content-hashed, so "immutable" there makes
+      // the browser keep running stale code after every edit.
+      ...(process.env.NODE_ENV === 'production'
+        ? [{
+            source: '/_next/static/(.*)',
+            headers: [
+              { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+            ],
+          }]
+        : []),
       // Medium cache for public images/fonts
       {
         source: '/(favicon.*|icon.*|apple-touch-icon.*|og-image.*|opengraph-image.*)',

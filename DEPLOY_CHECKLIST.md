@@ -25,6 +25,32 @@ SELECT 'enforce_housekeeping_bed_columns'::regproc;
 
 After 031: once the pre-flight queries in it return no rows, run its `VALIDATE CONSTRAINT` lines.
 
+## 🔴 Staff accounts are locked out (migration 035)
+
+Found while testing on 2026-11-27 against a local Supabase built from these migrations. The only SELECT policy on `subscriptions` is owner-only (015). A manager/receptionist/housekeeping session therefore reads no subscription, `isSubscriptionBlocked(null)` is true, and every staff page redirects to `/settings/billing` ("Abonnement suspendu"), even on an active plan.
+
+- [ ] Confirm in production (SQL editor): `SELECT polname FROM pg_policy WHERE polrelid = 'subscriptions'::regclass;`. If it lists only "Owners can view their own subscription", staff logins are bounced today.
+- [ ] Apply `035_staff_subscription_gate.sql`, then deploy. It adds `subscription_gate()`, which returns only status/period end/provider to the property's owner or active staff. Staff still can't read the row, which holds the billing-portal link. The app falls back to the old behaviour until 035 exists.
+
+## ⏰ Timezone data (Morocco moved to UTC+0 on 20 Sep 2026)
+
+tzdata 2026f (macOS, Chrome 158) has Morocco on UTC+0 since 2026-09-20. Node 22.14 (bundled tz 2024b) and the local Postgres 17.6 still apply UTC+1. Everything Morocco-time goes through the IANA zone (`lib/dates`, `issue_invoice`'s `issue_date`), so a stale runtime is one hour off: "today" rolls over at 23:00, day ranges shift, and server-rendered times differ from the browser (hydration errors).
+
+- [ ] Vercel: check the project's Node.js version and that its `process.versions.tz` is 2026f or newer (2024b is too old).
+- [ ] Supabase: `SELECT now() AT TIME ZONE 'Africa/Casablanca', now() AT TIME ZONE 'UTC';`. These should be equal today. If they differ by an hour, invoices issued between 23:00 and midnight get tomorrow's date.
+- Don't "fix" this by hard-coding an offset. Update the runtime.
+
+## Staging / new Supabase projects
+
+- Newer Supabase stacks don't auto-grant table privileges on `public` to `anon`/`authenticated`/`service_role`, and production (older project) does. A fresh project built from these migrations needs explicit `GRANT`s, or every query fails with 42501. The local test stack used `GRANT ALL ON ALL TABLES/SEQUENCES/ROUTINES IN SCHEMA public …`, then re-applied the REVOKEs from 032/033/034.
+
+## Facturation (factures + avoirs)
+
+- [ ] Apply `034_invoicing.sql` (needs 026). Tested end-to-end on 2026-11-27 against a local Supabase: browser flows plus 17 per-role RLS/RPC checks. Until it is applied, the booking page hides the invoicing card, `/invoices` and `/settings/invoicing` show a notice, and nothing breaks. The migration was run against a stub schema in PGlite (numbering, totals checks, avoirs, immutability). RLS policies were **not** exercised against real Supabase roles, so test with a receptionist account after applying.
+- [ ] Have an accountant (comptable) confirm the defaults before customers rely on them: 10 % TVA on accommodation, the same rate applied to extras, the taxe de séjour shown as "included in the price, outside the TVA base", and the wording of the legal mentions.
+- Numbers are `F-YYYY-NNNN` / `AV-YYYY-NNNN`, gap-free per property and per year. Issued invoices can't be edited or deleted. Corrections go through an avoir (manager+).
+- **Administratif page** (`/declarations`, manager+): taxe de séjour summary, tourism statistics, police register, accounting pack (zip). It needs no migration, except for two things that need 034: the tax rate per nuitée (in `property_legal`) and the invoices inside the pack. Before 034, it shows nuitées without an amount, and a pack without invoices. Every output is labelled "Récapitulatif"/working document. Check the official forms with the commune / Délégation du Tourisme before advertising it as the declaration itself.
+
 ## Superadmin console (/admin)
 
 - [ ] Apply `033_admin_console.sql`. Until you do, the console shows a notice and these are disabled: payments ledger, encaisser, notes, suspension, audit log and the usage columns.

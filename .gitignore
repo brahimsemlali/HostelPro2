@@ -50,3 +50,6 @@ mobile-login-after.png
 mobile-login-fixed.png
 build_output.txt
 task2.md
+
+# local Supabase test stack (scripts/local-test)
+scripts/local-test/.stack/

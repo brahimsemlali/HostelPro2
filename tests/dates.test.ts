@@ -65,3 +65,25 @@ describe('businessDateISO — night audit day', () => {
     expect(businessDateISO(new Date('2026-07-21T21:00:00Z'))).toBe('2026-07-21')
   })
 })
+
+describe('minutesUntilMoroccoTime', () => {
+  it('measures against Morocco wall-clock time, not the runtime timezone', async () => {
+    const { minutesUntilMoroccoTime, dayStartUTC } = await import('@/lib/dates')
+    const tenAmMorocco = dayStartUTC('2026-11-27').getTime() + 10 * 3_600_000
+    expect(minutesUntilMoroccoTime('11:00', tenAmMorocco)).toBe(60)
+    expect(minutesUntilMoroccoTime('09:30', tenAmMorocco)).toBe(-30)
+    expect(minutesUntilMoroccoTime('11:00', tenAmMorocco + 68 * 60_000)).toBe(-8)
+  })
+})
+
+describe('display formatters are pinned to Morocco time', () => {
+  it('formatTime / formatDateShort ignore the runtime timezone', async () => {
+    const { formatTime, formatDateShort } = await import('@/lib/utils')
+    const { dayStartUTC } = await import('@/lib/dates')
+    const tenFifteen = new Date(dayStartUTC('2026-11-27').getTime() + (10 * 60 + 15) * 60_000)
+    expect(formatTime(tenFifteen)).toBe('10:15')
+    expect(formatDateShort('2026-11-27')).toBe('27/11/2026')
+    const lateEvening = new Date(dayStartUTC('2026-11-27').getTime() + (23 * 60 + 30) * 60_000)
+    expect(formatDateShort(lateEvening)).toBe('27/11/2026')
+  })
+})
