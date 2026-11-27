@@ -25,6 +25,8 @@ import {
   Brush,
   Receipt,
   PartyPopper,
+  FileText,
+  Landmark,
 } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 
@@ -39,6 +41,8 @@ function MoreDrawer({ open, onClose, pathname }: { open: boolean; onClose: () =>
     { href: '/expenses',     label: t('nav.expenses'),     icon: Receipt },
     { href: '/activities',   label: t('nav.activities'),   icon: PartyPopper },
     { href: '/reports',      label: t('nav.reports'),      icon: BarChart3 },
+    { href: '/invoices',     label: t('nav.invoices'),     icon: FileText },
+    { href: '/declarations', label: t('nav.declarations'), icon: Landmark },
     { href: '/whatsapp',     label: t('nav.whatsapp'),     icon: MessageSquare },
     { href: '/maintenance',  label: t('nav.maintenance'),  icon: Wrench },
     { href: '/night-audit',  label: t('nav.nightAudit'),   icon: Moon },
@@ -184,7 +188,7 @@ export function MobileNav() {
 
   const moreItemHrefs = [
     '/guests', '/bookings', '/calendar', '/housekeeping',
-    '/expenses', '/activities', '/reports', '/whatsapp',
+    '/expenses', '/activities', '/reports', '/invoices', '/declarations', '/whatsapp',
     '/maintenance', '/night-audit', '/settings',
   ]
   const moreActive = moreItemHrefs

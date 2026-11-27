@@ -10,7 +10,7 @@ import { toast } from 'sonner'
 import {
   LayoutDashboard, Bed, Users, CalendarCheck, CalendarDays,
   DollarSign, BarChart3, MessageSquare, Wrench, Moon,
-  Brush, Receipt, Settings, LogOut, PartyPopper, ShoppingBag,
+  Brush, Receipt, Settings, LogOut, PartyPopper, ShoppingBag, FileText, Landmark,
 } from 'lucide-react'
 import type { StaffRole } from '@/types'
 import { AppLogo } from '@/components/shared/AppLogo'
@@ -86,6 +86,8 @@ export function Sidebar() {
       minRole: 'manager',
       items: [
         { href: '/reports',     label: t('nav.reports'),     icon: BarChart3 },
+        { href: '/invoices',    label: t('nav.invoices'),    icon: FileText },
+        { href: '/declarations', label: t('nav.declarations'), icon: Landmark },
         { href: '/whatsapp',    label: t('nav.whatsapp'),    icon: MessageSquare },
         { href: '/maintenance', label: t('nav.maintenance'), icon: Wrench },
         { href: '/night-audit', label: t('nav.nightAudit'),  icon: Moon },

@@ -27,6 +27,8 @@ import { format, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import type { HousekeepingTask, TaskStatus, TaskPriority, UserSession } from '@/types'
 import { useT } from '@/app/context/LanguageContext'
+import { useNow } from '@/hooks/useNow'
+import { minutesUntilMoroccoTime } from '@/lib/dates'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -57,14 +59,6 @@ interface Props {
 // Labels are moved inside components to support i18n via useT()
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function minutesUntilCheckIn(checkInTime: string): number {
-  const [h, m] = checkInTime.split(':').map(Number)
-  const now = new Date()
-  const target = new Date()
-  target.setHours(h, m, 0, 0)
-  return Math.round((target.getTime() - now.getTime()) / 60000)
-}
 
 function formatMinutesRaw(mins: number): string | null {
   if (mins <= 0) return null // caller handles translation
@@ -402,7 +396,9 @@ export function HousekeepingClient({
 
   const totalBeds = beds.length
   const cleanedCount = beds.filter((b) => b.status === 'available' || localCleanIds.has(b.bedId)).length
-  const minsToCheckIn = minutesUntilCheckIn(checkInTime)
+  // 0 until mounted (both countdown badges require > 0), so SSR and hydration match.
+  const now = useNow()
+  const minsToCheckIn = now == null ? 0 : minutesUntilMoroccoTime(checkInTime, now)
   const priorityBeds = beds.filter((b) => b.isPriority && !localCleanIds.has(b.bedId) && b.status !== 'available')
 
   // ── Tasks state ──────────────────────────────────────────────────────────

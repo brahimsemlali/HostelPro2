@@ -1,9 +1,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Business-date helpers. Every property is in Morocco, but the server (Vercel)
-// runs in UTC and Morocco's offset is not fixed: UTC+1 most of the year, UTC+0
-// during Ramadan. So never hard-code "+01:00" and never derive a calendar date
-// from local Date arithmetic (setDate/getDate + toISOString), which skips or
-// repeats a day around the offset changes.
+// runs in UTC and Morocco's offset is not fixed: it was UTC+1 with UTC+0 during
+// Ramadan, and tzdata 2026f moves Morocco to UTC+0 from 20 Sep 2026. So never
+// hard-code an offset: everything goes through the IANA zone via Intl, which
+// means the RUNTIME's tz database must be current (stale ICU data = 1h error).
+// Never derive a calendar date from local Date arithmetic (setDate/getDate +
+// toISOString), which skips or repeats a day around offset changes.
 //
 // Calendar dates are plain 'YYYY-MM-DD' strings; arithmetic on them is done in
 // UTC, where every day is exactly 24h. Instants (payment_date etc.) are bounded
@@ -106,4 +108,15 @@ export function dateOfInstant(instant: string | Date): string {
 /** Format a 'YYYY-MM-DD' date without the host timezone shifting it a day. */
 export function formatISODate(iso: string, options: Intl.DateTimeFormatOptions, locale = 'fr-FR'): string {
   return new Date(`${iso}T12:00:00Z`).toLocaleDateString(locale, { ...options, timeZone: 'UTC' })
+}
+
+/**
+ * Minutes from `nowMs` until today's `hh:mm` wall-clock time in Morocco
+ * (negative once it has passed). Independent of the runtime timezone, so the
+ * server (UTC on Vercel) and the browser agree.
+ */
+export function minutesUntilMoroccoTime(hhmm: string, nowMs: number): number {
+  const [h, m] = hhmm.split(':').map(Number)
+  const target = dayStartUTC(todayISO(new Date(nowMs))).getTime() + ((h || 0) * 60 + (m || 0)) * 60_000
+  return Math.round((target - nowMs) / 60_000)
 }

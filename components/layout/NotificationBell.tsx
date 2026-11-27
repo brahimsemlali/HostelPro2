@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useSession, useCanDo } from '@/app/context/SessionContext'
 import { useT } from '@/app/context/LanguageContext'
 import { cn, formatTime } from '@/lib/utils'
+import { PROPERTY_TZ } from '@/lib/dates'
 import {
   Bell,
   BellOff,
@@ -44,7 +45,7 @@ function notifTime(iso: string): string {
   const d = new Date(iso)
   const today = new Date()
   if (d.toDateString() === today.toDateString()) return formatTime(d)
-  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', timeZone: PROPERTY_TZ })
 }
 
 export function NotificationBell() {

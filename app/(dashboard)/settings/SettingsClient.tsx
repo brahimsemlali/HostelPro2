@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 import type { Property } from '@/types'
-import { Loader2, BedDouble, Users, Plug, TrendingUp, Globe, ShoppingBag } from 'lucide-react'
+import { Loader2, BedDouble, Users, Plug, TrendingUp, Globe, ShoppingBag, FileText } from 'lucide-react'
 import { useLang, useT } from '@/app/context/LanguageContext'
 import { cn } from '@/lib/utils'
 import type { Lang } from '@/lib/i18n'
@@ -185,8 +185,17 @@ export function SettingsClient({ property }: { property: Property }) {
             </div>
           </div>
         </Link>
+        <Link href="/settings/invoicing">
+          <div className="bg-white border border-[#E8ECF0] rounded-[16px] p-5 flex items-center gap-3 hover:border-[#0F6E56]/30 transition-colors cursor-pointer shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+            <FileText className="w-5 h-5 text-[#0F6E56]" />
+            <div>
+              <p className="font-medium text-sm text-[#0A1F1C]">Facturation</p>
+              <p className="text-xs text-[#94A3B8]">ICE, IF, TVA, taxe de séjour</p>
+            </div>
+          </div>
+        </Link>
         <Link href="/settings/integrations">
-          <div className="bg-white border border-[#E8ECF0] rounded-[16px] p-5 flex items-center gap-3 hover:border-[#0F6E56]/30 transition-colors cursor-pointer shadow-[0_1px_4px_rgba(0,0,0,0.04)] col-span-2 sm:col-span-1">
+          <div className="bg-white border border-[#E8ECF0] rounded-[16px] p-5 flex items-center gap-3 hover:border-[#0F6E56]/30 transition-colors cursor-pointer shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
             <Plug className="w-5 h-5 text-[#003580]" />
             <div>
               <p className="font-medium text-sm text-[#0A1F1C]">{t('settings.integrations.title')}</p>

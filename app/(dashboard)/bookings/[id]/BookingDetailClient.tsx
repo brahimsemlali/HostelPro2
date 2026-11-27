@@ -32,6 +32,8 @@ import { useSession } from '@/app/context/SessionContext'
 import { logActivity } from '@/lib/activity'
 import { useT } from '@/app/context/LanguageContext'
 import { bedHasOtherOccupant } from '@/lib/bed-status'
+import { BookingInvoiceCard } from '@/components/invoices/BookingInvoiceCard'
+import type { Invoice, PropertyLegal } from '@/lib/invoicing'
 
 type BedOption = { id: string; name: string; base_price: number; status: string; room: { name: string } | null }
 
@@ -43,9 +45,11 @@ interface Props {
   property: Property
   totalPaid: number
   extrasTotal: number
+  /** null until migration 034 (invoicing) is applied. */
+  invoicing: { legal: PropertyLegal | null; invoices: Invoice[] } | null
 }
 
-export function BookingDetailClient({ booking, payments, extras, property, totalPaid, extrasTotal }: Props) {
+export function BookingDetailClient({ booking, payments, extras, property, totalPaid, extrasTotal, invoicing }: Props) {
   const router = useRouter()
   const t = useT()
   const session = useSession()
@@ -328,8 +332,12 @@ export function BookingDetailClient({ booking, payments, extras, property, total
     if (templateKey === 'welcome') msg = WHATSAPP_TEMPLATES.welcome.fr(guest, property, booking)
     else if (templateKey === 'checkout_reminder') msg = WHATSAPP_TEMPLATES.checkout_reminder.fr(guest, property)
     else if (templateKey === 'payment_reminder') {
-      const extrasNote = extrasTotal > 0 ? ` (dont ${formatCurrency(extrasTotal)} de suppléments)` : ''
-      msg = WHATSAPP_TEMPLATES.payment_reminder.fr(guest, dynamicBalance) + extrasNote
+      const activeInvoice = invoicing?.invoices.find((i) => i.kind === 'invoice' && !i.cancelled_at)
+      msg = WHATSAPP_TEMPLATES.payment_reminder.fr(guest, dynamicBalance, {
+        propertyName: property.name,
+        invoiceNumber: activeInvoice?.number ?? null,
+        bankDetails: invoicing?.legal?.bank_details ?? null,
+      })
     }
 
     // Log the message so it appears in the WhatsApp hub history — fire-and-forget.
@@ -523,16 +531,26 @@ export function BookingDetailClient({ booking, payments, extras, property, total
 
             {payments.length > 0 && (
               <div className="border-t border-[#F0F4F7] pt-2 space-y-1.5 mt-1">
-                {payments.map((p) => (
-                  <div key={p.id} className="flex justify-between text-xs">
-                    <span className="text-[#94A3B8]">
-                      {methodLabels[p.method]} · {new Date(p.payment_date).toLocaleDateString('fr-FR')}
-                    </span>
-                    <span className={p.type === 'refund' ? 'text-red-500' : 'text-[#0A1F1C]'}>
-                      {p.type === 'refund' ? '−' : '+'}{formatCurrency(p.amount)}
-                    </span>
-                  </div>
-                ))}
+                {payments.map((p) => {
+                  // Pending / failed rows are not money received (they don't count in
+                  // "Payé"), so they must not look like a normal receipt here.
+                  const notReceived = p.status && p.status !== 'completed'
+                  return (
+                    <div key={p.id} className="flex justify-between text-xs">
+                      <span className="text-[#94A3B8]">
+                        {methodLabels[p.method]} · {formatDateShort(p.payment_date)}
+                        {notReceived && (
+                          <span className={cn('ml-1.5 px-1.5 py-px rounded-full text-[10px] font-medium', p.status === 'failed' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-700')}>
+                            {p.status === 'failed' ? 'Échoué' : 'En attente'}
+                          </span>
+                        )}
+                      </span>
+                      <span className={cn(notReceived ? 'text-[#94A3B8] line-through' : p.type === 'refund' ? 'text-red-500' : 'text-[#0A1F1C]')}>
+                        {p.type === 'refund' ? '−' : '+'}{formatCurrency(p.amount)}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </CardContent>
@@ -648,6 +666,17 @@ export function BookingDetailClient({ booking, payments, extras, property, total
         </CardContent>
       </Card>
 
+      {invoicing && (
+        <BookingInvoiceCard
+          booking={booking}
+          bedLabel={booking.bed ? [booking.bed.room?.name, booking.bed.name].filter(Boolean).join(' - ') : null}
+          guestName={guest ? `${guest.first_name} ${guest.last_name.toUpperCase()}` : 'Client'}
+          extras={localExtras}
+          legal={invoicing.legal}
+          invoices={invoicing.invoices}
+        />
+      )}
+
       {/* Internal notes */}
       <Card className="bg-white border border-[#E8ECF0] rounded-[16px] shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
         <CardHeader className="pb-3">
@@ -717,6 +746,15 @@ export function BookingDetailClient({ booking, payments, extras, property, total
             >
               <Plus className="w-3 h-3 mr-1" />Encaisser le solde
             </Button>
+            {(guest?.whatsapp ?? guest?.phone) && (
+              <Button
+                variant="outline"
+                className="w-full text-[#128C4A] border-[#25D366]/40 hover:bg-[#25D366]/5"
+                onClick={() => handleWhatsApp('payment_reminder')}
+              >
+                <MessageSquare className="w-3 h-3 mr-1" />Envoyer le rappel de paiement (WhatsApp)
+              </Button>
+            )}
             <Button
               variant="outline"
               className="w-full text-red-600 border-red-200 hover:bg-red-50"

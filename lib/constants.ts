@@ -27,6 +27,17 @@ export const BOOKING_SOURCES: Record<string, string> = {
   walkin: 'Walk-in',
 }
 
+// Typical OTA commission (%) applied when a booking is created. Sources not
+// listed here (direct, phone, walk-in, Airbnb) default to 0.
+export const DEFAULT_COMMISSION_RATES: Record<string, number> = {
+  booking_com: 15,
+  hostelworld: 12,
+}
+
+export function defaultCommissionRate(source: string): number {
+  return DEFAULT_COMMISSION_RATES[source] ?? 0
+}
+
 export const PAYMENT_METHODS: Record<string, string> = {
   cash: 'Espèces',
   virement: 'Virement',

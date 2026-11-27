@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useT } from '@/app/context/LanguageContext'
+import { PROPERTY_TZ } from '@/lib/dates'
 
 // Full hydrated booking as returned from the detail fetch
 export type FullBooking = Booking & {
@@ -442,7 +443,7 @@ export function BookingDetailSheet({ bookingId, onClose, isMobile = false }: Pro
                             {p.type === 'deposit' ? ' (acompte)' : p.type === 'refund' ? ' (remboursement)' : ''}
                           </p>
                           <p className="text-[10px] text-slate-400">
-                            {new Date(p.payment_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            {new Date(p.payment_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: PROPERTY_TZ })}
                             {p.reference && ` · ${p.reference}`}
                           </p>
                         </div>

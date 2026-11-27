@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatCurrency, formatTime, cn } from '@/lib/utils'
+import { useNow } from '@/hooks/useNow'
 import {
   BedDouble,
   DollarSign,
@@ -55,7 +56,7 @@ import { useSession, useCanDo } from '@/app/context/SessionContext'
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
 import { useT } from '@/app/context/LanguageContext'
 import { logActivity } from '@/lib/activity'
-import { addDaysISO, dateOfInstant, dayRangeUTC, formatISODate, todayISO } from '@/lib/dates'
+import { addDaysISO, dateOfInstant, dayRangeUTC, formatISODate, minutesUntilMoroccoTime, todayISO } from '@/lib/dates'
 import { bedHasOtherOccupant } from '@/lib/bed-status'
 
 type DashboardProperty = Pick<Property, 'id' | 'name' | 'city' | 'check_in_time' | 'check_out_time' | 'currency' | 'review_url'>
@@ -296,21 +297,16 @@ export function DashboardCommandCenter({ property, initialData, trialDaysLeft, l
   const canViewRevenue = useCanDo('view_revenue')
 
   // ── Time & Alert Logic ──
-  const now = new Date()
+  // null during SSR/hydration: time-based alerts appear right after mount, and
+  // deadlines are Morocco wall-clock times whatever the server's timezone.
+  const now = useNow()
   const checkInTimeText = property.check_in_time ?? '14:00'
   const ctt_unique = property.check_out_time ?? '11:00'
-  
-  const [ciH, ciM] = checkInTimeText.split(':').map(Number)
-  const [coH, coM] = ctt_unique.split(':').map(Number)
 
-  const checkInDeadline = new Date()
-  checkInDeadline.setHours(ciH, ciM, 0, 0)
-  const checkoutDeadline = new Date()
-  checkoutDeadline.setHours(coH, coM, 0, 0)
-
-  const isPastCheckOutTime = now > checkoutDeadline
-  const minsPastCheckout = isPastCheckOutTime ? Math.round((now.getTime() - checkoutDeadline.getTime()) / 60000) : 0
-  const minutesUntilCheckInTime = Math.max(0, Math.round((checkInDeadline.getTime() - now.getTime()) / 60000))
+  const minsToCheckout = now == null ? null : minutesUntilMoroccoTime(ctt_unique, now)
+  const isPastCheckOutTime = minsToCheckout != null && minsToCheckout < 0
+  const minsPastCheckout = isPastCheckOutTime ? -minsToCheckout : 0
+  const minutesUntilCheckInTime = now == null ? Infinity : Math.max(0, minutesUntilMoroccoTime(checkInTimeText, now))
 
   const firstUpcomingCheckin = pendingCheckIns[0]
   const showCheckinImminentAlert = pendingCheckIns.length > 0 && minutesUntilCheckInTime <= 120

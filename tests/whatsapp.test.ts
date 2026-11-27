@@ -29,3 +29,18 @@ describe('buildWhatsAppLink — wa.me deep links', () => {
     expect(link).not.toContain('&text')
   })
 })
+
+describe('payment_reminder', () => {
+  it('formats the amount and adds invoice number + RIB when known', async () => {
+    const { WHATSAPP_TEMPLATES } = await import('@/lib/whatsapp/templates')
+    const plain = WHATSAPP_TEMPLATES.payment_reminder.fr({ first_name: 'Hans' }, 1250.5)
+    expect(plain).toContain('*1 250,50 MAD*')
+    expect(plain).not.toContain('Facture')
+    const full = WHATSAPP_TEMPLATES.payment_reminder.fr({ first_name: 'Hans' }, 300, {
+      propertyName: 'Auberge Atlas', invoiceNumber: 'F-2026-0007', bankDetails: 'CIH · RIB 230 010 1234',
+    })
+    expect(full).toContain('à *Auberge Atlas*')
+    expect(full).toContain('Facture N° *F-2026-0007*')
+    expect(full).toContain('CIH · RIB 230 010 1234')
+  })
+})
