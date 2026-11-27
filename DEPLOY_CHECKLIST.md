@@ -35,7 +35,7 @@ Found while testing on 2026-11-27 against a local Supabase built from these migr
 - [x] Apply `035_staff_subscription_gate.sql` (done 2026-11-27).
 - [ ] **Merge and deploy PR #6.** Staff stay locked out until the app code that calls `subscription_gate()` is live.
 - [ ] After the deploy, log in once with a staff account and check it reaches the dashboard.
-- Background: migration 035 It adds `subscription_gate()`, which returns only status/period end/provider to the property's owner or active staff. Staff still can't read the row, which holds the billing-portal link. The app falls back to the old behaviour until 035 exists.
+- Background: migration 035 adds `subscription_gate()`, which returns only status/period end/provider to the property's owner or active staff. Staff still can't read the row, which holds the billing-portal link. The app code falls back to the old behaviour where 035 is missing.
 
 ## ⏰ Timezone data (Morocco moved to UTC+0 on 20 Sep 2026)
 
