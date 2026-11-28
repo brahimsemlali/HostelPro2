@@ -33,6 +33,7 @@ import { logActivity } from '@/lib/activity'
 import { useT } from '@/app/context/LanguageContext'
 import { bedHasOtherOccupant } from '@/lib/bed-status'
 import { BookingInvoiceCard } from '@/components/invoices/BookingInvoiceCard'
+import { AssignBedCard, type FreeBed } from '@/components/bookings/AssignBedCard'
 import type { Invoice, PropertyLegal } from '@/lib/invoicing'
 
 type BedOption = { id: string; name: string; base_price: number; status: string; room: { name: string } | null }
@@ -47,9 +48,11 @@ interface Props {
   extrasTotal: number
   /** null until migration 034 (invoicing) is applied. */
   invoicing: { legal: PropertyLegal | null; invoices: Invoice[] } | null
+  /** Set when the booking has no bed yet (online booking, iCal import). */
+  assignBed?: { freeBeds: FreeBed[]; fromChannel: boolean } | null
 }
 
-export function BookingDetailClient({ booking, payments, extras, property, totalPaid, extrasTotal, invoicing }: Props) {
+export function BookingDetailClient({ booking, payments, extras, property, totalPaid, extrasTotal, invoicing, assignBed }: Props) {
   const router = useRouter()
   const t = useT()
   const session = useSession()
@@ -406,6 +409,10 @@ export function BookingDetailClient({ booking, payments, extras, property, total
           </div>
         )}
       </div>
+
+      {assignBed && (
+        <AssignBedCard bookingId={booking.id} freeBeds={assignBed.freeBeds} fromChannel={assignBed.fromChannel} />
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Booking info */}

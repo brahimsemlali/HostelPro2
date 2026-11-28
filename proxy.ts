@@ -11,6 +11,8 @@ const PUBLIC_ROUTE_PREFIXES = [
   '/api/checkin',       // public pre-check-in submit endpoint
   '/api/auth',
   '/api/webhooks/lemonsqueezy',
+  '/api/webhooks/channex',  // shared-secret header, checked in the route
+  '/api/channel/worker',    // bearer secret, called by pg_cron
   '/blog',              // public marketing/SEO pages
   '/logiciel-hostel',   // city landing pages (marrakech, agadir, ...)
 ]
@@ -28,6 +30,8 @@ function isPurelyPublic(pathname: string): boolean {
     pathname.startsWith('/api/checkin') ||
     pathname.startsWith('/api/auth') ||
     pathname.startsWith('/api/webhooks/lemonsqueezy') ||
+    pathname.startsWith('/api/webhooks/channex') ||
+    pathname.startsWith('/api/channel/worker') ||
     pathname.startsWith('/blog') ||
     pathname.startsWith('/logiciel-hostel') ||
     pathname.startsWith('/_next') ||

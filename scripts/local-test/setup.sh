@@ -75,6 +75,9 @@ GRANT EXECUTE ON FUNCTION apply_channel_revision(TEXT) TO service_role;
 REVOKE INSERT, DELETE ON channel_alerts FROM anon, authenticated;
 REVOKE ALL ON channel_alerts FROM anon;
 REVOKE ALL ON SEQUENCE channel_alerts_id_seq FROM anon, authenticated;
+-- 039: worker helpers are service-role only.
+REVOKE ALL ON FUNCTION channel_claim_queue(INT), channel_rate_nights(UUID, DATE, DATE), channel_enqueue_full(UUID) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION channel_claim_queue(INT), channel_rate_nights(UUID, DATE, DATE), channel_enqueue_full(UUID) TO service_role;
 SQL
 
 eval "$(supabase status -o env 2>/dev/null | grep -E '^(ANON_KEY|SERVICE_ROLE_KEY)=')"

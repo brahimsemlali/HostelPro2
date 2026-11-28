@@ -17,6 +17,8 @@ Last verified 2026-10-22 against production (public API probes + LemonSqueezy AP
 | 035 | ✅ Applied by the owner on 2026-11-27 (`subscription_gate` exists, anon refused) |
 | 036 | ⏳ New (branch `feat/channex-ready`). Room types, rate plans, rate calendar, oversell guard. See "Channel-manager foundation" below. |
 | 037 | ⏳ New (same branch). Channel sync queue, inert until a property has an *active* `channel_connections` row. Apply after 036. |
+| 038 | ⏳ New (same branch). Booking-revision import RPC, `channel_alerts`, iCal dedupe index scoped to iCal rows. Apply after 037. |
+| 039 | ⏳ New (same branch). Worker helpers (queue lease, rate per night, full sync). Apply after 038. |
 
 ```sql
 -- 029 is applied if has_active_subscription shows a search_path in proconfig
@@ -30,19 +32,39 @@ SELECT 'enforce_housekeeping_bed_columns'::regproc;
 
 After 031: once the pre-flight queries in it return no rows, run its `VALIDATE CONSTRAINT` lines.
 
-## Channel-manager foundation (migrations 036 + 037)
+## Channel-manager foundation (migrations 036–039)
 
 Built and tested on 2026-11-28 against the local stack (`scripts/local-test/sql/run.sh`: 19 SQL tests + a two-transaction race for the last bed; `check-roles.sh` covers the new RLS). Order:
 
 - [ ] Run the pre-flight query at the top of `036_room_types_inventory.sql` (unknown booking statuses). It must return 0 rows.
-- [ ] Apply `036_room_types_inventory.sql`, then `037_channel_sync_queue.sql`. Both are safe with the code currently deployed: old write paths are covered by triggers.
+- [ ] Apply `036_room_types_inventory.sql`, `037_channel_sync_queue.sql`, `038_channel_booking_import.sql`, `039_channel_worker.sql`, in that order. All are safe with the code currently deployed: old write paths are covered by triggers.
 - [ ] Deploy the branch. Settings › Chambres then shows "Types de chambre"; before 036 the section is hidden.
 - [ ] Check: `SELECT count(*) FROM rooms WHERE room_type_id IS NULL;` returns 0.
 
 What changes for users right away:
 - Every room got its own type (no merging). Owners can group identical rooms and set a price per type; `beds.base_price` stays the live price in the app.
 - A booking can no longer push a room type past its capacity on any night (error `SR409`, toast "Complet…"). Bed-level conflicts behave as before (`23P01`).
-- Nothing is sent anywhere: the queue only fills for properties with an active Channex connection, and no worker exists yet.
+- A booking without a bed (online, or iCal import) shows a "Pas encore de lit" card on its page to place it in a free bed of the right type.
+- Nothing is sent anywhere until the Channex steps below are done: the queue only fills for properties with an active connection, and the worker and webhook answer 401 without their secrets.
+
+### Turning on Channex (after the Phase 0 answers and a staging account)
+
+1. Vercel env (Production): `CHANNEX_API_KEY` (staging key first), `CHANNEX_BASE_URL` (leave unset for staging; production URL after certification), `CHANNEX_WEBHOOK_SECRET`, `CHANNEL_WORKER_SECRET` (two long random alphanumeric strings).
+2. In Channex, create the webhook: `callback_url` = `https://www.sweetreservation.com/api/webhooks/channex`, `event_mask` `*`, `send_data` on, header `X-Channex-Webhook-Secret: <CHANNEX_WEBHOOK_SECRET>`.
+3. Scheduler: the Vercel plan runs crons at most daily, so Supabase calls the worker every minute. In the Supabase SQL editor (enable the `pg_cron` and `pg_net` extensions first):
+   ```sql
+   SELECT cron.schedule('channel-worker', '* * * * *', $$
+     SELECT net.http_post(
+       url := 'https://www.sweetreservation.com/api/channel/worker',
+       headers := jsonb_build_object('Authorization', 'Bearer <CHANNEL_WORKER_SECRET>')
+     );
+   $$);
+   ```
+4. Per property (until the connection screen exists): create the property, room types and rate plans in Channex, then store the ids:
+   `INSERT INTO channel_connections (property_id, channex_property_id, status) VALUES ('<uuid>', '<channex id>', 'active');` and set `room_types.channex_room_type_id` / `rate_plans.channex_rate_plan_id`. Then `SELECT channel_enqueue_full('<uuid>');` once for the initial push.
+5. Watch `channel_sync_log` and `channel_alerts` for the first hours.
+
+Tests: `scripts/local-test/sql/run.sh` (28 SQL tests + race), `check-roles.sh`, `npx vitest run` (unit), and the worker end to end against the local stack with a simulated Channex: see the header of `tests/channex-worker.local.test.ts`.
 
 ## Staff accounts locked out (migration 035)
 

@@ -780,6 +780,13 @@ const fr = {
   'roomTypes.empty': 'Aucun type : ajoutez une chambre.',
   'roomTypes.mapped': 'Connecté',
   'roomTypes.ownType': 'Type à part',
+  'assignBed.title': 'Pas encore de lit',
+  'assignBed.intro': 'Cette réservation n’est placée dans aucun lit. Choisissez un lit libre pour tout le séjour.',
+  'assignBed.introChannel': 'Réservation en ligne : le site vend un lit du type, pas un lit précis. Choisissez un lit libre pour tout le séjour.',
+  'assignBed.pick': 'Choisir un lit',
+  'assignBed.confirm': 'Placer',
+  'assignBed.done': 'Lit attribué',
+  'assignBed.none': 'Aucun lit de ce type n’est libre sur tout le séjour : libérez un lit ou déplacez une autre réservation.',
   'rooms.beds': 'lit(s)',
 
   // Staff
@@ -1979,6 +1986,13 @@ const en = {
   'roomTypes.empty': 'No types yet: add a room.',
   'roomTypes.mapped': 'Connected',
   'roomTypes.ownType': 'Its own type',
+  'assignBed.title': 'No bed yet',
+  'assignBed.intro': 'This booking is not placed in a bed. Pick a bed that is free for the whole stay.',
+  'assignBed.introChannel': 'Online booking: the site sells a bed of this type, not a specific bed. Pick a bed that is free for the whole stay.',
+  'assignBed.pick': 'Pick a bed',
+  'assignBed.confirm': 'Place',
+  'assignBed.done': 'Bed assigned',
+  'assignBed.none': 'No bed of this type is free for the whole stay: free a bed or move another booking.',
   'rooms.beds': 'bed(s)',
 
   // Staff
