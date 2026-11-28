@@ -240,6 +240,32 @@ DROP TRIGGER IF EXISTS rate_calendar_touch ON rate_calendar;
 CREATE TRIGGER rate_calendar_touch BEFORE UPDATE ON rate_calendar
   FOR EACH ROW EXECUTE FUNCTION trg_touch_updated_at();
 
+-- C2b. A room sold whole sleeps as many guests as its beds: raise the type's
+-- max occupancy when beds are added (rooms get their beds after the room
+-- insert, in RoomsClient and in the onboarding RPC). Never lowered here.
+CREATE OR REPLACE FUNCTION trg_beds_room_type_occupancy()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE room_types t
+  SET max_occupancy = LEAST(50, (SELECT COUNT(*) FROM beds WHERE room_id = NEW.room_id))
+  FROM rooms ro
+  WHERE ro.id = NEW.room_id
+    AND t.id = ro.room_type_id
+    AND t.sell_unit = 'room'
+    AND t.max_occupancy < (SELECT COUNT(*) FROM beds WHERE room_id = NEW.room_id);
+  RETURN NULL;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS beds_room_type_occupancy ON beds;
+CREATE TRIGGER beds_room_type_occupancy
+  AFTER INSERT OR UPDATE OF room_id ON beds
+  FOR EACH ROW EXECUTE FUNCTION trg_beds_room_type_occupancy();
+
 -- C3. A booking's type follows its bed. When the bed is cleared (swap NULL
 -- hop, "unassign"), the type is KEPT so the booking still counts.
 CREATE OR REPLACE FUNCTION trg_bookings_room_type()
@@ -523,3 +549,4 @@ REVOKE ALL ON FUNCTION trg_rooms_retype()            FROM PUBLIC, anon, authenti
 REVOKE ALL ON FUNCTION trg_bookings_capacity_guard() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION trg_rate_calendar_property()  FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION trg_rate_plans_property()     FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION trg_beds_room_type_occupancy() FROM PUBLIC, anon, authenticated;

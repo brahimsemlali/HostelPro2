@@ -60,7 +60,8 @@ REVOKE ALL ON FUNCTION issue_credit_note(UUID, TEXT) FROM anon;
 REVOKE ALL ON FUNCTION subscription_gate(UUID) FROM anon;
 -- 036 / 037: trigger functions and the channel queue are server-only.
 REVOKE ALL ON FUNCTION trg_rooms_default_room_type(), trg_room_types_default_plan(), trg_bookings_room_type(),
-  trg_rooms_retype(), trg_bookings_capacity_guard(), trg_rate_calendar_property(), trg_rate_plans_property()
+  trg_rooms_retype(), trg_bookings_capacity_guard(), trg_rate_calendar_property(), trg_rate_plans_property(),
+  trg_beds_room_type_occupancy()
   FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON channel_ari_queue, channel_booking_revisions FROM anon, authenticated;
 REVOKE INSERT, UPDATE, DELETE ON channel_connections, channel_sync_log FROM anon, authenticated;
@@ -68,6 +69,12 @@ REVOKE ALL ON SEQUENCE channel_ari_queue_id_seq, channel_booking_revisions_id_se
 REVOKE ALL ON FUNCTION channel_enqueue(UUID, UUID, TEXT, DATE, DATE, TEXT), trg_bookings_channel_enqueue(),
   trg_beds_channel_enqueue(), trg_rooms_channel_enqueue(), trg_rate_calendar_channel_enqueue(),
   trg_room_types_channel_enqueue() FROM PUBLIC, anon, authenticated;
+-- 038: the import RPC is service-role only.
+REVOKE ALL ON FUNCTION apply_channel_revision(TEXT), channel_units_for_room(TEXT, JSONB), channel_source(TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION apply_channel_revision(TEXT) TO service_role;
+REVOKE INSERT, DELETE ON channel_alerts FROM anon, authenticated;
+REVOKE ALL ON channel_alerts FROM anon;
+REVOKE ALL ON SEQUENCE channel_alerts_id_seq FROM anon, authenticated;
 SQL
 
 eval "$(supabase status -o env 2>/dev/null | grep -E '^(ANON_KEY|SERVICE_ROLE_KEY)=')"

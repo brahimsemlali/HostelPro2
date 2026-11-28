@@ -165,5 +165,45 @@ for (const [email, c] of [['recep', rc], ['menage', hk], ['manager', mg]]) {
   ok(!r.error && r.data.length === 0, 'anon reads no room types')
 }
 
+// ── SR409 reaches the browser client + signup gives every room a type ─────
+{
+  // A commit-time (deferred) guard error must surface through PostgREST with
+  // its SQLSTATE, as the check-in wizard reads it (.select().single()).
+  const night = '2027-09-01', out = '2027-09-02'
+  const { data: priv } = await admin.from('room_types').select('id').eq('property_id', P).eq('sell_unit', 'room').limit(1).single()
+  const { data: privBed } = await admin.from('beds').select('id, room:room_id!inner(room_type_id)').eq('room.room_type_id', priv.id).limit(1).single()
+  const fill = await admin.from('bookings').insert({ property_id: P, room_type_id: priv.id, source: 'booking_com', status: 'confirmed', check_in_date: night, check_out_date: out, total_price: 0, external_booking_id: 'SR409-fill' }).select('id').single()
+  ok(!fill.error, 'admin fills the private room with a bed-less OTA booking')
+  r = await rc.from('bookings').insert({ property_id: P, bed_id: privBed.id, source: 'walkin', status: 'confirmed', check_in_date: night, check_out_date: out, total_price: 300 }).select().single()
+  ok(r.error?.code === 'SR409', `recep walk-in on the sold room → ${r.error?.code} (expects SR409)`)
+  await admin.from('bookings').delete().eq('external_booking_id', 'SR409-fill')
+
+  const { data: nu } = await admin.auth.admin.createUser({ email: 'signup@test.local', password: PW, email_confirm: true })
+  try {
+    const su = await as('signup@test.local')
+    r = await su.rpc('create_property_with_setup', {
+      p_name: 'Riad Test', p_city: 'Fès', p_phone: '', p_wifi: '', p_lang: 'fr', p_owner_name: 'Test',
+      p_trial_end: new Date(Date.now() + 14 * 864e5).toISOString(),
+      p_rooms: [
+        { name: 'Dortoir F', type: 'dorm', gender_policy: 'female', beds: [1, 2, 3].map((n) => ({ name: `F${n}`, bunk_position: null, base_price: 100, status: 'available' })) },
+        { name: 'Chambre 1', type: 'private', gender_policy: 'mixed', beds: [1, 2].map((n) => ({ name: `C${n}`, bunk_position: null, base_price: 200, status: 'available' })) },
+      ],
+    })
+    ok(!r.error, `signup RPC creates the property ${r.error?.message ?? ''}`)
+    const newProp = r.data
+    const { data: nTypes } = await admin.from('room_types').select('id, kind, sell_unit, gender_policy, max_occupancy').eq('property_id', newProp)
+    const { data: nRooms } = await admin.from('rooms').select('room_type_id').eq('property_id', newProp)
+    const { data: nPlans } = await admin.from('rate_plans').select('id').eq('property_id', newProp).eq('is_default', true)
+    ok(nRooms.length === 2 && nRooms.every((x) => x.room_type_id), 'signup: every room has a type')
+    ok(nPlans.length === 2, 'signup: every type has a default rate plan')
+    const fem = nTypes.find((x) => x.kind === 'dorm'), pr = nTypes.find((x) => x.kind === 'private')
+    ok(fem?.sell_unit === 'bed' && fem?.gender_policy === 'female', 'signup: women-only dorm sold per bed')
+    ok(pr?.sell_unit === 'room' && pr?.max_occupancy === 2, `signup: private room sold whole, sleeps ${pr?.max_occupancy}`)
+    await admin.from('properties').delete().eq('id', newProp)
+  } finally {
+    await admin.auth.admin.deleteUser(nu.user.id)
+  }
+}
+
 console.log(failures ? `\n${failures} FAILED` : '\nall checks passed')
 process.exit(failures ? 1 : 0)
