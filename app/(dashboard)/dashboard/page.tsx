@@ -3,6 +3,7 @@ import { createClient, getUserSession } from '@/lib/supabase/server'
 import { addDaysISO, dateOfInstant, dayRangeUTC, formatISODate, todayISO } from '@/lib/dates'
 import { DashboardCommandCenter } from '@/components/dashboard/DashboardClient'
 import type { DashboardInitialData } from '@/components/dashboard/DashboardClient'
+import { ChannelAlertsBanner, type ChannelAlert } from '@/components/dashboard/ChannelAlertsBanner'
 
 export default async function DashboardPage() {
   const session = await getUserSession()
@@ -253,5 +254,29 @@ export default async function DashboardPage() {
     .filter((i) => i.current_stock <= i.reorder_level)
     .map((i) => i.name)
 
-  return <DashboardCommandCenter property={property} initialData={initialData} trialDaysLeft={trialDaysLeft} lowStockItems={lowStockItems} />
+  // Online-sales alerts (migration 038) + bookings still without a bed, for
+  // the people who can fix them. channel_alerts errors before 038: no banner.
+  let channelAlerts: ChannelAlert[] = []
+  let unassigned: { id: string; check_in_date: string }[] = []
+  if (session.isOwner || session.role === 'manager' || session.role === 'receptionist') {
+    const [alertsRes, unassignedRes] = await Promise.all([
+      supabase.from('channel_alerts').select('id, kind, message, booking_id')
+        .eq('property_id', session.propertyId).is('resolved_at', null)
+        .order('created_at', { ascending: false }).limit(5),
+      supabase.from('bookings').select('id, check_in_date')
+        .eq('property_id', session.propertyId).is('bed_id', null)
+        .in('status', ['pending', 'confirmed', 'checked_in'])
+        .gte('check_out_date', today)
+        .order('check_in_date').limit(50),
+    ])
+    channelAlerts = alertsRes.error ? [] : ((alertsRes.data ?? []) as ChannelAlert[])
+    unassigned = unassignedRes.data ?? []
+  }
+
+  return (
+    <>
+      <ChannelAlertsBanner alerts={channelAlerts} unassigned={unassigned} />
+      <DashboardCommandCenter property={property} initialData={initialData} trialDaysLeft={trialDaysLeft} lowStockItems={lowStockItems} />
+    </>
+  )
 }

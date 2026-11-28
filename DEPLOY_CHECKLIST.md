@@ -36,7 +36,7 @@ After 031: once the pre-flight queries in it return no rows, run its `VALIDATE C
 
 Built and tested on 2026-11-28 against the local stack (`scripts/local-test/sql/run.sh`: 19 SQL tests + a two-transaction race for the last bed; `check-roles.sh` covers the new RLS). Order:
 
-- [ ] Run the pre-flight query at the top of `036_room_types_inventory.sql` (unknown booking statuses). It must return 0 rows.
+- [ ] Run the pre-flight queries at the top of `036_room_types_inventory.sql`: unknown booking statuses, negative totals (031's unvalidated constraint), and any other unvalidated constraint on `bookings`. Each must return 0 rows, otherwise the backfill aborts the migration.
 - [ ] Apply `036_room_types_inventory.sql`, `037_channel_sync_queue.sql`, `038_channel_booking_import.sql`, `039_channel_worker.sql`, in that order. All are safe with the code currently deployed: old write paths are covered by triggers.
 - [ ] Deploy the branch. Settings › Chambres then shows "Types de chambre"; before 036 the section is hidden.
 - [ ] Check: `SELECT count(*) FROM rooms WHERE room_type_id IS NULL;` returns 0.
@@ -51,7 +51,7 @@ What changes for users right away:
 
 1. Vercel env (Production): `CHANNEX_API_KEY` (staging key first), `CHANNEX_BASE_URL` (leave unset for staging; production URL after certification), `CHANNEX_WEBHOOK_SECRET`, `CHANNEL_WORKER_SECRET` (two long random alphanumeric strings).
 2. In Channex, create the webhook: `callback_url` = `https://www.sweetreservation.com/api/webhooks/channex`, `event_mask` `*`, `send_data` on, header `X-Channex-Webhook-Secret: <CHANNEX_WEBHOOK_SECRET>`.
-3. Scheduler: the Vercel plan runs crons at most daily, so Supabase calls the worker every minute. In the Supabase SQL editor (enable the `pg_cron` and `pg_net` extensions first):
+3. Scheduler: Vercel Hobby only runs daily crons (the plan was not checked; pg_cron works on any plan), so Supabase calls the worker every minute. In the Supabase SQL editor (enable the `pg_cron` and `pg_net` extensions first):
    ```sql
    SELECT cron.schedule('channel-worker', '* * * * *', $$
      SELECT net.http_post(

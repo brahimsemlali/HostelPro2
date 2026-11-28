@@ -26,11 +26,16 @@
 -- the live price; room_types.default_rate is informational until the sync uses
 -- it. Untyped bed-less bookings (current iCal imports) are not guarded.
 --
--- Pre-flight (must return 0 rows; the status CHECK below is NOT VALID, so old
--- rows are not rechecked, but any later UPDATE of such a row would fail):
+-- Pre-flight (each must return 0 rows). The backfill below UPDATEs every
+-- historical booking that has a bed, and Postgres re-checks NOT VALID
+-- constraints on updated rows: one legacy row breaking one aborts this file.
 --   SELECT status, COUNT(*) FROM bookings
 --   WHERE status NOT IN ('pending','confirmed','checked_in','checked_out','cancelled','no_show')
 --   GROUP BY status;
+--   SELECT COUNT(*) FROM bookings WHERE total_price < 0 HAVING COUNT(*) > 0;   -- 031 constraint
+--   -- any other unvalidated constraint on bookings: run its condition too
+--   SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint
+--   WHERE conrelid = 'bookings'::regclass AND NOT convalidated;
 
 -- ══════════════════════════════════════════════════════════════════════
 -- A. TABLES

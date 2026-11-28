@@ -193,7 +193,10 @@ CREATE TRIGGER beds_channel_enqueue
   AFTER INSERT OR DELETE OR UPDATE OF status, room_id ON beds
   FOR EACH ROW EXECUTE FUNCTION trg_beds_channel_enqueue();
 
--- Rooms moved between types change both types' unit counts.
+-- Rooms moved between types, or deleted, change the types' unit counts.
+-- (A deleted room's beds go by cascade; the beds trigger can no longer find
+-- their room, so the room itself queues the drop.) Fires before rooms_retype
+-- (alphabetical), which may then remove an emptied, unmapped type.
 CREATE OR REPLACE FUNCTION trg_rooms_channel_enqueue()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -203,10 +206,12 @@ AS $$
 BEGIN
   IF OLD.room_type_id IS NOT NULL AND EXISTS (SELECT 1 FROM room_types WHERE id = OLD.room_type_id) THEN
     PERFORM channel_enqueue(OLD.property_id, OLD.room_type_id, 'availability',
+                            channel_today(), channel_today() + channel_horizon_days(), 'room:' || lower(TG_OP));
+  END IF;
+  IF TG_OP = 'UPDATE' THEN
+    PERFORM channel_enqueue(NEW.property_id, NEW.room_type_id, 'availability',
                             channel_today(), channel_today() + channel_horizon_days(), 'room:retype');
   END IF;
-  PERFORM channel_enqueue(NEW.property_id, NEW.room_type_id, 'availability',
-                          channel_today(), channel_today() + channel_horizon_days(), 'room:retype');
   RETURN NULL;
 END;
 $$;
@@ -216,6 +221,10 @@ CREATE TRIGGER rooms_channel_enqueue
   AFTER UPDATE OF room_type_id ON rooms
   FOR EACH ROW WHEN (NEW.room_type_id IS DISTINCT FROM OLD.room_type_id)
   EXECUTE FUNCTION trg_rooms_channel_enqueue();
+DROP TRIGGER IF EXISTS rooms_channel_enqueue_delete ON rooms;
+CREATE TRIGGER rooms_channel_enqueue_delete
+  AFTER DELETE ON rooms
+  FOR EACH ROW EXECUTE FUNCTION trg_rooms_channel_enqueue();
 
 -- Rates & restrictions.
 CREATE OR REPLACE FUNCTION trg_rate_calendar_channel_enqueue()

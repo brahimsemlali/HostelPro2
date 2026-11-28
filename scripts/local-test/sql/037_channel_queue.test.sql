@@ -51,6 +51,14 @@ BEGIN
   UPDATE bookings SET status = 'cancelled' WHERE id = b;
   ASSERT (SELECT count(*) FROM channel_ari_queue) = 1, 'Q7 cancellation not queued';
 
-  RAISE NOTICE '037 channel queue: all 7 tests passed';
+  -- Q8 deleting a room of a MAPPED type queues the lower availability
+  UPDATE room_types SET channex_room_type_id = 'CX-Q8' WHERE id = v_dorm;
+  INSERT INTO rooms (property_id, name, type, room_type_id) VALUES (v_prop, 'Dortoir Q8', 'dorm', v_dorm);
+  INSERT INTO beds (property_id, room_id, name, base_price) SELECT v_prop, id, 'Q8-1', 100 FROM rooms WHERE name = 'Dortoir Q8';
+  DELETE FROM channel_ari_queue;
+  DELETE FROM rooms WHERE name = 'Dortoir Q8';
+  ASSERT EXISTS (SELECT 1 FROM channel_ari_queue WHERE room_type_id = v_dorm AND reason = 'room:delete'), 'Q8 room delete not queued';
+
+  RAISE NOTICE '037 channel queue: all 8 tests passed';
 END $$;
 ROLLBACK;
