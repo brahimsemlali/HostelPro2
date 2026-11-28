@@ -14,6 +14,7 @@ const routeKeys: [string, string][] = [
   ['/settings/rooms',        'topbar.title./settings/rooms'],
   ['/settings/staff',        'topbar.title./settings/staff'],
   ['/settings/integrations', 'topbar.title./settings/integrations'],
+  ['/settings/channels',     'topbar.title./settings/channels'],
   ['/settings/pricing',      'topbar.title./settings/pricing'],
   ['/settings/extras',       'topbar.title./settings/extras'],
   ['/settings/invoicing',    'topbar.title./settings/invoicing'],

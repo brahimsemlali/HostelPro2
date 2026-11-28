@@ -442,7 +442,7 @@ const CreateActivityModal = dynamic(() => import('./CreateActivityModal').then(m
 ## WHAT STILL NEEDS TO BE BUILT
 
 ### HIGH PRIORITY
-1. **Channex OTA sync** — the Business plan advertises OTA sync as "bientôt disponible". Feasibility notes exist; the integration itself is not started.
+1. **Channex OTA sync** — built on branch `feat/channex-ready` (migrations 036–039, `lib/channex/`, `/api/channel/*`, `/api/webhooks/channex`, Settings › Ventes en ligne). Waiting for a Channex staging account, certification, and the production steps in `DEPLOY_CHECKLIST.md`. Room types (`room_types`) are what channels sell; a DB guard (SQLSTATE `SR409`) prevents selling a type past its beds.
 
 ### MEDIUM PRIORITY
 2. **Guest blacklist enforcement** — `guests.is_flagged` exists; warning shown during check-in step 1 (`flagWarningGuest` state), but the UI for confirming and overriding the block needs review.

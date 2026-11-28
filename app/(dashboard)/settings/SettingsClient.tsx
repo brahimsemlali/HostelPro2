@@ -206,6 +206,15 @@ export function SettingsClient({ property }: { property: Property }) {
             </span>
           </div>
         </Link>
+        <Link href="/settings/channels">
+          <div className="bg-white border border-[#E8ECF0] rounded-[16px] p-5 flex items-center gap-3 hover:border-[#0F6E56]/30 transition-colors cursor-pointer shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+            <Globe className="w-5 h-5 text-[#0F6E56]" />
+            <div>
+              <p className="font-medium text-sm text-[#0A1F1C]">{t('channels.title')}</p>
+              <p className="text-xs text-[#94A3B8]">{t('channels.settingsHint')}</p>
+            </div>
+          </div>
+        </Link>
       </div>
     </div>
   )

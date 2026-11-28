@@ -2,7 +2,8 @@
 --
 -- Requires 036. Adds:
 --   channel_connections        one row per property linked to Channex. Nothing
---                              is queued for a property until its status is 'active'.
+--                              is queued until its status is 'active' (or 'paused':
+--                              slices then wait for the resume).
 --   channel_ari_queue          dirty (room type, date range) slices waiting to be
 --                              pushed. Written ONLY by triggers; drained by the
 --                              server worker (service role), which coalesces
@@ -105,9 +106,11 @@ BEGIN
   IF p_room_type_id IS NULL OR v_to <= v_from THEN
     RETURN;
   END IF;
+  -- Paused connections keep queueing: the worker holds their slices and
+  -- sends them on resume, so no change is lost and no full sync is needed.
   IF NOT EXISTS (
     SELECT 1 FROM channel_connections
-    WHERE property_id = p_property_id AND status = 'active'
+    WHERE property_id = p_property_id AND status IN ('active', 'paused')
   ) THEN
     RETURN;
   END IF;

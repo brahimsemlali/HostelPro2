@@ -37,6 +37,8 @@ const securityHeaders = [
       "img-src 'self' data: blob:",
       `connect-src 'self' ${process.env.NEXT_PUBLIC_SUPABASE_URL} wss://*.supabase.co https://*.sentry.io`,
       "font-src 'self'",
+      // Channex channel-connection screen, embedded in Settings › Ventes en ligne
+      "frame-src https://staging.channex.io https://app.channex.io",
       "frame-ancestors 'none'",
     ].join('; '),
   },

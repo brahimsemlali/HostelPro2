@@ -55,6 +55,11 @@ export async function pushAri(db: SupabaseClient, cx: ChannexClient): Promise<Pu
 
     const { data: conn } = await db.from('channel_connections')
       .select('channex_property_id, status').eq('property_id', propertyId).maybeSingle()
+    if (conn?.status === 'paused') {
+      // Held until the owner resumes: release the lease, check again later.
+      await db.from('channel_ari_queue').update({ next_attempt_at: new Date(Date.now() + 5 * 60_000).toISOString() }).in('id', ids)
+      summary.skipped += ids.length; continue
+    }
     if (!conn || conn.status !== 'active' || !conn.channex_property_id) {
       await done(); summary.skipped += ids.length; continue
     }

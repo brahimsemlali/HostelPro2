@@ -60,8 +60,11 @@ What changes for users right away:
      );
    $$);
    ```
-4. Per property (until the connection screen exists): create the property, room types and rate plans in Channex, then store the ids:
-   `INSERT INTO channel_connections (property_id, channex_property_id, status) VALUES ('<uuid>', '<channex id>', 'active');` and set `room_types.channex_room_type_id` / `rate_plans.channex_rate_plan_id`. Then `SELECT channel_enqueue_full('<uuid>');` once for the initial push.
+4. Per property, the owner opens **Paramètres › Ventes en ligne**:
+   - **Connecter** creates the property, room types (dorms per bed, private rooms per room) and a "Standard" rate plan in Channex, stores the ids and queues one full sync (at most once per 24 h). It is safe to click again after adding rooms: it only creates what is missing and updates the bed counts.
+   - **Ouvrir la connexion des sites** opens Channex's own screen (iframe) to connect Booking.com, Hostelworld, Airbnb or Expedia and map each room type. The CSP allows `staging.channex.io` and `app.channex.io` frames.
+   - **Mettre en pause / Reprendre**: changes keep being queued during a pause and are sent on resume.
+   Use the staging key for the pilot and certification; switch `CHANNEX_BASE_URL` to `https://app.channex.io/api/v1` (and the production key) after certification.
 5. Watch `channel_sync_log` and `channel_alerts` for the first hours.
 
 Tests: `scripts/local-test/sql/run.sh` (28 SQL tests + race), `check-roles.sh`, `npx vitest run` (unit), and the worker end to end against the local stack with a simulated Channex: see the header of `tests/channex-worker.local.test.ts`.

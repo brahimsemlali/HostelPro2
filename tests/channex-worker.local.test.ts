@@ -79,6 +79,24 @@ describe.skipIf(!KEY)('channel worker (local stack)', () => {
     expect(count).toBe(0)
   })
 
+  it('a paused connection holds its slices and sends them after resume', async () => {
+    await db.from('channel_connections').update({ status: 'paused' }).eq('property_id', prop)
+    await db.from('beds').update({ status: 'blocked' }).eq('id', (await db.from('beds').select('id').eq('name', 'A1').single()).data!.id)
+    const { cx, calls } = fakeChannex(() => ok)
+    const s = await pushAri(db, cx)
+    expect(calls).toHaveLength(0)
+    expect(s.skipped).toBeGreaterThan(0)
+    const { count: held } = await db.from('channel_ari_queue').select('id', { count: 'exact', head: true }).is('processed_at', null)
+    expect(held).toBeGreaterThan(0)
+
+    await db.from('channel_connections').update({ status: 'active' }).eq('property_id', prop)
+    await db.from('channel_ari_queue').update({ next_attempt_at: new Date().toISOString() }).is('processed_at', null)
+    await pushAri(db, cx)
+    expect(calls.map((c) => c.url.split('/').pop())).toContain('availability')
+    await db.from('beds').update({ status: 'available' }).eq('name', 'A1')
+    await pushAri(db, cx)
+  })
+
   it('a webhook-style revision is stored, applied, acked, and queues availability', async () => {
     const d0 = new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10)
     const d1 = new Date(Date.now() + 32 * 864e5).toISOString().slice(0, 10)

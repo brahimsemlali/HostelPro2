@@ -12,6 +12,7 @@
 import type { AvailabilityValue, RestrictionValue } from './ari'
 
 export const CHANNEX_STAGING_URL = 'https://staging.channex.io/api/v1'
+export const CHANNEX_PRODUCTION_URL = 'https://app.channex.io/api/v1'
 
 export type ChannexResult<T = unknown> = {
   ok: boolean
@@ -57,7 +58,7 @@ export class ChannexClient {
     return new ChannexClient({ apiKey, baseUrl: process.env.CHANNEX_BASE_URL || CHANNEX_STAGING_URL, fetchImpl })
   }
 
-  private async request<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<ChannexResult<T>> {
+  private async request<T>(method: 'GET' | 'POST' | 'PUT', path: string, body?: unknown): Promise<ChannexResult<T>> {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), this.timeoutMs)
     try {
@@ -128,6 +129,88 @@ export class ChannexClient {
   ack(id: string) {
     return this.request<unknown>('POST', `/booking_revisions/${encodeURIComponent(id)}/ack`)
   }
+
+  // ── Setup (connection screen) ──────────────────────────────────────────
+  // Create responses are JSON:API: the new id is data.id.
+
+  createProperty(property: ChannexPropertyInput) {
+    return this.request<{ id: string }>('POST', '/properties', { property })
+  }
+
+  createRoomType(room_type: ChannexRoomTypeInput) {
+    return this.request<{ id: string }>('POST', '/room_types', { room_type })
+  }
+
+  updateRoomType(id: string, room_type: Partial<ChannexRoomTypeInput>) {
+    return this.request<{ id: string }>('PUT', `/room_types/${encodeURIComponent(id)}`, { room_type })
+  }
+
+  createRatePlan(rate_plan: ChannexRatePlanInput) {
+    return this.request<{ id: string }>('POST', '/rate_plans', { rate_plan })
+  }
+
+  /** Single-use token (15 min) for the embedded channel screen. */
+  async oneTimeToken(propertyId: string, username: string): Promise<ChannexResult<{ token: string }>> {
+    return this.request<{ token: string }>('POST', '/auth/one_time_token', {
+      one_time_token: { property_id: propertyId, username },
+    })
+  }
+
+  /** Embedded channel-mapping screen (Channex iframe), restricted to the
+   *  channels we support. The host is the API host without /api/v1. */
+  iframeUrl(token: string, propertyId: string, lng: 'en' | 'fr' = 'en'): string {
+    const host = this.baseUrl.replace(/\/api\/v1$/, '')
+    const q = new URLSearchParams({
+      oauth_session_key: token,
+      app_mode: 'headless',
+      redirect_to: '/channels',
+      property_id: propertyId,
+      channels: 'BDC,HWL,ABB,EXP',
+      // Channex has no French UI: English is the closest supported language.
+      lng: lng === 'fr' ? 'en' : lng,
+    })
+    return `${host}/auth/exchange?${q.toString()}`
+  }
+}
+
+export type ChannexPropertyInput = {
+  title: string
+  currency: string
+  email?: string
+  phone?: string
+  country?: string
+  city?: string
+  address?: string
+  timezone?: string
+  property_type?: 'hostel' | 'riad' | 'guest_house' | 'hotel' | 'apartment'
+  settings?: {
+    allow_availability_autoupdate_on_modification?: boolean
+    allow_availability_autoupdate_on_cancellation?: boolean
+    min_stay_type?: 'both' | 'arrival' | 'through'
+    state_length?: number
+  }
+}
+
+export type ChannexRoomTypeInput = {
+  property_id: string
+  title: string
+  count_of_rooms: number
+  occ_adults: number
+  occ_children: number
+  occ_infants: number
+  default_occupancy: number
+  room_kind: 'room' | 'dorm'
+  capacity?: number
+}
+
+export type ChannexRatePlanInput = {
+  property_id: string
+  room_type_id: string
+  title: string
+  currency: string
+  sell_mode: 'per_room' | 'per_person'
+  rate_mode: 'manual'
+  options: { occupancy: number; is_primary: boolean; rate: number }[]
 }
 
 /** Retry later (true) or give up on this payload (false). */

@@ -59,6 +59,12 @@ BEGIN
   DELETE FROM rooms WHERE name = 'Dortoir Q8';
   ASSERT EXISTS (SELECT 1 FROM channel_ari_queue WHERE room_type_id = v_dorm AND reason = 'room:delete'), 'Q8 room delete not queued';
 
-  RAISE NOTICE '037 channel queue: all 8 tests passed';
+  -- Q9 a paused connection keeps queueing (sent on resume)
+  UPDATE channel_connections SET status = 'paused' WHERE property_id = v_prop;
+  DELETE FROM channel_ari_queue;
+  UPDATE beds SET status = 'available' WHERE id = v_bed;
+  ASSERT (SELECT count(*) FROM channel_ari_queue) = 1, 'Q9 paused connection did not queue';
+
+  RAISE NOTICE '037 channel queue: all 9 tests passed';
 END $$;
 ROLLBACK;
