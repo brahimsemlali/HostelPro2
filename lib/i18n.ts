@@ -2363,9 +2363,18 @@ const en = {
 
 export const translations: Record<Lang, Record<string, string>> = { fr, en }
 
+// One function per language, created once: useT() is listed in many effect
+// dependency arrays, and a new function on every render made those effects
+// re-run on every render (BookingDetailSheet looped "Maximum update depth").
+const tCache: Partial<Record<Lang, (key: string) => string>> = {}
+
 export function createT(lang: Lang) {
+  const cached = tCache[lang]
+  if (cached) return cached
   const dict = translations[lang] ?? translations.fr
-  return (key: string): string => dict[key] ?? key
+  const fn = (key: string): string => dict[key] ?? key
+  tCache[lang] = fn
+  return fn
 }
 
 // Legacy default kept for backward compatibility (server components)
