@@ -285,6 +285,7 @@ const fr = {
   'beds.statusDesc.maintenance': 'Hors service',
   'beds.statusDesc.blocked': 'Non disponible',
   'checkin.bedConflict': 'Ce lit est déjà réservé sur ces dates. Choisissez un autre lit ou modifiez les dates.',
+  'checkin.roomTypeFull': 'Complet : tous les lits de ce type sont déjà vendus sur ces dates, y compris des réservations en ligne pas encore placées. Placez-les d’abord ou changez les dates.',
   'beds.checkinToday': 'Arrivée aujourd\'hui',
   'beds.newCheckin': 'Nouveau check-in',
   'beds.filter.all': 'Toutes les chambres',
@@ -761,6 +762,24 @@ const fr = {
   'rooms.bunkTop': 'Haut',
   'rooms.pricePerNight': 'Prix/nuit (MAD)',
   'rooms.noBeds': 'Aucun lit',
+  'roomTypes.title': 'Types de chambre (vente en ligne)',
+  'roomTypes.intro': 'Ce que vous vendez sur Booking.com, Hostelworld ou Airbnb. Regroupez les chambres identiques dans un même type : la disponibilité est calculée sur l’ensemble.',
+  'roomTypes.sellsBed': 'Vendu au lit',
+  'roomTypes.sellsRoom': 'Vendu à la chambre',
+  'roomTypes.unit': 'unité',
+  'roomTypes.units': 'unités',
+  'roomTypes.rate': 'Prix par nuit (MAD)',
+  'roomTypes.rateHintBed': 'par lit',
+  'roomTypes.rateHintRoom': 'pour la chambre',
+  'roomTypes.ratePlaceholder': 'Prix actuel des lits',
+  'roomTypes.occupancy': 'Personnes max',
+  'roomTypes.rooms': 'Chambres',
+  'roomTypes.moveTo': 'Type',
+  'roomTypes.saved': 'Type de chambre enregistré',
+  'roomTypes.moved': 'Chambre déplacée',
+  'roomTypes.empty': 'Aucun type : ajoutez une chambre.',
+  'roomTypes.mapped': 'Connecté',
+  'roomTypes.ownType': 'Type à part',
   'rooms.beds': 'lit(s)',
 
   // Staff
@@ -1465,6 +1484,7 @@ const en = {
   'beds.statusDesc.maintenance': 'Out of service',
   'beds.statusDesc.blocked': 'Unavailable',
   'checkin.bedConflict': 'This bed is already booked for these dates. Pick another bed or change the dates.',
+  'checkin.roomTypeFull': 'Full: every bed of this type is already sold for these dates, including online bookings not yet placed in a bed. Place those first or change the dates.',
   'beds.checkinToday': 'Arrival today',
   'beds.newCheckin': 'New check-in',
   'beds.filter.all': 'All rooms',
@@ -1941,6 +1961,24 @@ const en = {
   'rooms.bunkTop': 'Top',
   'rooms.pricePerNight': 'Price/night (MAD)',
   'rooms.noBeds': 'No beds',
+  'roomTypes.title': 'Room types (online sales)',
+  'roomTypes.intro': 'What you sell on Booking.com, Hostelworld or Airbnb. Group identical rooms into one type: availability is counted across all of them.',
+  'roomTypes.sellsBed': 'Sold per bed',
+  'roomTypes.sellsRoom': 'Sold per room',
+  'roomTypes.unit': 'unit',
+  'roomTypes.units': 'units',
+  'roomTypes.rate': 'Price per night (MAD)',
+  'roomTypes.rateHintBed': 'per bed',
+  'roomTypes.rateHintRoom': 'for the room',
+  'roomTypes.ratePlaceholder': 'Current bed price',
+  'roomTypes.occupancy': 'Max guests',
+  'roomTypes.rooms': 'Rooms',
+  'roomTypes.moveTo': 'Type',
+  'roomTypes.saved': 'Room type saved',
+  'roomTypes.moved': 'Room moved',
+  'roomTypes.empty': 'No types yet: add a room.',
+  'roomTypes.mapped': 'Connected',
+  'roomTypes.ownType': 'Its own type',
   'rooms.beds': 'bed(s)',
 
   // Staff
@@ -2363,9 +2401,18 @@ const en = {
 
 export const translations: Record<Lang, Record<string, string>> = { fr, en }
 
+// One function per language, created once: useT() is listed in many effect
+// dependency arrays, and a new function on every render made those effects
+// re-run on every render (BookingDetailSheet looped "Maximum update depth").
+const tCache: Partial<Record<Lang, (key: string) => string>> = {}
+
 export function createT(lang: Lang) {
+  const cached = tCache[lang]
+  if (cached) return cached
   const dict = translations[lang] ?? translations.fr
-  return (key: string): string => dict[key] ?? key
+  const fn = (key: string): string => dict[key] ?? key
+  tCache[lang] = fn
+  return fn
 }
 
 // Legacy default kept for backward compatibility (server components)

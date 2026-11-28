@@ -29,7 +29,22 @@ export type Room = {
   type: 'dorm' | 'private'
   floor: number
   gender_policy: 'mixed' | 'female' | 'male'
+  /** Sellable type (migration 036). Absent until 036 is applied. */
+  room_type_id?: string | null
   created_at: string
+}
+
+/** What is sold on channels (migration 036): a dorm sells beds, a private room sells the room. */
+export type RoomType = {
+  id: string
+  property_id: string
+  name: string
+  kind: 'dorm' | 'private'
+  sell_unit: 'bed' | 'room'
+  gender_policy: 'mixed' | 'female' | 'male'
+  max_occupancy: number
+  default_rate: number | null
+  channex_room_type_id: string | null
 }
 
 export type BedStatus = 'available' | 'occupied' | 'dirty' | 'maintenance' | 'blocked'

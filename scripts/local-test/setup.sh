@@ -58,6 +58,16 @@ REVOKE ALL ON FUNCTION next_invoice_seq(UUID, TEXT, INT) FROM PUBLIC, anon, auth
 REVOKE ALL ON FUNCTION issue_invoice(UUID, JSONB, JSONB, JSONB) FROM anon;
 REVOKE ALL ON FUNCTION issue_credit_note(UUID, TEXT) FROM anon;
 REVOKE ALL ON FUNCTION subscription_gate(UUID) FROM anon;
+-- 036 / 037: trigger functions and the channel queue are server-only.
+REVOKE ALL ON FUNCTION trg_rooms_default_room_type(), trg_room_types_default_plan(), trg_bookings_room_type(),
+  trg_rooms_retype(), trg_bookings_capacity_guard(), trg_rate_calendar_property(), trg_rate_plans_property()
+  FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON channel_ari_queue, channel_booking_revisions FROM anon, authenticated;
+REVOKE INSERT, UPDATE, DELETE ON channel_connections, channel_sync_log FROM anon, authenticated;
+REVOKE ALL ON SEQUENCE channel_ari_queue_id_seq, channel_booking_revisions_id_seq, channel_sync_log_id_seq FROM anon, authenticated;
+REVOKE ALL ON FUNCTION channel_enqueue(UUID, UUID, TEXT, DATE, DATE, TEXT), trg_bookings_channel_enqueue(),
+  trg_beds_channel_enqueue(), trg_rooms_channel_enqueue(), trg_rate_calendar_channel_enqueue(),
+  trg_room_types_channel_enqueue() FROM PUBLIC, anon, authenticated;
 SQL
 
 eval "$(supabase status -o env 2>/dev/null | grep -E '^(ANON_KEY|SERVICE_ROLE_KEY)=')"

@@ -15,7 +15,8 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import type { Room, Bed } from '@/types'
+import type { Room, Bed, RoomType } from '@/types'
+import { RoomTypesCard } from './RoomTypesCard'
 import { Plus, Loader2, Trash2 } from 'lucide-react'
 import { useT } from '@/app/context/LanguageContext'
 
@@ -23,9 +24,11 @@ interface Props {
   propertyId: string
   rooms: Room[]
   beds: Bed[]
+  /** null when migration 036 is not applied yet */
+  roomTypes: RoomType[] | null
 }
 
-export function RoomsClient({ propertyId, rooms, beds }: Props) {
+export function RoomsClient({ propertyId, rooms, beds, roomTypes }: Props) {
   const router = useRouter()
   const t = useT()
   const [loading, setLoading] = useState(false)
@@ -197,6 +200,8 @@ export function RoomsClient({ propertyId, rooms, beds }: Props) {
           </DialogContent>
         </Dialog>
       </div>
+
+      {roomTypes && <RoomTypesCard roomTypes={roomTypes} rooms={rooms} beds={beds} />}
 
       {rooms.map((room) => {
         const roomBeds = beds.filter((b) => b.room_id === room.id)

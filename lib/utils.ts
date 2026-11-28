@@ -73,3 +73,10 @@ export function tomorrowISO(): string {
 export function isBedConflictError(err: unknown): boolean {
   return typeof err === 'object' && err !== null && (err as { code?: string }).code === '23P01'
 }
+
+/** True when the room-type capacity guard (migration 036, SQLSTATE SR409)
+ *  refused a booking: every bed or room of that type is already sold for one
+ *  of the nights, possibly to an OTA booking that has no bed assigned yet. */
+export function isRoomTypeFullError(err: unknown): boolean {
+  return typeof err === 'object' && err !== null && (err as { code?: string }).code === 'SR409'
+}

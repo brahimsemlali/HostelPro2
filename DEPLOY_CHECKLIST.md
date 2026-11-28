@@ -15,6 +15,8 @@ Last verified 2026-10-22 against production (public API probes + LemonSqueezy AP
 | 033 | ✅ Live (2026-11-27 probe: `tenant_admin` / `platform_payments` exist and refuse anon) |
 | 034 | ✅ Applied by the owner on 2026-11-27 (tables + `issue_invoice` / `issue_credit_note` exist, anon refused) |
 | 035 | ✅ Applied by the owner on 2026-11-27 (`subscription_gate` exists, anon refused) |
+| 036 | ⏳ New (branch `feat/channex-ready`). Room types, rate plans, rate calendar, oversell guard. See "Channel-manager foundation" below. |
+| 037 | ⏳ New (same branch). Channel sync queue, inert until a property has an *active* `channel_connections` row. Apply after 036. |
 
 ```sql
 -- 029 is applied if has_active_subscription shows a search_path in proconfig
@@ -27,6 +29,20 @@ SELECT 'enforce_housekeeping_bed_columns'::regproc;
 ```
 
 After 031: once the pre-flight queries in it return no rows, run its `VALIDATE CONSTRAINT` lines.
+
+## Channel-manager foundation (migrations 036 + 037)
+
+Built and tested on 2026-11-28 against the local stack (`scripts/local-test/sql/run.sh`: 19 SQL tests + a two-transaction race for the last bed; `check-roles.sh` covers the new RLS). Order:
+
+- [ ] Run the pre-flight query at the top of `036_room_types_inventory.sql` (unknown booking statuses). It must return 0 rows.
+- [ ] Apply `036_room_types_inventory.sql`, then `037_channel_sync_queue.sql`. Both are safe with the code currently deployed: old write paths are covered by triggers.
+- [ ] Deploy the branch. Settings › Chambres then shows "Types de chambre"; before 036 the section is hidden.
+- [ ] Check: `SELECT count(*) FROM rooms WHERE room_type_id IS NULL;` returns 0.
+
+What changes for users right away:
+- Every room got its own type (no merging). Owners can group identical rooms and set a price per type; `beds.base_price` stays the live price in the app.
+- A booking can no longer push a room type past its capacity on any night (error `SR409`, toast "Complet…"). Bed-level conflicts behave as before (`23P01`).
+- Nothing is sent anywhere: the queue only fills for properties with an active Channex connection, and no worker exists yet.
 
 ## Staff accounts locked out (migration 035)
 

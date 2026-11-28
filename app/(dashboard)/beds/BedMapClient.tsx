@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { todayISO, isBedConflictError } from '@/lib/utils'
+import { todayISO, isBedConflictError, isRoomTypeFullError } from '@/lib/utils'
 import { useAppStore } from '@/stores/app.store'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
@@ -166,7 +166,9 @@ export function BedMapClient({ rooms, beds: initialBeds, activeBookings: initial
       // PGRST202 / 42883: swap_booking_beds (migration 023) isn't installed yet
       const missingRpc = error.code === 'PGRST202' || error.code === '42883'
       toast.error(
-        isBedConflictError(error)
+        isRoomTypeFullError(error)
+          ? t('checkin.roomTypeFull')
+          : isBedConflictError(error)
           ? t('checkin.bedConflict')
           : missingRpc
             ? 'Échange de lits indisponible : mise à jour de la base de données requise (migration 023).'

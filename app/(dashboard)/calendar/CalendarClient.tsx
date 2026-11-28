@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useAppStore } from '@/stores/app.store'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
-import { cn, isBedConflictError, todayISO } from '@/lib/utils'
+import { cn, isBedConflictError, isRoomTypeFullError, todayISO } from '@/lib/utils'
 import { addDaysISO, diffDaysISO } from '@/lib/dates'
 import { toast } from 'sonner'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -274,7 +274,7 @@ export function CalendarClient({ propertyId, rooms, beds: initialBeds, bookings:
         const { error } = await supabase.from('bookings').update(updatePayload).eq('id', dragState.id)
 
         if (error) {
-          toast.error(isBedConflictError(error) ? t('calendar.slotOccupied') : t('calendar.updateError'))
+          toast.error(isRoomTypeFullError(error) ? t('checkin.roomTypeFull') : isBedConflictError(error) ? t('calendar.slotOccupied') : t('calendar.updateError'))
           // Rollback; if the refetch also fails, reload so no phantom move stays on screen
           const rolledBack = await refreshBookings()
           if (!rolledBack) router.refresh()

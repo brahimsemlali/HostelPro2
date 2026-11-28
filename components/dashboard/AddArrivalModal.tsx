@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { cn, isBedConflictError } from '@/lib/utils'
+import { cn, isBedConflictError, isRoomTypeFullError } from '@/lib/utils'
 import { BOOKING_SOURCES, NATIONALITIES, defaultCommissionRate } from '@/lib/constants'
 import { toast } from 'sonner'
 import { logActivity } from '@/lib/activity'
@@ -212,7 +212,7 @@ export function AddArrivalModal({
         onSuccess()
         onClose()
       } catch (err) {
-        toast.error(isBedConflictError(err) ? t('checkin.bedConflict') : t('arrival.toast.error'))
+        toast.error(isRoomTypeFullError(err) ? t('checkin.roomTypeFull') : isBedConflictError(err) ? t('checkin.bedConflict') : t('arrival.toast.error'))
       } finally {
         setSaving(false)
       }

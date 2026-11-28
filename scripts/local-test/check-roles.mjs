@@ -133,5 +133,37 @@ for (const [email, c] of [['recep', rc], ['menage', hk], ['manager', mg]]) {
   ok(!direct.data && gate.data?.[0]?.status === 'active', `${email}: gate shows active, subscription row stays hidden`)
 }
 
+// ── Room types, rates, channel tables (036 / 037) ──────────────────────────
+{
+  const { data: types } = await admin.from('room_types').select('id, name').eq('property_id', P)
+  const dorm = types.find((t) => t.name === 'Dortoir A')
+  const { data: plan } = await admin.from('rate_plans').select('id').eq('room_type_id', dorm.id).eq('is_default', true).single()
+
+  for (const [email, c] of [['recep', rc], ['menage', hk], ['manager', mg]]) {
+    r = await c.from('room_types').select('id').eq('property_id', P)
+    ok(!r.error && r.data.length === types.length, `${email} reads room types`)
+    r = await c.from('room_types').update({ default_rate: 1 }).eq('id', dorm.id).select('id')
+    ok(!r.error && r.data.length === 0, `${email} cannot edit a room type`)
+    r = await c.rpc('room_type_availability', { p_room_type_id: dorm.id, p_from: '2027-01-01', p_to: '2027-01-03' })
+    ok(!r.error && r.data.length === 2, `${email} reads availability`)
+  }
+  r = await rc.from('rate_calendar').insert({ rate_plan_id: plan.id, property_id: P, date: '2027-01-01', rate: 1 })
+  ok(!!r.error, 'recep cannot write the rate calendar')
+  r = await mg.from('rate_calendar').insert({ rate_plan_id: plan.id, property_id: P, date: '2027-01-01', rate: 140 }).select('rate')
+  ok(!r.error && r.data.length === 1, 'manager writes the rate calendar')
+  r = await owner.from('room_types').update({ default_rate: 125 }).eq('id', dorm.id).select('default_rate')
+  ok(!r.error && Number(r.data[0]?.default_rate) === 125, 'owner edits a room type')
+  await admin.from('rate_calendar').delete().eq('rate_plan_id', plan.id)
+
+  for (const [email, c] of [['owner', owner], ['manager', mg], ['anon', anon]]) {
+    r = await c.from('channel_ari_queue').select('id')
+    ok(!!r.error || r.data.length === 0, `${email} cannot read the sync queue`)
+    r = await c.from('channel_connections').insert({ property_id: P, status: 'active' })
+    ok(!!r.error, `${email} cannot activate a channel connection`)
+  }
+  r = await anon.from('room_types').select('id')
+  ok(!r.error && r.data.length === 0, 'anon reads no room types')
+}
+
 console.log(failures ? `\n${failures} FAILED` : '\nall checks passed')
 process.exit(failures ? 1 : 0)
