@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getRouteHandlerSession } from '@/lib/supabase/server'
+import { createClient, getRouteHandlerSession } from '@/lib/supabase/server'
 import { isSessionBlocked } from '@/lib/billing'
 import { rateLimit } from '@/lib/rate-limit'
 
@@ -88,6 +88,14 @@ export async function POST(req: NextRequest) {
     const rl = rateLimit({ key: `sync-ical:${session.propertyId}`, limit: 20, windowSeconds: 300 })
     if (!rl.allowed) {
       return NextResponse.json({ error: 'Trop de requêtes. Réessayez dans quelques minutes.' }, { status: 429 })
+    }
+
+    // With Channex on, bookings arrive through the channel manager: an iCal
+    // import of the same OTA would create each one twice. (Errors before 037.)
+    const supabase = await createClient()
+    const conn = await supabase.from('channel_connections').select('status').eq('property_id', session.propertyId).maybeSingle()
+    if (!conn.error && conn.data?.status === 'active') {
+      return NextResponse.json({ error: 'Synchronisation Channex active : l’import iCal est désactivé.' }, { status: 409 })
     }
 
     const { icalUrl } = await req.json() as { icalUrl: string }

@@ -156,16 +156,43 @@ export async function processRevision(db: SupabaseClient, cx: ChannexClient, rev
   return outcome
 }
 
-/** Fallback for missed webhooks: apply every unacked revision in the feed. */
+/**
+ * Fallback for missed webhooks and for revisions that failed earlier.
+ *  1. Revisions already stored but not applied (failed RPC, crash before
+ *     apply) are retried straight from the DB, up to MAX_REVISION_ATTEMPTS.
+ *  2. The Channex feed (unacked revisions, ~10 per page) is read in a few
+ *     passes; applied ones are acked and leave the feed, so each pass sees
+ *     newer ones. Stops when a pass makes no progress, so revisions that keep
+ *     failing cannot loop forever (they stay in step 1 with an alert).
+ */
+const MAX_REVISION_ATTEMPTS = 10
+const MAX_FEED_PASSES = 5
+
 export async function pullBookings(db: SupabaseClient, cx: ChannexClient) {
-  const feed = await cx.getFeed()
-  const out = { fetched: 0, applied: 0, failed: 0 }
-  if (!feed.ok || !feed.data) return { ...out, error: feed.error }
-  out.fetched = feed.data.length
-  for (const rev of feed.data) {
-    const r = await processRevision(db, cx, rev)
+  const out = { fetched: 0, applied: 0, failed: 0, retried: 0, error: null as string | null }
+
+  const { data: pending } = await db.from('channel_booking_revisions')
+    .select('payload').is('processed_at', null).lt('attempts', MAX_REVISION_ATTEMPTS)
+    .order('received_at').limit(20)
+  for (const row of (pending ?? []) as { payload: ChannexRevision }[]) {
+    out.retried++
+    const r = await processRevision(db, cx, row.payload)
     if (r === 'failed') out.failed++
     else out.applied++
+  }
+
+  for (let pass = 0; pass < MAX_FEED_PASSES; pass++) {
+    const feed = await cx.getFeed()
+    if (!feed.ok || !feed.data) { out.error = feed.error; break }
+    if (feed.data.length === 0) break
+    out.fetched += feed.data.length
+    let progress = 0
+    for (const rev of feed.data) {
+      const r = await processRevision(db, cx, rev)
+      if (r === 'failed') out.failed++
+      else { out.applied++; progress++ }
+    }
+    if (progress === 0) break
   }
   return out
 }

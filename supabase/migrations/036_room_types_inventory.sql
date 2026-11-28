@@ -446,11 +446,32 @@ BEGIN
     RETURN NULL;
   END IF;
 
+  -- Only a change that can ADD occupancy is judged: a new booking, a type
+  -- change, longer dates, or a reactivation. A check-in, a shortened stay or a
+  -- bed move inside a per-bed type never makes things worse, so it passes even
+  -- when the type is already over capacity (e.g. after a channel overbooking).
+  IF TG_OP = 'UPDATE'
+     AND OLD.status IN ('pending', 'confirmed', 'checked_in')
+     AND OLD.room_type_id IS NOT DISTINCT FROM v_type
+     AND v_in >= OLD.check_in_date AND v_out <= OLD.check_out_date
+     AND (OLD.bed_id IS NOT DISTINCT FROM NEW.bed_id
+          OR (SELECT sell_unit FROM room_types WHERE id = v_type) = 'bed')
+  THEN
+    RETURN NULL;
+  END IF;
+
   PERFORM pg_advisory_xact_lock(hashtextextended('room_type:' || v_type::TEXT, 0));
 
   SELECT a.night INTO v_night
   FROM room_type_availability(v_type, v_in, v_out) a
   WHERE a.taken > a.units
+    -- same type, already active: only the nights it newly occupies count
+    AND NOT (TG_OP = 'UPDATE'
+             AND OLD.status IN ('pending', 'confirmed', 'checked_in')
+             AND OLD.room_type_id IS NOT DISTINCT FROM v_type
+             AND (OLD.bed_id IS NOT DISTINCT FROM NEW.bed_id
+                  OR (SELECT sell_unit FROM room_types WHERE id = v_type) = 'bed')
+             AND a.night >= OLD.check_in_date AND a.night < OLD.check_out_date)
   ORDER BY a.night
   LIMIT 1;
 

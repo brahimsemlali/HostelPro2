@@ -116,6 +116,33 @@ BEGIN
   END;
   ASSERT ok, 'T12 cross-tenant room type accepted';
 
-  RAISE NOTICE '036 inventory: all 12 tests passed';
+  -- T13 over capacity already (legacy / channel overbooking): check-in and a
+  -- shorter stay still pass, a longer stay does not
+  SET LOCAL session_replication_role = replica;      -- seed an overbooked night without the guard
+  INSERT INTO bookings (property_id, guest_id, room_type_id, source, status, check_in_date, check_out_date, total_price)
+  SELECT c.prop, c.guest, c.dorm, 'booking_com', 'confirmed', d0 + 40, d0 + 43, 0 FROM generate_series(1, 5);
+  SET LOCAL session_replication_role = origin;
+  -- 5 bookings on nights d0+40..42 for 4 beds
+  SELECT id INTO b1 FROM bookings WHERE room_type_id = c.dorm AND check_in_date = d0 + 40 ORDER BY id LIMIT 1;
+  SELECT id INTO b2 FROM bookings WHERE room_type_id = c.dorm AND check_in_date = d0 + 40 ORDER BY id DESC LIMIT 1;
+  UPDATE bookings SET status = 'checked_in' WHERE id = b1;          -- check-in passes
+  UPDATE bookings SET check_out_date = d0 + 42 WHERE id = b1;       -- shorter stay passes
+  ok := FALSE;
+  BEGIN
+    UPDATE bookings SET check_out_date = d0 + 43 WHERE id = b1;     -- back onto the full night d0+42
+  EXCEPTION WHEN SQLSTATE 'SR409' THEN ok := TRUE;
+  END;
+  ASSERT ok, 'T13 re-extending onto a full night was not refused';
+  UPDATE bookings SET check_out_date = d0 + 44 WHERE id = b2;       -- the added night d0+43 has room
+  INSERT INTO bookings (property_id, guest_id, room_type_id, source, status, check_in_date, check_out_date, total_price)
+  SELECT c.prop, c.guest, c.dorm, 'direct', 'confirmed', d0 + 44, d0 + 45, 0 FROM generate_series(1, 4);
+  ok := FALSE;
+  BEGIN
+    UPDATE bookings SET check_out_date = d0 + 45 WHERE id = b2;     -- onto the full night d0+44
+  EXCEPTION WHEN SQLSTATE 'SR409' THEN ok := TRUE;
+  END;
+  ASSERT ok, 'T13 extending onto a full night was not refused';
+
+  RAISE NOTICE '036 inventory: all 13 tests passed';
 END $$;
 ROLLBACK;

@@ -43,13 +43,41 @@ BEGIN
   ASSERT (SELECT count(*) FROM bookings WHERE channel_booking_id = 'BK-1' AND status = 'confirmed' AND total_price = 250) = 2, 'I3 price not updated';
   ASSERT EXISTS (SELECT 1 FROM bookings WHERE channel_booking_id = 'BK-1' AND bed_id = v_bed AND status = 'confirmed'), 'I3 bed lost';
 
-  -- I4 modified, new dates → old rows cancelled, new rows created
+  -- I4 modified, new dates → the same rows move (no duplicates), the free bed stays
   INSERT INTO channel_booking_revisions (revision_id, payload)
   VALUES ('REV-3', jsonb_set(jsonb_set(jsonb_set(rev, '{status}', '"modified"'),
     '{rooms,0,checkin_date}', to_jsonb((d0 + 1)::TEXT)), '{rooms,0,checkout_date}', to_jsonb((d0 + 3)::TEXT)));
   PERFORM apply_channel_revision('REV-3');
-  ASSERT (SELECT count(*) FROM bookings WHERE channel_booking_id = 'BK-1' AND status = 'cancelled') = 2, 'I4 old not cancelled';
-  ASSERT (SELECT count(*) FROM bookings WHERE channel_booking_id = 'BK-1' AND status = 'confirmed' AND check_in_date = d0 + 1) = 2, 'I4 new not created';
+  ASSERT (SELECT count(*) FROM bookings WHERE channel_booking_id = 'BK-1') = 2, 'I4 duplicated rows';
+  ASSERT (SELECT count(*) FROM bookings WHERE channel_booking_id = 'BK-1' AND status = 'confirmed' AND check_in_date = d0 + 1) = 2, 'I4 dates not moved';
+  ASSERT EXISTS (SELECT 1 FROM bookings WHERE channel_booking_id = 'BK-1' AND bed_id = v_bed), 'I4 bed lost';
+
+  -- I4b the guest is in the house and extends by a night on the OTA: same row, still checked in
+  UPDATE bookings SET status = 'checked_in' WHERE channel_booking_id = 'BK-1' AND bed_id = v_bed;
+  INSERT INTO channel_booking_revisions (revision_id, payload)
+  VALUES ('REV-3b', jsonb_set(jsonb_set(jsonb_set(rev, '{status}', '"modified"'),
+    '{rooms,0,checkin_date}', to_jsonb((d0 + 1)::TEXT)), '{rooms,0,checkout_date}', to_jsonb((d0 + 4)::TEXT)));
+  PERFORM apply_channel_revision('REV-3b');
+  ASSERT (SELECT count(*) FROM bookings WHERE channel_booking_id = 'BK-1') = 2, 'I4b duplicated rows';
+  ASSERT EXISTS (SELECT 1 FROM bookings WHERE channel_booking_id = 'BK-1' AND bed_id = v_bed
+                 AND status = 'checked_in' AND check_out_date = d0 + 4), 'I4b checked-in row not extended';
+  UPDATE bookings SET status = 'confirmed' WHERE channel_booking_id = 'BK-1' AND status = 'checked_in';
+
+  -- I4c the bed is taken on the new dates → booking kept, bed freed (no import failure)
+  INSERT INTO bookings (property_id, bed_id, source, status, check_in_date, check_out_date, total_price)
+  VALUES (v_prop, v_bed, 'walkin', 'confirmed', d0 + 6, d0 + 7, 0);
+  INSERT INTO channel_booking_revisions (revision_id, payload)
+  VALUES ('REV-3c', jsonb_set(jsonb_set(jsonb_set(rev, '{status}', '"modified"'),
+    '{rooms,0,checkin_date}', to_jsonb((d0 + 5)::TEXT)), '{rooms,0,checkout_date}', to_jsonb((d0 + 7)::TEXT)));
+  PERFORM apply_channel_revision('REV-3c');
+  ASSERT (SELECT count(*) FROM bookings WHERE channel_booking_id = 'BK-1' AND status = 'confirmed' AND check_in_date = d0 + 5 AND bed_id IS NULL) = 2,
+    'I4c bed not freed on conflict';
+  DELETE FROM bookings WHERE source = 'walkin' AND bed_id = v_bed AND check_in_date = d0 + 6;
+  -- back to the I5 dates
+  INSERT INTO channel_booking_revisions (revision_id, payload)
+  VALUES ('REV-3d', jsonb_set(jsonb_set(jsonb_set(rev, '{status}', '"modified"'),
+    '{rooms,0,checkin_date}', to_jsonb((d0 + 1)::TEXT)), '{rooms,0,checkout_date}', to_jsonb((d0 + 3)::TEXT)));
+  PERFORM apply_channel_revision('REV-3d');
 
   -- I5 overbooking from a channel is RECORDED with an alert, never refused
   INSERT INTO bookings (property_id, room_type_id, source, status, check_in_date, check_out_date, total_price)
@@ -71,10 +99,15 @@ BEGIN
   END;
   ASSERT ok, 'I6 bypass leaked outside the import';
 
-  -- I7 cancellation
+  -- I7 cancellation: arrivals cancelled, a checked-in guest kept and flagged
+  UPDATE bookings SET status = 'checked_in'
+  WHERE id = (SELECT id FROM bookings WHERE channel_booking_id = 'BK-1' AND status = 'confirmed' ORDER BY id LIMIT 1);
   INSERT INTO channel_booking_revisions (revision_id, payload) VALUES ('REV-5', jsonb_set(rev, '{status}', '"cancelled"'));
   PERFORM apply_channel_revision('REV-5');
   ASSERT NOT EXISTS (SELECT 1 FROM bookings WHERE channel_booking_id = 'BK-1' AND status = 'confirmed'), 'I7 not cancelled';
+  ASSERT EXISTS (SELECT 1 FROM bookings WHERE channel_booking_id = 'BK-1' AND status = 'checked_in'), 'I7 checked-in guest cancelled';
+  ASSERT EXISTS (SELECT 1 FROM channel_alerts a JOIN bookings b ON b.id = a.booking_id
+                 WHERE b.channel_booking_id = 'BK-1' AND a.kind = 'sync_error'), 'I7 checked-in guest not flagged';
 
   -- I8 unmapped room type → recorded untyped + alert
   INSERT INTO channel_booking_revisions (revision_id, payload)
@@ -89,6 +122,14 @@ BEGIN
   BEGIN PERFORM apply_channel_revision('REV-7'); EXCEPTION WHEN OTHERS THEN ok := SQLERRM LIKE 'unknown_channex_property%'; END;
   ASSERT ok, 'I9 unknown property accepted';
 
-  RAISE NOTICE '038 channel import: all 9 tests passed';
+  -- I10 commission: the OTA figure when sent (36/240 = 15 %), else defaults
+  ASSERT (SELECT commission_rate FROM bookings WHERE channel_booking_id = 'BK-2' LIMIT 1) = 15, 'I10 booking.com default';
+  INSERT INTO channel_booking_revisions (revision_id, payload)
+  VALUES ('REV-8', jsonb_set(jsonb_set(jsonb_set(jsonb_set(rev, '{booking_id}', '"BK-4"'), '{ota_name}', '"Hostelworld"'),
+    '{amount}', '"200.00"'), '{ota_commission}', '"30.00"'));
+  PERFORM apply_channel_revision('REV-8');
+  ASSERT (SELECT bool_and(commission_rate = 15 AND source = 'hostelworld') FROM bookings WHERE channel_booking_id = 'BK-4'), 'I10 OTA commission not used';
+
+  RAISE NOTICE '038 channel import: all 13 tests passed';
 END $$;
 ROLLBACK;

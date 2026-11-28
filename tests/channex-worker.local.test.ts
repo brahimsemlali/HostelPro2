@@ -124,13 +124,38 @@ describe.skipIf(!KEY)('channel worker (local stack)', () => {
   it('feed pull applies missed revisions', async () => {
     const d0 = new Date(Date.now() + 40 * 864e5).toISOString().slice(0, 10)
     const d1 = new Date(Date.now() + 41 * 864e5).toISOString().slice(0, 10)
-    const { cx } = fakeChannex((url) => url.includes('/feed')
+    let acked = false
+    const { cx } = fakeChannex((url) => {
+      if (url.endsWith('/ack')) { acked = true; return { status: 200, json: { meta: { message: 'Success' } } } }
+      return url.includes('/feed') && !acked
       ? { status: 200, json: { meta: { total: 1 }, data: [{ id: 'WK-REV-2', type: 'booking_revision', attributes: {
           id: 'WK-REV-2', property_id: 'CX-PROP', booking_id: 'WK-BK-2', ota_name: 'Booking.com', status: 'new',
           rooms: [{ room_type_id: 'CX-DORM', rate_plan_id: 'CX-PLAN', checkin_date: d0, checkout_date: d1, amount: '120.00', occupancy: { adults: 1 } }],
         } }] } }
-      : { status: 200, json: { meta: { message: 'Success' } } })
+      : { status: 200, json: { meta: { message: 'Success' }, data: [] } }
+    })
     const r = await pullBookings(db, cx)
     expect(r).toMatchObject({ fetched: 1, applied: 1, failed: 0 })
+  })
+
+  it('a revision that failed (property not linked yet) is retried from the DB once fixed', async () => {
+    const d0 = new Date(Date.now() + 50 * 864e5).toISOString().slice(0, 10)
+    const d1 = new Date(Date.now() + 51 * 864e5).toISOString().slice(0, 10)
+    const rev: ChannexRevision = {
+      id: 'WK-REV-3', property_id: 'CX-LATE', booking_id: 'WK-BK-3', ota_name: 'Airbnb', status: 'new',
+      rooms: [{ room_type_id: 'CX-DORM', checkin_date: d0, checkout_date: d1, amount: '100.00', occupancy: { adults: 1 } }],
+    }
+    const { cx, calls } = fakeChannex((url) => url.includes('/feed')
+      ? { status: 200, json: { data: [] } }
+      : { status: 200, json: { meta: { message: 'Success' } } })
+    expect(await processRevision(db, cx, rev)).toBe('failed')
+    expect(calls.some((c) => c.url.endsWith('/ack'))).toBe(false)      // never acked while failing
+
+    await db.from('channel_connections').update({ channex_property_id: 'CX-LATE' }).eq('property_id', prop)
+    const r = await pullBookings(db, cx)
+    expect(r).toMatchObject({ retried: 1, applied: 1 })
+    const { count } = await db.from('bookings').select('id', { count: 'exact', head: true }).eq('channel_booking_id', 'WK-BK-3')
+    expect(count).toBe(1)
+    await db.from('channel_connections').update({ channex_property_id: 'CX-PROP' }).eq('property_id', prop)
   })
 })

@@ -37,13 +37,15 @@ interface Props {
   savedIcalUrl: string | null
   lastSync: string | null
   importedRefs: string[]
+  /** Channex sync is on: the iCal import would create every booking twice. */
+  channelConnected?: boolean
 }
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })
 }
 
-export function IntegrationsClient({ propertyId, savedIcalUrl, lastSync, importedRefs }: Props) {
+export function IntegrationsClient({ propertyId, savedIcalUrl, lastSync, importedRefs, channelConnected = false }: Props) {
   const router = useRouter()
   const t = useT()
 
@@ -214,6 +216,28 @@ export function IntegrationsClient({ propertyId, savedIcalUrl, lastSync, importe
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
     toast.success(t('integrations.sqlCopied'))
+  }
+
+  if (channelConnected) {
+    return (
+      <div className="p-6 space-y-5 max-w-2xl mx-auto">
+        <Link href="/settings">
+          <Button variant="ghost" size="sm">
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            {t('common.settings')}
+          </Button>
+        </Link>
+        <Card className="border-[#0F6E56]/20 bg-[#0F6E56]/5">
+          <CardContent className="p-4 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-[#0F6E56] flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium">{t('integrations.channelOnTitle')}</p>
+              <p className="text-sm text-muted-foreground">{t('integrations.channelOnBody')}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
